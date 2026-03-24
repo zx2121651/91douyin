@@ -10,6 +10,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -87,6 +90,7 @@ fun VideoPage(url: String, isVisible: Boolean) {
         RightSideActions(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
+                .navigationBarsPadding() // Avoid system nav bar
                 .padding(bottom = 100.dp, end = 16.dp)
         )
 
@@ -94,6 +98,7 @@ fun VideoPage(url: String, isVisible: Boolean) {
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
+                .navigationBarsPadding() // Avoid system nav bar
                 .padding(bottom = 60.dp, start = 16.dp)
         ) {
             Text(text = "@User_$url.hashCode()", color = Color.White)

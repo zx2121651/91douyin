@@ -1,6 +1,7 @@
 package com.app.douyin.pro
 
 import android.os.Bundle
+import androidx.core.view.WindowCompat
 
 import android.Manifest
 import android.os.Build
@@ -28,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -46,6 +48,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         // Setup edge-to-edge content for immersive mode
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         enableEdgeToEdge()
 
 
@@ -112,7 +115,7 @@ fun DouyinLiteApp(navController: NavHostController) {
             // Optional: Hide bottom bar on specific screens like Record
             if (currentRoute != BottomNavItem.Record.route) {
                 NavigationBar(
-                    containerColor = if (currentRoute == BottomNavItem.Home.route) Color.Black else Color.White,
+                    containerColor = if (currentRoute == BottomNavItem.Home.route) Color.Transparent else Color.White,
                     contentColor = if (currentRoute == BottomNavItem.Home.route) Color.White else Color.Black
                 ) {
                     items.forEach { item ->
@@ -146,7 +149,12 @@ fun DouyinLiteApp(navController: NavHostController) {
         NavHost(
             navController = navController,
             startDestination = BottomNavItem.Home.route,
-            modifier = Modifier.padding(innerPadding)
+            // Do not pad the Home screen and Record screen so they can be full-screen
+            modifier = Modifier.padding(
+                bottom = if (navController.currentBackStackEntryAsState().value?.destination?.route == BottomNavItem.Home.route ||
+                             navController.currentBackStackEntryAsState().value?.destination?.route == BottomNavItem.Record.route)
+                         0.dp else innerPadding.calculateBottomPadding()
+            )
         ) {
             composable(BottomNavItem.Home.route) {
                 HomeScreen()
