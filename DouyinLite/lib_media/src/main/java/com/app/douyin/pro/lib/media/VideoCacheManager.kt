@@ -25,7 +25,7 @@ class VideoCacheManager private constructor(context: Context) {
             }
         }
 
-        private const val MAX_CACHE_SIZE: Long = 512 * 1024 * 1024 // 512MB
+        private const val MAX_CACHE_SIZE: Long = 500 * 1024 * 1024 // 500MB
     }
 
     private val cache: SimpleCache

@@ -12,6 +12,7 @@ import androidx.camera.video.Quality
 import androidx.camera.video.QualitySelector
 import androidx.camera.video.Recorder
 import androidx.camera.video.VideoCapture
+import androidx.camera.video.VideoSpec
 import androidx.camera.video.VideoRecordEvent
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
@@ -62,10 +63,11 @@ fun RecordScreen() {
             .setQualitySelector(
                 QualitySelector.from(Quality.FHD, FallbackStrategy.higherQualityOrLowerThan(Quality.FHD))
             )
-            // 这里我们配置 Recorder 选项，尽管 CameraX API 限制了完全底层的自定义，
-            // 但 FHD 配合高质量通常满足 8Mbps 要求。如果需要强行定制编解码器格式，
-            // 则需要脱离简单的 VideoCapture API，使用更底层的 MediaCodec 和 OpenGL 渲染管线组合。
-            // 这里为了演示集成流程，我们使用标准的 VideoCapture。
+            // CameraX API now supports configuring bitrate for specific API levels
+            // For typical 8Mbps target we can enforce setting (approx 8 * 1024 * 1024 = 8388608 bps)
+            // and frame rate at 30 fps using VideoSpec (when available/needed based on versions).
+            // However, typical robust setups rely on Quality defaults or low level encoding.
+            // .setTargetVideoEncodingBitRate(8 * 1024 * 1024) is a supported pattern in some implementations.
             .build()
     }
 

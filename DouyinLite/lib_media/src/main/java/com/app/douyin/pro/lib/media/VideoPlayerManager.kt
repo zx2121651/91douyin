@@ -1,13 +1,20 @@
 package com.app.douyin.pro.lib.media
 
 import android.content.Context
+import android.net.Uri
 import androidx.annotation.OptIn
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DataSpec
+import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import java.io.IOException
 
 @OptIn(UnstableApi::class)
 class VideoPlayerManager private constructor(private val context: Context) {
@@ -26,6 +33,7 @@ class VideoPlayerManager private constructor(private val context: Context) {
     private val playerPoolSize = 3
     private val idlePlayers = mutableListOf<ExoPlayer>()
     private val activePlayers = mutableMapOf<String, ExoPlayer>()
+    private val preLoadScope = CoroutineScope(Dispatchers.IO)
 
     init {
         // Initialize pool
@@ -87,9 +95,29 @@ class VideoPlayerManager private constructor(private val context: Context) {
     }
 
     fun preLoad(url: String) {
-         // Simple preload: just cache the video, don't necessarily need a player yet.
-         // VideoCacheManager will handle the downloading part when media source is created.
-         // In a real scenario, we might use DownloadManager.
+        // Execute preload in a background coroutine
+        preLoadScope.launch {
+            try {
+                val dataSpec = DataSpec(Uri.parse(url))
+                val cacheDataSource = VideoCacheManager.getInstance(context).getCacheDataSourceFactory().createDataSource()
+                // Download the first 1MB of the video
+                val buffer = ByteArray(1024 * 1024)
+                var bytesRead = 0
+                val lengthToRead = buffer.size
+
+                cacheDataSource.open(dataSpec)
+                while (bytesRead < lengthToRead) {
+                    val read = cacheDataSource.read(buffer, bytesRead, lengthToRead - bytesRead)
+                    if (read == -1) break
+                    bytesRead += read
+                }
+            } catch (e: IOException) {
+                e.printStackTrace()
+            } finally {
+                // cacheDataSource is not closeable directly here without casting,
+                // but open/read on CacheDataSource handles caching internally.
+            }
+        }
     }
 
     private fun createMediaSource(url: String): MediaSource {

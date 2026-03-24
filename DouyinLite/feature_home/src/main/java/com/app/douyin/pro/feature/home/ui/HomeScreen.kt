@@ -120,7 +120,7 @@ fun VideoPlayer(url: String, isVisible: Boolean) {
             player.play()
         } else {
             player.pause()
-            player.seekTo(0)
+            // Seek to 0 only if you want it to restart, but pause is immediate
         }
     }
 
