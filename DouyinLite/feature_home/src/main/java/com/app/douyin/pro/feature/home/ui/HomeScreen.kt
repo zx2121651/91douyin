@@ -132,7 +132,7 @@ fun VideoPage(url: String, isVisible: Boolean) {
                 .navigationBarsPadding() // Avoid system nav bar
                 .padding(bottom = 60.dp, start = 16.dp)
         ) {
-            Text(text = "@User_$url.hashCode()", color = Color.White)
+            Text(text = "@User_${url.hashCode()}", color = Color.White)
             Text(text = "This is a beautiful video #amazing #fyp", color = Color.White)
         }
     }

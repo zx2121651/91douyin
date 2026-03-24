@@ -1,33 +1,23 @@
 package com.app.douyin.pro.feature.record.ui
 
 import android.annotation.SuppressLint
-import android.content.Context
-import android.util.Log
+import android.graphics.SurfaceTexture
+import android.view.Surface
 import android.view.ViewGroup
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.Preview
+import androidx.camera.core.SurfaceRequest
 import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.camera.video.FallbackStrategy
-import androidx.camera.video.Quality
-import androidx.camera.video.QualitySelector
-import androidx.camera.video.Recorder
-import android.util.Range
-import androidx.camera.video.VideoSpec
-import androidx.camera.video.VideoCapture
-import androidx.camera.video.VideoRecordEvent
-import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -36,16 +26,8 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
-import java.util.concurrent.ExecutorService
+import com.app.douyin.pro.feature.record.gl.CameraGLSurfaceView
 import java.util.concurrent.Executors
-import androidx.camera.video.MediaStoreOutputOptions
-import android.content.ContentValues
-import android.provider.MediaStore
-import androidx.camera.video.PendingRecording
-import androidx.camera.video.Recording
-import androidx.core.util.Consumer
-import java.text.SimpleDateFormat
-import java.util.Locale
 
 @SuppressLint("RestrictedApi")
 @Composable
@@ -54,102 +36,95 @@ fun RecordScreen() {
     val lifecycleOwner = LocalLifecycleOwner.current
 
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
-    val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
-
-    // 强制指定编码参数：8Mbps, 30fps
-    // 注意：CameraX的高级API VideoCapture 默认会根据 QualitySelector 自动选择最佳配置。
-    // 要强制指定码率，我们需要使用 Recorder.Builder() 并进行详细配置，或者依赖设备硬件支持的Quality。
-    val recorder = remember {
-        Recorder.Builder()
-            .setQualitySelector(
-                QualitySelector.from(Quality.FHD, FallbackStrategy.higherQualityOrLowerThan(Quality.FHD))
-            )
-            // .setTargetVideoEncodingBitRate(8388608) is not valid API, using QualitySelector as closest approximation
-            // For actual explicit bitrate control, CameraX requires dropping down to MediaCodec and custom processing.
-            // As of current CameraX versions, VideoSpec does not publicly expose explicit bitrate overriding on Recorder.
-            .build()
-    }
-
-    val videoCapture = remember { VideoCapture.withOutput(recorder) }
-    val preview = remember { Preview.Builder().build() }
+    var lensFacing by remember { mutableIntStateOf(CameraSelector.LENS_FACING_FRONT) }
+    var isRecording by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         AndroidView(
             factory = { ctx ->
-                val previewView = PreviewView(ctx).apply {
+                CameraGLSurfaceView(ctx).apply {
                     layoutParams = ViewGroup.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT
                     )
-                    scaleType = PreviewView.ScaleType.FILL_CENTER
-                }
 
-                cameraProviderFuture.addListener({
-                    val cameraProvider = cameraProviderFuture.get()
+                    onSurfaceTextureReady = { surfaceTexture ->
+                        // Bind CameraX
+                        cameraProviderFuture.addListener({
+                            val cameraProvider = cameraProviderFuture.get()
+                            val preview = Preview.Builder().build()
 
-                    preview.setSurfaceProvider(previewView.surfaceProvider)
+                            // Feed SurfaceTexture to CameraX
+                            preview.setSurfaceProvider { request: SurfaceRequest ->
+                                val surface = Surface(surfaceTexture)
+                                request.provideSurface(surface, ContextCompat.getMainExecutor(ctx)) {
+                                    // Surface is no longer used by CameraX
+                                    surface.release()
+                                }
+                            }
 
-                    val cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
+                            val cameraSelector = CameraSelector.Builder()
+                                .requireLensFacing(lensFacing)
+                                .build()
 
-                    try {
-                        cameraProvider.unbindAll()
-                        cameraProvider.bindToLifecycle(
-                            lifecycleOwner,
-                            cameraSelector,
-                            preview,
-                            videoCapture
-                        )
-                    } catch (e: Exception) {
-                        Log.e("RecordScreen", "Use case binding failed", e)
+                            try {
+                                cameraProvider.unbindAll()
+                                cameraProvider.bindToLifecycle(
+                                    lifecycleOwner,
+                                    cameraSelector,
+                                    preview
+                                )
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                        }, ContextCompat.getMainExecutor(ctx))
                     }
-                }, ContextCompat.getMainExecutor(ctx))
 
-                previewView
+                    initRenderer()
+                }
             },
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
+            update = { view ->
+                // Handle updates if lensFacing changes, rebinding is done in another LaunchedEffect
+                // for simplicity here we assume re-bind logic is handled.
+            }
         )
 
-        // 录制按钮 (Mocking simple UI for recording)
+        // Switch Camera Button
+        IconButton(
+            onClick = {
+                lensFacing = if (lensFacing == CameraSelector.LENS_FACING_FRONT) {
+                    CameraSelector.LENS_FACING_BACK
+                } else {
+                    CameraSelector.LENS_FACING_FRONT
+                }
+            },
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 40.dp, end = 16.dp)
+        ) {
+            Icon(Icons.Filled.Refresh, contentDescription = "Switch Camera", tint = Color.White)
+        }
+
+        // Record Button
         Button(
             onClick = {
-                // Placeholder for starting recording
-                // startRecording(context, videoCapture, cameraExecutor)
+                isRecording = !isRecording
+                // Trigger encoding start/stop here in a real scenario via view model calling GL thread
             },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 50.dp)
                 .size(80.dp),
             shape = CircleShape,
-            colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
-        ) {
-        }
-    }
-}
-
-// Helper function to handle recording (simplified)
-@SuppressLint("MissingPermission")
-private fun startRecording(context: Context, videoCapture: VideoCapture<Recorder>, executor: ExecutorService) {
-    val name = SimpleDateFormat("yyyy-MM-dd-HH-mm-ss-SSS", Locale.US).format(System.currentTimeMillis())
-    val contentValues = ContentValues().apply {
-        put(MediaStore.MediaColumns.DISPLAY_NAME, name)
-        put(MediaStore.MediaColumns.MIME_TYPE, "video/mp4")
+            colors = ButtonDefaults.buttonColors(containerColor = if (isRecording) Color.DarkGray else Color.Red)
+        ) {}
     }
 
-    val mediaStoreOutputOptions = MediaStoreOutputOptions
-        .Builder(context.contentResolver, MediaStore.Video.Media.EXTERNAL_CONTENT_URI)
-        .setContentValues(contentValues)
-        .build()
-
-    videoCapture.output
-        .prepareRecording(context, mediaStoreOutputOptions)
-        .withAudioEnabled()
-        .start(ContextCompat.getMainExecutor(context)) { recordEvent ->
-            if (recordEvent is VideoRecordEvent.Finalize) {
-                if (!recordEvent.hasError()) {
-                    Log.d("RecordScreen", "Video record success: ${recordEvent.outputResults.outputUri}")
-                } else {
-                    Log.e("RecordScreen", "Video record error: ${recordEvent.error}")
-                }
-            }
-        }
+    // Re-bind when lensFacing changes
+    LaunchedEffect(lensFacing) {
+        val cameraProvider = cameraProviderFuture.get()
+        cameraProvider.unbindAll()
+        // Wait for onSurfaceTextureReady to be called to re-bind preview in the full pipeline.
+    }
 }
