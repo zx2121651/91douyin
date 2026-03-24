@@ -11,8 +11,9 @@ import androidx.camera.video.FallbackStrategy
 import androidx.camera.video.Quality
 import androidx.camera.video.QualitySelector
 import androidx.camera.video.Recorder
-import androidx.camera.video.VideoCapture
+import android.util.Range
 import androidx.camera.video.VideoSpec
+import androidx.camera.video.VideoCapture
 import androidx.camera.video.VideoRecordEvent
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
@@ -63,11 +64,9 @@ fun RecordScreen() {
             .setQualitySelector(
                 QualitySelector.from(Quality.FHD, FallbackStrategy.higherQualityOrLowerThan(Quality.FHD))
             )
-            // CameraX API now supports configuring bitrate for specific API levels
-            // For typical 8Mbps target we can enforce setting (approx 8 * 1024 * 1024 = 8388608 bps)
-            // and frame rate at 30 fps using VideoSpec (when available/needed based on versions).
-            // However, typical robust setups rely on Quality defaults or low level encoding.
-            // .setTargetVideoEncodingBitRate(8 * 1024 * 1024) is a supported pattern in some implementations.
+            // .setTargetVideoEncodingBitRate(8388608) is not valid API, using QualitySelector as closest approximation
+            // For actual explicit bitrate control, CameraX requires dropping down to MediaCodec and custom processing.
+            // As of current CameraX versions, VideoSpec does not publicly expose explicit bitrate overriding on Recorder.
             .build()
     }
 

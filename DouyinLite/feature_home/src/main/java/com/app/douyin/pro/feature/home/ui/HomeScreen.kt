@@ -36,15 +36,10 @@ import androidx.media3.ui.PlayerView
 import com.app.douyin.pro.lib.media.VideoPlayerManager
 import androidx.compose.runtime.snapshotFlow
 
+@androidx.compose.foundation.ExperimentalFoundationApi
 @Composable
 fun HomeScreen() {
-    val videos = listOf(
-        "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-        "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
-        "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-        "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
-        "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4"
-    )
+    val videos = MockData.videos
 
     // Using BeyondBoundsPageCount = 1 to pre-load adjacent pages for smoother scrolling
     val pagerState = rememberPagerState(pageCount = { videos.size })

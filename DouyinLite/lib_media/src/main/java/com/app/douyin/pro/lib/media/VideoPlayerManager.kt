@@ -97,9 +97,10 @@ class VideoPlayerManager private constructor(private val context: Context) {
     fun preLoad(url: String) {
         // Execute preload in a background coroutine
         preLoadScope.launch {
+            var cacheDataSource: androidx.media3.datasource.DataSource? = null
             try {
-                val dataSpec = DataSpec(Uri.parse(url))
-                val cacheDataSource = VideoCacheManager.getInstance(context).getCacheDataSourceFactory().createDataSource()
+                val dataSpec = DataSpec.Builder().setUri(url).build()
+                cacheDataSource = VideoCacheManager.getInstance(context).getCacheDataSourceFactory().createDataSource()
                 // Download the first 1MB of the video
                 val buffer = ByteArray(1024 * 1024)
                 var bytesRead = 0
@@ -111,12 +112,17 @@ class VideoPlayerManager private constructor(private val context: Context) {
                     if (read == -1) break
                     bytesRead += read
                 }
+
             } catch (e: IOException) {
                 e.printStackTrace()
             } finally {
-                // cacheDataSource is not closeable directly here without casting,
-                // but open/read on CacheDataSource handles caching internally.
+                try {
+                    cacheDataSource?.close()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
             }
+
         }
     }
 

@@ -1,6 +1,12 @@
 package com.app.douyin.pro
 
 import android.os.Bundle
+
+import android.Manifest
+import android.os.Build
+import androidx.activity.result.contract.ActivityResultContracts
+import android.widget.Toast
+
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -34,12 +40,43 @@ import com.app.douyin.pro.feature.home.ui.HomeScreen
 import com.app.douyin.pro.feature.record.ui.RecordScreen
 import com.app.douyin.pro.feature.profile.ui.ProfileScreen
 
+@androidx.compose.foundation.ExperimentalFoundationApi
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         // Setup edge-to-edge content for immersive mode
         enableEdgeToEdge()
+
+
+        // Request Permissions
+        val requestPermissionLauncher = registerForActivityResult(
+            ActivityResultContracts.RequestMultiplePermissions()
+        ) { permissions ->
+            var allGranted = true
+            permissions.entries.forEach {
+                if (!it.value) allGranted = false
+            }
+            if (!allGranted) {
+                Toast.makeText(this, "需要授予必要权限才能正常使用", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        val requiredPermissions = mutableListOf(
+            Manifest.permission.CAMERA,
+            Manifest.permission.RECORD_AUDIO
+        ).apply {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                add(Manifest.permission.READ_MEDIA_VIDEO)
+                add(Manifest.permission.READ_MEDIA_IMAGES)
+                add(Manifest.permission.READ_MEDIA_AUDIO)
+            } else {
+                add(Manifest.permission.READ_EXTERNAL_STORAGE)
+                add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            }
+        }.toTypedArray()
+
+        requestPermissionLauncher.launch(requiredPermissions)
 
         setContent {
             val navController = rememberNavController()
@@ -57,6 +94,7 @@ sealed class BottomNavItem(val route: String, val title: String, val icon: Image
 }
 
 @Composable
+@androidx.compose.foundation.ExperimentalFoundationApi
 fun DouyinLiteApp(navController: NavHostController) {
     val items = listOf(
         BottomNavItem.Home,
