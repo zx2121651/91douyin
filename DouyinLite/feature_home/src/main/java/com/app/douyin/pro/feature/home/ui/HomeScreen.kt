@@ -1,6 +1,20 @@
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 package com.app.douyin.pro.feature.home.ui
 
 import androidx.compose.animation.core.Spring
+
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.filled.PlayArrow
+
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
+import kotlin.math.sin
+import kotlin.math.PI
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.draw.alpha
@@ -130,10 +144,25 @@ fun VideoPage(url: String, isVisible: Boolean) {
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .navigationBarsPadding() // Avoid system nav bar
-                .padding(bottom = 60.dp, start = 16.dp)
+                .padding(bottom = 60.dp, start = 16.dp, end = 80.dp) // Avoid overlapping with record
         ) {
-            Text(text = "@User_${url.hashCode()}", color = Color.White)
+            Text(text = "@User_${url.hashCode()}", color = Color.White, style = MaterialTheme.typography.titleMedium)
+            Spacer(modifier = Modifier.height(8.dp))
             Text(text = "This is a beautiful video #amazing #fyp", color = Color.White)
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "🎵",
+                    color = Color.White,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "Original Audio - @User_${url.hashCode()} - Popular Trending Song 2024",
+                    color = Color.White,
+                    modifier = Modifier.basicMarquee()
+                )
+            }
         }
     }
 }
@@ -177,6 +206,11 @@ fun VideoPlayer(url: String, isVisible: Boolean) {
 fun RightSideActions(modifier: Modifier = Modifier) {
     Column(modifier = modifier) {
         LikeButton()
+        Spacer(modifier = Modifier.height(16.dp))
+        Box {
+            FloatingMusicNotes()
+            SpinningRecord()
+        }
     }
 }
 
@@ -263,5 +297,87 @@ fun AnimatedHeart(heart: LikeHeart, onRemove: () -> Unit) {
             .scale(scale.value)
             .rotate(rotation)
             .alpha(alpha.value)
+    )
+}
+
+@Composable
+fun SpinningRecord() {
+    val infiniteTransition = rememberInfiniteTransition()
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(3000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        )
+    )
+
+    Box(
+        modifier = Modifier
+            .size(50.dp)
+            .rotate(rotation)
+            .background(Color.DarkGray, CircleShape)
+            .padding(8.dp)
+            .background(Color.LightGray, CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.Filled.PlayArrow,
+            contentDescription = "Music",
+            tint = Color.White,
+            modifier = Modifier.size(20.dp)
+        )
+    }
+}
+
+@Composable
+fun FloatingMusicNotes() {
+    val infiniteTransition = rememberInfiniteTransition()
+
+    // Create 3 notes with different delays
+    val note1Progress by infiniteTransition.animateFloat(
+        initialValue = 0f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(2500, easing = LinearEasing), RepeatMode.Restart)
+    )
+
+    val note2Progress by infiniteTransition.animateFloat(
+        initialValue = 0f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(3000, delayMillis = 800, easing = LinearEasing), RepeatMode.Restart)
+    )
+
+    val note3Progress by infiniteTransition.animateFloat(
+        initialValue = 0f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(2800, delayMillis = 1500, easing = LinearEasing), RepeatMode.Restart)
+    )
+
+    Box(modifier = Modifier.width(60.dp).height(120.dp)) {
+        MusicNote(note1Progress, startX = 10f)
+        MusicNote(note2Progress, startX = 25f)
+        MusicNote(note3Progress, startX = 40f)
+    }
+}
+
+@Composable
+fun MusicNote(progress: Float, startX: Float) {
+    if (progress == 0f) return
+
+    val yOffset = -200f * progress
+    val xOffset = startX + 30f * sin(progress * 4f * PI).toFloat()
+
+    val alpha = if (progress < 0.2f) {
+        progress * 5f // Fade in
+    } else if (progress > 0.8f) {
+        (1f - progress) * 5f // Fade out
+    } else {
+        1f
+    }
+
+    Text(
+        text = "🎵",
+        color = Color.White.copy(alpha = alpha),
+        modifier = Modifier
+            .offset(x = xOffset.dp, y = yOffset.dp)
+            .size(16.dp),
+        style = MaterialTheme.typography.bodyMedium
     )
 }
