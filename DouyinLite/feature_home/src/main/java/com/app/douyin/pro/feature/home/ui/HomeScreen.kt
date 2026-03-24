@@ -1,6 +1,15 @@
 package com.app.douyin.pro.feature.home.ui
 
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.rotate
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.unit.IntOffset
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import kotlin.random.Random
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
@@ -25,6 +34,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import java.util.UUID
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -78,13 +92,30 @@ fun HomeScreen() {
 
 @Composable
 fun VideoPage(url: String, isVisible: Boolean) {
+    val hearts = remember { mutableStateListOf<LikeHeart>() }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onDoubleTap = { offset ->
+                        hearts.add(LikeHeart(x = offset.x, y = offset.y))
+                    }
+                )
+            }
     ) {
         // Video Player Layer
         VideoPlayer(url = url, isVisible = isVisible)
+
+        // Render double-tap hearts
+        hearts.forEach { heart ->
+            AnimatedHeart(
+                heart = heart,
+                onRemove = { hearts.remove(heart) }
+            )
+        }
 
         // UI Layer
         RightSideActions(
@@ -176,5 +207,61 @@ fun LikeButton() {
             ) {
                 isLiked = !isLiked
             }
+    )
+}
+
+data class LikeHeart(val id: String = UUID.randomUUID().toString(), val x: Float, val y: Float)
+
+@Composable
+fun AnimatedHeart(heart: LikeHeart, onRemove: () -> Unit) {
+    val scale = remember { Animatable(0f) }
+    val alpha = remember { Animatable(1f) }
+    val yOffset = remember { Animatable(0f) }
+    val rotation = remember { Random.nextInt(-15, 15).toFloat() }
+
+    LaunchedEffect(heart) {
+        launch {
+            scale.animateTo(
+                targetValue = 1.2f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow
+                )
+            )
+            scale.animateTo(
+                targetValue = 1.0f,
+                animationSpec = tween(100)
+            )
+        }
+
+        delay(300) // Stay visible for a short time
+
+        launch {
+            yOffset.animateTo(
+                targetValue = -100f,
+                animationSpec = tween(500)
+            )
+        }
+        launch {
+            alpha.animateTo(
+                targetValue = 0f,
+                animationSpec = tween(500)
+            )
+        }
+
+        delay(500) // Wait for fade out to complete
+        onRemove()
+    }
+
+    Icon(
+        imageVector = Icons.Filled.Favorite,
+        contentDescription = null,
+        tint = Color.Red,
+        modifier = Modifier
+            .offset { IntOffset(heart.x.toInt() - 100, heart.y.toInt() - 100 + yOffset.value.toInt()) }
+            .size(80.dp)
+            .scale(scale.value)
+            .rotate(rotation)
+            .alpha(alpha.value)
     )
 }
