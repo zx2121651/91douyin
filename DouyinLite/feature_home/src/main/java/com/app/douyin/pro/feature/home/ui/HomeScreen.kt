@@ -64,11 +64,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.clickable
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.launch
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
@@ -94,6 +90,10 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.material3.HorizontalDivider
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
@@ -106,8 +106,6 @@ import com.app.douyin.pro.lib.media.VideoPlayerManager
 import androidx.compose.runtime.snapshotFlow
 import androidx.media3.common.Player
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.animateFloatAsState
 
 @androidx.compose.foundation.ExperimentalFoundationApi
 @Composable
@@ -279,8 +277,7 @@ fun VideoPage(url: String, isVisible: Boolean) {
                 )
             }
     ) {
-        // Video Player Layer
-        VideoPlayer(url = url, isVisible = isVisible)
+
 
         // Render double-tap hearts
         hearts.forEach { heart ->
@@ -291,6 +288,9 @@ fun VideoPage(url: String, isVisible: Boolean) {
         }
 
         var showCommentsSheet by remember { mutableStateOf(false) }
+
+        // Video Player Layer
+        VideoPlayer(url = url, isVisible = isVisible, isDucked = showCommentsSheet)
 
         // UI Layer
         RightSideActions(
@@ -334,7 +334,7 @@ fun VideoPage(url: String, isVisible: Boolean) {
 }
 
 @Composable
-fun VideoPlayer(url: String, isVisible: Boolean) {
+fun VideoPlayer(url: String, isVisible: Boolean, isDucked: Boolean = false) {
     val context = LocalContext.current
     val playerManager = remember { VideoPlayerManager.getInstance(context) }
 
@@ -391,6 +391,14 @@ fun VideoPlayer(url: String, isVisible: Boolean) {
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    LaunchedEffect(isDucked) {
+        if (isDucked) {
+            player.volume = 0.3f
+        } else {
+            player.volume = 1.0f
         }
     }
 
@@ -790,20 +798,33 @@ private fun formatTime(millis: Long): String {
     return String.format("%02d:%02d", minutes, seconds)
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CommentsBottomSheet(onDismiss: () -> Unit) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var inputText by remember { mutableStateOf("") }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-        dragHandle = { BottomSheetDefaults.DragHandle() },
-        containerColor = Color.White,
-        modifier = Modifier.fillMaxHeight(0.7f)
+        dragHandle = {
+            Box(
+                modifier = Modifier
+                    .padding(vertical = 10.dp)
+                    .width(40.dp)
+                    .height(4.dp)
+                    .clip(CircleShape)
+                    .background(Color.LightGray)
+            )
+        },
+        containerColor = Color(0x99000000), // Glassmorphism translucent dark
+        scrimColor = Color.Transparent, // Avoid completely darkening the video behind
+        modifier = Modifier
+            .fillMaxHeight(0.7f)
+            .imePadding() // Pushes up when the keyboard opens
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Header
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -815,39 +836,67 @@ fun CommentsBottomSheet(onDismiss: () -> Unit) {
                     modifier = Modifier.weight(1f),
                     textAlign = TextAlign.Center,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                    color = Color.White
                 )
                 IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
-                    Icon(imageVector = Icons.Filled.Close, contentDescription = "Close", tint = Color.Gray)
+                    Icon(imageVector = Icons.Filled.Close, contentDescription = "Close", tint = Color.LightGray)
                 }
             }
 
-            Divider(color = Color.LightGray, thickness = 0.5.dp)
+            HorizontalDivider(color = Color.DarkGray, thickness = 0.5.dp)
 
-            // Content List Placeholder
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 items(20) { index ->
                     Row(modifier = Modifier.fillMaxWidth()) {
-                        // Avatar placeholder
                         Box(
                             modifier = Modifier
-                                .size(40.dp)
-                                .background(Color.LightGray, CircleShape)
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(Color.Gray)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
-                            Text(text = "User $index", fontWeight = FontWeight.SemiBold, color = Color.Gray, style = MaterialTheme.typography.bodyMedium)
+                            Text(text = "User $index", color = Color(0xFFC0C0C0), style = MaterialTheme.typography.bodySmall)
                             Spacer(modifier = Modifier.height(4.dp))
-                            Text(text = "This is an amazing video! Love the content. Keep it up!", color = Color.Black, style = MaterialTheme.typography.bodyLarge)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(text = "2 hours ago", color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
+                            Text(text = "This is a wonderful video! Really love the content here.", color = Color.White, style = MaterialTheme.typography.bodyMedium)
                         }
                     }
                 }
+            }
+
+            HorizontalDivider(color = Color.DarkGray, thickness = 0.5.dp)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+                    .navigationBarsPadding(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = inputText,
+                    onValueChange = { inputText = it },
+                    placeholder = { Text("留下你的精彩评论...", color = Color.Gray) },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(50.dp),
+                    shape = RoundedCornerShape(25.dp),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color(0xFF1E1E1E).copy(alpha = 0.8f),
+                        unfocusedContainerColor = Color(0xFF1E1E1E).copy(alpha = 0.8f),
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        cursorColor = Color.White,
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White
+                    ),
+                    textStyle = MaterialTheme.typography.bodyMedium
+                )
             }
         }
     }
