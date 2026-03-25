@@ -49,7 +49,7 @@ fun ProfileScreen() {
                         .background(Color.Gray),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(text = "Video \$index", color = Color.White)
+                    Text(text = "Video $index", color = Color.White)
                 }
             }
         }

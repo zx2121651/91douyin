@@ -1,4 +1,4 @@
-@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class, androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.app.douyin.pro.feature.home.ui
 
 import androidx.compose.animation.core.Spring
@@ -10,6 +10,18 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.filled.PlayArrow
 
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Divider
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.material.icons.filled.MailOutline
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -143,13 +155,20 @@ fun VideoPage(url: String, isVisible: Boolean) {
             )
         }
 
+        var showCommentsSheet by remember { mutableStateOf(false) }
+
         // UI Layer
         RightSideActions(
+            onCommentClick = { showCommentsSheet = true },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .navigationBarsPadding() // Avoid system nav bar
                 .padding(bottom = 100.dp, end = 16.dp)
         )
+
+        if (showCommentsSheet) {
+            CommentsBottomSheet(onDismiss = { showCommentsSheet = false })
+        }
 
         // Bottom Info Layer
         Column(
@@ -271,14 +290,39 @@ fun VideoPlayer(url: String, isVisible: Boolean) {
 }
 
 @Composable
-fun RightSideActions(modifier: Modifier = Modifier) {
-    Column(modifier = modifier) {
+fun RightSideActions(onCommentClick: () -> Unit, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
         LikeButton()
+        Spacer(modifier = Modifier.height(16.dp))
+        CommentButton(onClick = onCommentClick)
         Spacer(modifier = Modifier.height(16.dp))
         Box {
             FloatingMusicNotes()
             SpinningRecord()
         }
+    }
+}
+
+@Composable
+fun CommentButton(onClick: () -> Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Icon(
+            imageVector = Icons.Filled.MailOutline,
+            contentDescription = "Comment",
+            tint = Color.White,
+            modifier = Modifier
+                .size(40.dp)
+                .clickable(
+                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                    indication = null
+                ) {
+                    onClick()
+                }
+        )
+        Text(text = "128", color = Color.White, style = MaterialTheme.typography.labelSmall)
     }
 }
 
@@ -545,4 +589,67 @@ private fun formatTime(millis: Long): String {
     val seconds = (millis / 1000) % 60
     val minutes = (millis / (1000 * 60)) % 60
     return String.format("%02d:%02d", minutes, seconds)
+}
+
+@Composable
+fun CommentsBottomSheet(onDismiss: () -> Unit) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+        dragHandle = { BottomSheetDefaults.DragHandle() },
+        containerColor = Color.White,
+        modifier = Modifier.fillMaxHeight(0.7f)
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Header
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "128 条评论",
+                    modifier = Modifier.weight(1f),
+                    textAlign = TextAlign.Center,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black
+                )
+                IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
+                    Icon(imageVector = Icons.Filled.Close, contentDescription = "Close", tint = Color.Gray)
+                }
+            }
+
+            Divider(color = Color.LightGray, thickness = 0.5.dp)
+
+            // Content List Placeholder
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                items(20) { index ->
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        // Avatar placeholder
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(Color.LightGray, CircleShape)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(text = "User $index", fontWeight = FontWeight.SemiBold, color = Color.Gray, style = MaterialTheme.typography.bodyMedium)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(text = "This is an amazing video! Love the content. Keep it up!", color = Color.Black, style = MaterialTheme.typography.bodyLarge)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(text = "2 hours ago", color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
