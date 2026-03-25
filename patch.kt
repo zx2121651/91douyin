@@ -1,0 +1,95 @@
+<<<<<<< SEARCH
+    VerticalPager(
+        state = pagerState,
+        beyondBoundsPageCount = 1,
+        modifier = Modifier.fillMaxSize()
+    ) { page ->
+        val isVisible = pagerState.currentPage == page
+        VideoPage(
+            url = videos[page],
+            isVisible = isVisible
+        )
+    }
+}
+
+@Composable
+fun VideoPage(url: String, isVisible: Boolean) {
+=======
+    Box(modifier = Modifier.fillMaxSize()) {
+        VerticalPager(
+            state = pagerState,
+            beyondBoundsPageCount = 1,
+            modifier = Modifier.fillMaxSize()
+        ) { page ->
+            val isVisible = pagerState.currentPage == page
+            VideoPage(
+                url = videos[page],
+                isVisible = isVisible
+            )
+        }
+
+        TopNavigationBar(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .statusBarsPadding()
+        )
+    }
+}
+
+@Composable
+fun TopNavigationBar(modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = androidx.compose.material.icons.Icons.Filled.Search,
+            contentDescription = "Search",
+            tint = Color.White,
+            modifier = Modifier.size(28.dp)
+        )
+
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "同城",
+                color = Color.White.copy(alpha = 0.7f),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Normal
+            )
+            Text(
+                text = "关注",
+                color = Color.White.copy(alpha = 0.7f),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Normal
+            )
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = "推荐",
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Box(
+                    modifier = Modifier
+                        .width(20.dp)
+                        .height(3.dp)
+                        .background(Color.White, shape = CircleShape)
+                )
+            }
+        }
+
+        // Placeholder to balance the row since search is on the left
+        Box(modifier = Modifier.size(28.dp))
+    }
+}
+
+@Composable
+fun VideoPage(url: String, isVisible: Boolean) {
+>>>>>>> REPLACE

@@ -9,6 +9,13 @@ import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Arrangement
+
+import androidx.compose.ui.Alignment
 
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
@@ -41,7 +48,6 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.Stroke
-import kotlinx.coroutines.delay
 import kotlin.random.Random
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -81,7 +87,6 @@ import androidx.compose.runtime.mutableIntStateOf
 
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.platform.LocalContext
@@ -115,16 +120,63 @@ fun HomeScreen() {
         }
     }
 
-    VerticalPager(
-        state = pagerState,
-        beyondBoundsPageCount = 1,
-        modifier = Modifier.fillMaxSize()
-    ) { page ->
-        val isVisible = pagerState.currentPage == page
-        VideoPage(
-            url = videos[page],
-            isVisible = isVisible
+    Box(modifier = Modifier.fillMaxSize()) {
+        VerticalPager(
+            state = pagerState,
+            beyondBoundsPageCount = 1,
+            modifier = Modifier.fillMaxSize()
+        ) { page ->
+            val isVisible = pagerState.currentPage == page
+            VideoPage(
+                url = videos[page],
+                isVisible = isVisible
+            )
+        }
+
+        TopNavigationBar(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .statusBarsPadding()
         )
+    }
+}
+
+@Composable
+fun TopNavigationBar(modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Filled.Search,
+            contentDescription = "Search",
+            tint = Color.White,
+            modifier = Modifier.size(28.dp)
+        )
+
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(text = "同城", color = Color.White.copy(alpha = 0.7f), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Normal)
+            Text(text = "关注", color = Color.White.copy(alpha = 0.7f), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Normal)
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(text = "推荐", color = Color.White, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(4.dp))
+                Box(
+                    modifier = Modifier
+                        .width(20.dp)
+                        .height(3.dp)
+                        .background(Color.White, shape = CircleShape)
+                )
+            }
+        }
+
+        // Placeholder to balance the row since search is on the left
+        Box(modifier = Modifier.size(28.dp))
     }
 }
 
