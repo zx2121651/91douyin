@@ -22,6 +22,13 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.unit.IntOffset
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.delay
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.drawscope.Stroke
 import kotlinx.coroutines.delay
 import kotlin.random.Random
 import androidx.compose.animation.core.animateFloatAsState
@@ -39,7 +46,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.Icon
@@ -51,15 +57,21 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import java.util.UUID
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -175,12 +187,31 @@ fun VideoPlayer(url: String, isVisible: Boolean) {
     // Manage player lifecycle and visibility
     val player = remember(url) { playerManager.getPlayer(url) }
 
+    // Progress States
+    var currentPosition by remember { mutableLongStateOf(0L) }
+    var duration by remember { mutableLongStateOf(1L) }
+    var isDragging by remember { mutableStateOf(false) }
+    var dragProgress by remember { mutableFloatStateOf(0f) }
+
+    // Poll current playback position
+    LaunchedEffect(player, isVisible, isDragging) {
+        if (isVisible && !isDragging) {
+            while (isActive) {
+                currentPosition = player.currentPosition
+                val dur = player.duration
+                if (dur > 0) {
+                    duration = dur
+                }
+                delay(50)
+            }
+        }
+    }
+
     LaunchedEffect(isVisible) {
         if (isVisible) {
             player.play()
         } else {
             player.pause()
-            // Seek to 0 only if you want it to restart, but pause is immediate
         }
     }
 
@@ -190,16 +221,53 @@ fun VideoPlayer(url: String, isVisible: Boolean) {
         }
     }
 
-    AndroidView(
-        factory = { ctx ->
-            PlayerView(ctx).apply {
-                this.player = player
-                useController = false
-                resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-            }
-        },
-        modifier = Modifier.fillMaxSize()
-    )
+    Box(modifier = Modifier.fillMaxSize()) {
+        AndroidView(
+            factory = { ctx ->
+                androidx.media3.ui.PlayerView(ctx).apply {
+                    this.player = player
+                    useController = false
+                    resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                }
+            },
+            modifier = Modifier.fillMaxSize()
+        )
+
+        // Progress computation
+        val progress = if (isDragging) dragProgress else {
+            if (duration > 0) (currentPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
+        }
+
+        // Custom progress bar overlay at the bottom
+        VideoProgressBar(
+            progress = progress,
+            isDragging = isDragging,
+            onDragStart = {
+                isDragging = true
+                player.pause()
+            },
+            onDrag = { newProgress ->
+                dragProgress = newProgress.coerceIn(0f, 1f)
+            },
+            onDragEnd = {
+                isDragging = false
+                player.seekTo((dragProgress * duration).toLong())
+                player.play()
+            },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+        )
+
+        // Center popup during drag
+        if (isDragging) {
+            CenterTimePopup(
+                currentTime = (dragProgress * duration).toLong(),
+                totalTime = duration,
+                modifier = Modifier.align(Alignment.Center)
+            )
+        }
+    }
 }
 
 @Composable
@@ -380,4 +448,101 @@ fun MusicNote(progress: Float, startX: Float) {
             .size(16.dp),
         style = MaterialTheme.typography.bodyMedium
     )
+}
+
+@Composable
+fun VideoProgressBar(
+    progress: Float,
+    isDragging: Boolean,
+    onDragStart: () -> Unit,
+    onDrag: (Float) -> Unit,
+    onDragEnd: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val barHeight by animateDpAsState(if (isDragging) 4.dp else 1.dp, label = "BarHeight")
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(20.dp) // Touch target height
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onPress = { offset ->
+                        onDragStart()
+                        onDrag(offset.x / size.width)
+                        if (tryAwaitRelease()) {
+                            onDragEnd()
+                        }
+                    }
+                )
+            }
+            .pointerInput(Unit) {
+                detectHorizontalDragGestures(
+                    onDragStart = { offset ->
+                        onDragStart()
+                        onDrag(offset.x / size.width)
+                    },
+                    onDragEnd = onDragEnd,
+                    onDragCancel = onDragEnd,
+                    onHorizontalDrag = { change, dragAmount ->
+                        val newX = change.position.x
+                        onDrag((newX / size.width).coerceIn(0f, 1f))
+                    }
+                )
+            },
+        contentAlignment = Alignment.BottomCenter
+    ) {
+        Canvas(modifier = Modifier.fillMaxWidth().height(barHeight)) {
+            val width = size.width
+            val height = size.height
+
+            // Background track (semi-transparent)
+            drawRoundRect(
+                color = Color.White.copy(alpha = 0.3f),
+                size = Size(width, height),
+                cornerRadius = CornerRadius(height / 2, height / 2)
+            )
+
+            // Progress track (solid white)
+            val progressWidth = width * progress
+            drawRoundRect(
+                color = Color.White,
+                size = Size(progressWidth, height),
+                cornerRadius = CornerRadius(height / 2, height / 2)
+            )
+
+            // Thumb
+            if (isDragging) {
+                drawCircle(
+                    color = Color.White,
+                    radius = height * 1.5f,
+                    center = Offset(progressWidth, height / 2)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun CenterTimePopup(currentTime: Long, totalTime: Long, modifier: Modifier = Modifier) {
+    val currentFormatted = formatTime(currentTime)
+    val totalFormatted = formatTime(totalTime)
+
+    Box(
+        modifier = modifier
+            .background(Color.Black.copy(alpha = 0.6f), shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        Text(
+            text = "$currentFormatted / $totalFormatted",
+            color = Color.White,
+            style = MaterialTheme.typography.titleLarge
+        )
+    }
+}
+
+private fun formatTime(millis: Long): String {
+    val seconds = (millis / 1000) % 60
+    val minutes = (millis / (1000 * 60)) % 60
+    return String.format("%02d:%02d", minutes, seconds)
 }
