@@ -1,4 +1,8 @@
-package com.app.douyin.pro.feature.home.ui
+import sys
+
+file_path = "DouyinLite/feature_home/src/main/java/com/app/douyin/pro/feature/home/ui/MockData.kt"
+
+content = """package com.app.douyin.pro.feature.home.ui
 
 import kotlinx.coroutines.delay
 
@@ -24,3 +28,7 @@ object MockData {
         return pool.map { "$it?page=$page&t=${System.currentTimeMillis()}" } // append queries to make them unique
     }
 }
+"""
+
+with open(file_path, 'w') as f:
+    f.write(content)

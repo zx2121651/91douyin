@@ -94,6 +94,9 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -109,10 +112,26 @@ import androidx.compose.animation.core.animateFloatAsState
 @androidx.compose.foundation.ExperimentalFoundationApi
 @Composable
 fun HomeScreen() {
-    val videos = MockData.videos
+    val initialVideos = remember { MockData.videos }
+    val videos = remember { mutableStateListOf<String>().apply { addAll(initialVideos) } }
+    var isLoading by remember { mutableStateOf(false) }
+    var pageCount by remember { mutableIntStateOf(1) }
 
     // Using BeyondBoundsPageCount = 1 to pre-load adjacent pages for smoother scrolling
     val pagerState = rememberPagerState(pageCount = { videos.size })
+
+    // Pagination logic
+    LaunchedEffect(pagerState.currentPage) {
+        // Load more when reaching the 2nd to last item
+        if (pagerState.currentPage >= videos.size - 2 && !isLoading) {
+            isLoading = true
+            val newVideos = MockData.loadMoreVideos(pageCount)
+            videos.addAll(newVideos)
+            pageCount++
+            isLoading = false
+        }
+    }
+
 
     // Observe pager changes for preloading
     val context = LocalContext.current
@@ -359,8 +378,30 @@ fun VideoPlayer(url: String, isVisible: Boolean) {
         }
     }
 
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_STOP || event == Lifecycle.Event.ON_PAUSE) {
+                player.pause()
+            } else if (event == Lifecycle.Event.ON_RESUME && isVisible) {
+                player.play()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
     LaunchedEffect(isVisible) {
         if (isVisible) {
+            // EXOPlayer setAudioAttributes handles audio focus automatically internally
+            val audioAttributes = androidx.media3.common.AudioAttributes.Builder()
+                .setUsage(androidx.media3.common.C.USAGE_MEDIA)
+                .setContentType(androidx.media3.common.C.AUDIO_CONTENT_TYPE_MOVIE)
+                .build()
+            player.setAudioAttributes(audioAttributes, true)
             player.play()
         } else {
             player.pause()
@@ -501,7 +542,7 @@ fun LikeButton() {
     Icon(
         imageVector = Icons.Filled.Favorite,
         contentDescription = "Like",
-        tint = if (isLiked) Color.Red else Color.White,
+        tint = if (isLiked) Color(0xFFFFD700) else Color.White,
         modifier = Modifier
             .size(48.dp)
             .scale(scale)
