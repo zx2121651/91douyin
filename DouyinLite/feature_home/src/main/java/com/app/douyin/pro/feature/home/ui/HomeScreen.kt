@@ -63,6 +63,12 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.VerticalPager
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.clickable
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
@@ -120,20 +126,51 @@ fun HomeScreen() {
         }
     }
 
+    val horizontalPagerState = rememberPagerState(initialPage = 2, pageCount = { 3 })
+    val coroutineScope = rememberCoroutineScope()
+
     Box(modifier = Modifier.fillMaxSize()) {
-        VerticalPager(
-            state = pagerState,
-            beyondBoundsPageCount = 1,
+        HorizontalPager(
+            state = horizontalPagerState,
             modifier = Modifier.fillMaxSize()
         ) { page ->
-            val isVisible = pagerState.currentPage == page
-            VideoPage(
-                url = videos[page],
-                isVisible = isVisible
-            )
+            when (page) {
+                0 -> {
+                    // 同城骨架
+                    Box(modifier = Modifier.fillMaxSize().background(Color.DarkGray)) {
+                        Text("同城占位内容", color = Color.White, modifier = Modifier.align(Alignment.Center))
+                    }
+                }
+                1 -> {
+                    // 关注骨架
+                    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+                        Text("关注页占位内容", color = Color.White, modifier = Modifier.align(Alignment.Center))
+                    }
+                }
+                2 -> {
+                    // 推荐视频流
+                    VerticalPager(
+                        state = pagerState,
+                        beyondBoundsPageCount = 1,
+                        modifier = Modifier.fillMaxSize()
+                    ) { vPage ->
+                        val isVisible = pagerState.currentPage == vPage && horizontalPagerState.currentPage == 2
+                        VideoPage(
+                            url = videos[vPage],
+                            isVisible = isVisible
+                        )
+                    }
+                }
+            }
         }
 
         TopNavigationBar(
+            selectedTabIndex = horizontalPagerState.currentPage,
+            onTabSelected = { index ->
+                coroutineScope.launch {
+                    horizontalPagerState.animateScrollToPage(index)
+                }
+            },
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .statusBarsPadding()
@@ -142,7 +179,13 @@ fun HomeScreen() {
 }
 
 @Composable
-fun TopNavigationBar(modifier: Modifier = Modifier) {
+fun TopNavigationBar(
+    selectedTabIndex: Int,
+    onTabSelected: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val tabs = listOf("同城", "关注", "推荐")
+
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -161,17 +204,34 @@ fun TopNavigationBar(modifier: Modifier = Modifier) {
             horizontalArrangement = Arrangement.spacedBy(20.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(text = "同城", color = Color.White.copy(alpha = 0.7f), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Normal)
-            Text(text = "关注", color = Color.White.copy(alpha = 0.7f), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Normal)
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(text = "推荐", color = Color.White, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(4.dp))
-                Box(
-                    modifier = Modifier
-                        .width(20.dp)
-                        .height(3.dp)
-                        .background(Color.White, shape = CircleShape)
-                )
+            tabs.forEachIndexed { index, title ->
+                val isSelected = index == selectedTabIndex
+                val alpha by animateFloatAsState(targetValue = if (isSelected) 1f else 0.7f, label = "alpha")
+                val fontSize = if (isSelected) MaterialTheme.typography.titleLarge.fontSize else MaterialTheme.typography.titleMedium.fontSize
+                val fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.clickable { onTabSelected(index) }
+                ) {
+                    Text(
+                        text = title,
+                        color = Color.White.copy(alpha = alpha),
+                        fontSize = fontSize,
+                        fontWeight = fontWeight
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    if (isSelected) {
+                        Box(
+                            modifier = Modifier
+                                .width(20.dp)
+                                .height(3.dp)
+                                .background(Color.White, shape = CircleShape)
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.height(3.dp))
+                    }
+                }
             }
         }
 
