@@ -8,5 +8,7 @@ varying vec2 vTextureCoord;
 
 void main() {
     gl_Position = uMVPMatrix * aPosition;
+    // 采用 uSTMatrix 的基础上翻转Y轴
     vTextureCoord = (uSTMatrix * aTextureCoord).xy;
+    vTextureCoord.y = 1.0 - vTextureCoord.y;
 }
