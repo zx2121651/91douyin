@@ -9,6 +9,13 @@ import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Arrangement
+
+import androidx.compose.ui.Alignment
 
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
@@ -41,7 +48,6 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.Stroke
-import kotlinx.coroutines.delay
 import kotlin.random.Random
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -57,6 +63,8 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.VerticalPager
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
@@ -81,8 +89,14 @@ import androidx.compose.runtime.mutableIntStateOf
 
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.material3.HorizontalDivider
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -90,14 +104,32 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.ui.PlayerView
 import com.app.douyin.pro.lib.media.VideoPlayerManager
 import androidx.compose.runtime.snapshotFlow
+import androidx.media3.common.Player
+import androidx.compose.ui.layout.ContentScale
 
 @androidx.compose.foundation.ExperimentalFoundationApi
 @Composable
 fun HomeScreen() {
-    val videos = MockData.videos
+    val initialVideos = remember { MockData.videos }
+    val videos = remember { mutableStateListOf<String>().apply { addAll(initialVideos) } }
+    var isLoading by remember { mutableStateOf(false) }
+    var pageCount by remember { mutableIntStateOf(1) }
 
     // Using BeyondBoundsPageCount = 1 to pre-load adjacent pages for smoother scrolling
     val pagerState = rememberPagerState(pageCount = { videos.size })
+
+    // Pagination logic
+    LaunchedEffect(pagerState.currentPage) {
+        // Load more when reaching the 2nd to last item
+        if (pagerState.currentPage >= videos.size - 2 && !isLoading) {
+            isLoading = true
+            val newVideos = MockData.loadMoreVideos(pageCount)
+            videos.addAll(newVideos)
+            pageCount++
+            isLoading = false
+        }
+    }
+
 
     // Observe pager changes for preloading
     val context = LocalContext.current
@@ -115,16 +147,117 @@ fun HomeScreen() {
         }
     }
 
-    VerticalPager(
-        state = pagerState,
-        beyondBoundsPageCount = 1,
-        modifier = Modifier.fillMaxSize()
-    ) { page ->
-        val isVisible = pagerState.currentPage == page
-        VideoPage(
-            url = videos[page],
-            isVisible = isVisible
+    val horizontalPagerState = rememberPagerState(initialPage = 2, pageCount = { 3 })
+    val coroutineScope = rememberCoroutineScope()
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        HorizontalPager(
+            state = horizontalPagerState,
+            modifier = Modifier.fillMaxSize()
+        ) { page ->
+            when (page) {
+                0 -> {
+                    // 同城骨架
+                    Box(modifier = Modifier.fillMaxSize().background(Color.DarkGray)) {
+                        Text("同城占位内容", color = Color.White, modifier = Modifier.align(Alignment.Center))
+                    }
+                }
+                1 -> {
+                    // 关注骨架
+                    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+                        Text("关注页占位内容", color = Color.White, modifier = Modifier.align(Alignment.Center))
+                    }
+                }
+                2 -> {
+                    // 推荐视频流
+                    VerticalPager(
+                        state = pagerState,
+                        beyondBoundsPageCount = 1,
+                        modifier = Modifier.fillMaxSize()
+                    ) { vPage ->
+                        val isVisible = pagerState.currentPage == vPage && horizontalPagerState.currentPage == 2
+                        VideoPage(
+                            url = videos[vPage],
+                            isVisible = isVisible
+                        )
+                    }
+                }
+            }
+        }
+
+        TopNavigationBar(
+            selectedTabIndex = horizontalPagerState.currentPage,
+            onTabSelected = { index ->
+                coroutineScope.launch {
+                    horizontalPagerState.animateScrollToPage(index)
+                }
+            },
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .statusBarsPadding()
         )
+    }
+}
+
+@Composable
+fun TopNavigationBar(
+    selectedTabIndex: Int,
+    onTabSelected: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val tabs = listOf("同城", "关注", "推荐")
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Filled.Search,
+            contentDescription = "Search",
+            tint = Color.White,
+            modifier = Modifier.size(28.dp)
+        )
+
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            tabs.forEachIndexed { index, title ->
+                val isSelected = index == selectedTabIndex
+                val alpha by animateFloatAsState(targetValue = if (isSelected) 1f else 0.7f, label = "alpha")
+                val fontSize = if (isSelected) MaterialTheme.typography.titleLarge.fontSize else MaterialTheme.typography.titleMedium.fontSize
+                val fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.clickable { onTabSelected(index) }
+                ) {
+                    Text(
+                        text = title,
+                        color = Color.White.copy(alpha = alpha),
+                        fontSize = fontSize,
+                        fontWeight = fontWeight
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    if (isSelected) {
+                        Box(
+                            modifier = Modifier
+                                .width(20.dp)
+                                .height(3.dp)
+                                .background(Color.White, shape = CircleShape)
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.height(3.dp))
+                    }
+                }
+            }
+        }
+
+        // Placeholder to balance the row since search is on the left
+        Box(modifier = Modifier.size(28.dp))
     }
 }
 
@@ -144,8 +277,7 @@ fun VideoPage(url: String, isVisible: Boolean) {
                 )
             }
     ) {
-        // Video Player Layer
-        VideoPlayer(url = url, isVisible = isVisible)
+
 
         // Render double-tap hearts
         hearts.forEach { heart ->
@@ -156,6 +288,9 @@ fun VideoPage(url: String, isVisible: Boolean) {
         }
 
         var showCommentsSheet by remember { mutableStateOf(false) }
+
+        // Video Player Layer
+        VideoPlayer(url = url, isVisible = isVisible, isDucked = showCommentsSheet)
 
         // UI Layer
         RightSideActions(
@@ -199,7 +334,7 @@ fun VideoPage(url: String, isVisible: Boolean) {
 }
 
 @Composable
-fun VideoPlayer(url: String, isVisible: Boolean) {
+fun VideoPlayer(url: String, isVisible: Boolean, isDucked: Boolean = false) {
     val context = LocalContext.current
     val playerManager = remember { VideoPlayerManager.getInstance(context) }
 
@@ -226,11 +361,59 @@ fun VideoPlayer(url: String, isVisible: Boolean) {
         }
     }
 
+    var isVideoReady by remember { mutableStateOf(false) }
+
+    // Listener for video ready state
+    DisposableEffect(player) {
+        val listener = object : androidx.media3.common.Player.Listener {
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                if (playbackState == androidx.media3.common.Player.STATE_READY) {
+                    isVideoReady = true
+                }
+            }
+        }
+        player.addListener(listener)
+        onDispose {
+            player.removeListener(listener)
+        }
+    }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_STOP || event == Lifecycle.Event.ON_PAUSE) {
+                player.pause()
+            } else if (event == Lifecycle.Event.ON_RESUME && isVisible) {
+                player.play()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    LaunchedEffect(isDucked) {
+        if (isDucked) {
+            player.volume = 0.3f
+        } else {
+            player.volume = 1.0f
+        }
+    }
+
     LaunchedEffect(isVisible) {
         if (isVisible) {
+            // EXOPlayer setAudioAttributes handles audio focus automatically internally
+            val audioAttributes = androidx.media3.common.AudioAttributes.Builder()
+                .setUsage(androidx.media3.common.C.USAGE_MEDIA)
+                .setContentType(androidx.media3.common.C.AUDIO_CONTENT_TYPE_MOVIE)
+                .build()
+            player.setAudioAttributes(audioAttributes, true)
             player.play()
         } else {
             player.pause()
+            player.seekTo(0) // Precise lifecycle hook: Reset to 0 when unselected
         }
     }
 
@@ -243,14 +426,38 @@ fun VideoPlayer(url: String, isVisible: Boolean) {
     Box(modifier = Modifier.fillMaxSize()) {
         AndroidView(
             factory = { ctx ->
+                // Using SurfaceView implicitly via PlayerView, optimal for power consumption
                 androidx.media3.ui.PlayerView(ctx).apply {
                     this.player = player
                     useController = false
                     resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                    // Ensure we use SurfaceView (default behavior of PlayerView if not overridden in XML)
+                    // If XML specifies textureView, programmatically setting it here is more complex without inflation.
+                    // By default, PlayerView inflates exo_player_view.xml which uses a SurfaceView.
                 }
             },
             modifier = Modifier.fillMaxSize()
         )
+
+        // Placeholder and Alpha Animation
+        // Since we don't have real thumbnails in MockData, we generate a synthetic one or use a dark placeholder
+        // Using an AnimatedVisibility or animateFloatAsState for the alpha transition (300ms)
+        val placeholderAlpha by animateFloatAsState(
+            targetValue = if (isVideoReady) 0f else 1f,
+            animationSpec = tween(durationMillis = 300),
+            label = "placeholderAlpha"
+        )
+
+        if (placeholderAlpha > 0f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0xFF161823).copy(alpha = placeholderAlpha)) // Douyin dark theme surface color
+            ) {
+                // Here we would use coil AsyncImage if we had a thumbnail URL:
+                // AsyncImage(model = thumbnailUrl, contentDescription = null, contentScale = ContentScale.Crop)
+            }
+        }
 
         // Progress computation
         val progress = if (isDragging) dragProgress else {
@@ -343,7 +550,7 @@ fun LikeButton() {
     Icon(
         imageVector = Icons.Filled.Favorite,
         contentDescription = "Like",
-        tint = if (isLiked) Color.Red else Color.White,
+        tint = if (isLiked) Color(0xFFFFD700) else Color.White,
         modifier = Modifier
             .size(48.dp)
             .scale(scale)
@@ -591,20 +798,33 @@ private fun formatTime(millis: Long): String {
     return String.format("%02d:%02d", minutes, seconds)
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CommentsBottomSheet(onDismiss: () -> Unit) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var inputText by remember { mutableStateOf("") }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-        dragHandle = { BottomSheetDefaults.DragHandle() },
-        containerColor = Color.White,
-        modifier = Modifier.fillMaxHeight(0.7f)
+        dragHandle = {
+            Box(
+                modifier = Modifier
+                    .padding(vertical = 10.dp)
+                    .width(40.dp)
+                    .height(4.dp)
+                    .clip(CircleShape)
+                    .background(Color.LightGray)
+            )
+        },
+        containerColor = Color(0x99000000), // Glassmorphism translucent dark
+        scrimColor = Color.Transparent, // Avoid completely darkening the video behind
+        modifier = Modifier
+            .fillMaxHeight(0.7f)
+            .imePadding() // Pushes up when the keyboard opens
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Header
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -616,39 +836,67 @@ fun CommentsBottomSheet(onDismiss: () -> Unit) {
                     modifier = Modifier.weight(1f),
                     textAlign = TextAlign.Center,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                    color = Color.White
                 )
                 IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
-                    Icon(imageVector = Icons.Filled.Close, contentDescription = "Close", tint = Color.Gray)
+                    Icon(imageVector = Icons.Filled.Close, contentDescription = "Close", tint = Color.LightGray)
                 }
             }
 
-            Divider(color = Color.LightGray, thickness = 0.5.dp)
+            HorizontalDivider(color = Color.DarkGray, thickness = 0.5.dp)
 
-            // Content List Placeholder
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 items(20) { index ->
                     Row(modifier = Modifier.fillMaxWidth()) {
-                        // Avatar placeholder
                         Box(
                             modifier = Modifier
-                                .size(40.dp)
-                                .background(Color.LightGray, CircleShape)
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(Color.Gray)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
-                            Text(text = "User $index", fontWeight = FontWeight.SemiBold, color = Color.Gray, style = MaterialTheme.typography.bodyMedium)
+                            Text(text = "User $index", color = Color(0xFFC0C0C0), style = MaterialTheme.typography.bodySmall)
                             Spacer(modifier = Modifier.height(4.dp))
-                            Text(text = "This is an amazing video! Love the content. Keep it up!", color = Color.Black, style = MaterialTheme.typography.bodyLarge)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(text = "2 hours ago", color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
+                            Text(text = "This is a wonderful video! Really love the content here.", color = Color.White, style = MaterialTheme.typography.bodyMedium)
                         }
                     }
                 }
+            }
+
+            HorizontalDivider(color = Color.DarkGray, thickness = 0.5.dp)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+                    .navigationBarsPadding(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = inputText,
+                    onValueChange = { inputText = it },
+                    placeholder = { Text("留下你的精彩评论...", color = Color.Gray) },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(50.dp),
+                    shape = RoundedCornerShape(25.dp),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color(0xFF1E1E1E).copy(alpha = 0.8f),
+                        unfocusedContainerColor = Color(0xFF1E1E1E).copy(alpha = 0.8f),
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        cursorColor = Color.White,
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White
+                    ),
+                    textStyle = MaterialTheme.typography.bodyMedium
+                )
             }
         }
     }
