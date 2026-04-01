@@ -50,6 +50,7 @@ android {
 }
 
 dependencies {
+    implementation(libs.coil.compose)
     implementation(project(":lib_media"))
     implementation(project(":feature_home"))
     implementation(project(":feature_record"))

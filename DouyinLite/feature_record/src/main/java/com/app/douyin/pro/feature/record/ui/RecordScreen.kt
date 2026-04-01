@@ -56,6 +56,8 @@ fun RecordScreen() {
 
                             // Feed SurfaceTexture to CameraX
                             preview.setSurfaceProvider { request: SurfaceRequest ->
+                                val resolution = request.resolution
+                                surfaceTexture.setDefaultBufferSize(resolution.width, resolution.height)
                                 val surface = Surface(surfaceTexture)
                                 request.provideSurface(surface, ContextCompat.getMainExecutor(ctx)) {
                                     // Surface is no longer used by CameraX

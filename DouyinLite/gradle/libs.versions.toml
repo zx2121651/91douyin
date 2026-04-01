@@ -1,4 +1,5 @@
 [versions]
+coil-compose = "2.4.0"
 guava = "31.1-android"
 agp = "8.4.0"
 kotlin = "1.9.23"
@@ -14,6 +15,7 @@ media3 = "1.3.1"
 camerax = "1.3.3"
 
 [libraries]
+coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coil-compose" }
 guava = { group = "com.google.guava", name = "guava", version.ref = "guava" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }

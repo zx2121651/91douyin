@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.width
@@ -100,6 +101,14 @@ import androidx.lifecycle.Lifecycle
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.foundation.border
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.ui.PlayerView
 import com.app.douyin.pro.lib.media.VideoPlayerManager
@@ -147,7 +156,7 @@ fun HomeScreen() {
         }
     }
 
-    val horizontalPagerState = rememberPagerState(initialPage = 2, pageCount = { 3 })
+    val horizontalPagerState = rememberPagerState(initialPage = 3, pageCount = { 4 })
     val coroutineScope = rememberCoroutineScope()
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -205,18 +214,18 @@ fun TopNavigationBar(
     onTabSelected: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val tabs = listOf("同城", "关注", "推荐")
+    val tabs = listOf("直播", "南京", "关注", "推荐")
 
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 16.dp, vertical = 20.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
-            imageVector = Icons.Filled.Search,
-            contentDescription = "Search",
+            imageVector = Icons.Filled.Menu,
+            contentDescription = "Menu",
             tint = Color.White,
             modifier = Modifier.size(28.dp)
         )
@@ -228,8 +237,8 @@ fun TopNavigationBar(
             tabs.forEachIndexed { index, title ->
                 val isSelected = index == selectedTabIndex
                 val alpha by animateFloatAsState(targetValue = if (isSelected) 1f else 0.7f, label = "alpha")
-                val fontSize = if (isSelected) MaterialTheme.typography.titleLarge.fontSize else MaterialTheme.typography.titleMedium.fontSize
-                val fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                val fontSize = if (isSelected) 18.sp else 16.sp
+                val fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
 
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -241,23 +250,20 @@ fun TopNavigationBar(
                         fontSize = fontSize,
                         fontWeight = fontWeight
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
                     if (isSelected) {
-                        Box(
-                            modifier = Modifier
-                                .width(20.dp)
-                                .height(3.dp)
-                                .background(Color.White, shape = CircleShape)
-                        )
-                    } else {
-                        Spacer(modifier = Modifier.height(3.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Box(modifier = Modifier.width(24.dp).height(3.dp).background(Color.White, RoundedCornerShape(1.5.dp)))
                     }
                 }
             }
         }
 
-        // Placeholder to balance the row since search is on the left
-        Box(modifier = Modifier.size(28.dp))
+        Icon(
+            imageVector = Icons.Filled.Search,
+            contentDescription = "Search",
+            tint = Color.White,
+            modifier = Modifier.size(28.dp)
+        )
     }
 }
 
@@ -312,22 +318,76 @@ fun VideoPage(url: String, isVisible: Boolean) {
                 .navigationBarsPadding() // Avoid system nav bar
                 .padding(bottom = 60.dp, start = 16.dp, end = 80.dp) // Avoid overlapping with record
         ) {
-            Text(text = "@User_${url.hashCode()}", color = Color.White, style = MaterialTheme.typography.titleMedium)
+            // E-commerce Card
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth(0.9f)
+                    .background(Color(0xFF323440).copy(alpha = 0.6f), RoundedCornerShape(12.dp))
+                    .border(0.5.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
+                    .padding(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                AsyncImage(
+                    model = "https://lh3.googleusercontent.com/aida-public/AB6AXuBJq9n8h2_FF69F_-Y1n0oCj2pnz0mUeXJa2hSTz7b_hjOlIYOHtbKhTcWPQ0JfHzOe8gehtur62cF_wDJ7EwSmnQhFaV8pdnucEgjblq4x_02yPaG5OKB2iDIeEbTm1ZGvcNhUGAioCtXE4QIz_s0yVnbciXqrGfLCMWVkEyXExQpx_vpymOaZRAONXmSCQPqFNQxP8vPZlKjqi42H3Mlsqa74XO0YhDD27e8VaRhzD0nRa3qj-MhiQKntNtBNrE-Jtk3rnI6R6OQ",
+                    contentDescription = "Product Image",
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color.Gray),
+                    contentScale = ContentScale.Crop
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Filled.ShoppingCart,
+                            contentDescription = "Cart",
+                            tint = Color(0xFF35fbf5),
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "查看同款商品",
+                            color = Color(0xFF35fbf5),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "新款极速运动鞋 - 限时特惠",
+                        color = Color.White,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        maxLines = 1
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(text = "@潮流先锋官方", color = Color.White, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(8.dp))
-            Text(text = "This is a beautiful video #amazing #fyp", color = Color.White)
+            Text(text = "今日份城市漫步穿搭，极简主义与霓虹色彩的完美融合。#街拍 #潮流 #生活方式", color = Color.White.copy(alpha = 0.9f), style = MaterialTheme.typography.bodySmall)
             Spacer(modifier = Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "🎵",
-                    color = Color.White,
-                    modifier = Modifier.size(16.dp)
+                Icon(
+                    imageVector = Icons.Filled.PlayArrow,
+                    contentDescription = "Music",
+                    tint = Color.White,
+                    modifier = Modifier.size(14.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = "Original Audio - @User_${url.hashCode()} - Popular Trending Song 2024",
-                    color = Color.White,
-                    modifier = Modifier.basicMarquee()
-                )
+                Box(modifier = Modifier.width(160.dp)) {
+                    Text(
+                        text = "原声 - 潮流先锋官方创作出的音乐",
+                        color = Color.White,
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE)
+                    )
+                }
             }
         }
     }
@@ -499,13 +559,40 @@ fun VideoPlayer(url: String, isVisible: Boolean, isDucked: Boolean = false) {
 @Composable
 fun RightSideActions(onCommentClick: () -> Unit, modifier: Modifier = Modifier) {
     Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally
+        modifier = modifier.padding(bottom = 120.dp, end = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
+        // Profile Picture with Follow Button
+        Box(contentAlignment = Alignment.BottomCenter, modifier = Modifier.padding(bottom = 8.dp)) {
+            AsyncImage(
+                model = "https://lh3.googleusercontent.com/aida-public/AB6AXuAFRJnvPgLJTZNlp2beH3rKkgrIq79yAByHrNztp31d3S5Ql5HDcVsXOtOffLNhtuX4qaajnkwFgdAFL5OCuwdLzNBs9QDqqeiJejfbJPzXVeArU5eX10395R9he1IM-Eoy2kh6lmFA_v6n8auwbHfT6iBKAZdZODWoz0wWWJn57dDE7AybZhChYpQ6vVgt7ESF1A6VaNFSrjxMK6MuHftCkoxICASpEx6ooT2VDLv3mlsVbLQNXGa1uCeoOWCamXI699HkQHUvmOk",
+                contentDescription = "Profile Picture",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .border(1.5.dp, Color.White, CircleShape)
+            )
+            Icon(
+                imageVector = Icons.Filled.AddCircle,
+                contentDescription = "Follow",
+                tint = Color(0xFFFF2C55), // Douyin Red
+                modifier = Modifier
+                    .size(20.dp)
+                    .offset(y = 10.dp)
+                    .clip(CircleShape)
+                    .background(Color.White)
+            )
+        }
+
+        // Interactive Buttons
         LikeButton()
-        Spacer(modifier = Modifier.height(16.dp))
         CommentButton(onClick = onCommentClick)
-        Spacer(modifier = Modifier.height(16.dp))
+        FavoriteButton()
+        ShareButton()
+
+        // Rotating Music Disc
         Box {
             FloatingMusicNotes()
             SpinningRecord()
@@ -513,25 +600,6 @@ fun RightSideActions(onCommentClick: () -> Unit, modifier: Modifier = Modifier) 
     }
 }
 
-@Composable
-fun CommentButton(onClick: () -> Unit) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Icon(
-            imageVector = Icons.Filled.MailOutline,
-            contentDescription = "Comment",
-            tint = Color.White,
-            modifier = Modifier
-                .size(40.dp)
-                .clickable(
-                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                    indication = null
-                ) {
-                    onClick()
-                }
-        )
-        Text(text = "128", color = Color.White, style = MaterialTheme.typography.labelSmall)
-    }
-}
 
 @Composable
 fun LikeButton() {
@@ -547,20 +615,79 @@ fun LikeButton() {
         label = "like_scale"
     )
 
-    Icon(
-        imageVector = Icons.Filled.Favorite,
-        contentDescription = "Like",
-        tint = if (isLiked) Color(0xFFFFD700) else Color.White,
-        modifier = Modifier
-            .size(48.dp)
-            .scale(scale)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null
-            ) {
-                isLiked = !isLiked
-            }
-    )
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Icon(
+            imageVector = Icons.Filled.Favorite,
+            contentDescription = "Like",
+            tint = if (isLiked) Color(0xFFFF2C55) else Color.White,
+            modifier = Modifier
+                .size(40.dp)
+                .scale(scale)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) {
+                    isLiked = !isLiked
+                }
+        )
+        Text(text = "128.4w", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 4.dp))
+    }
+}
+
+@Composable
+fun CommentButton(onClick: () -> Unit) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.clickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = null
+        ) {
+            onClick()
+        }
+    ) {
+        Icon(
+            imageVector = Icons.Filled.MailOutline,
+            contentDescription = "Comment",
+            tint = Color.White,
+            modifier = Modifier.size(40.dp)
+        )
+        Text(text = "4.2w", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 4.dp))
+    }
+}
+
+@Composable
+fun FavoriteButton() {
+    var isFavorited by remember { mutableStateOf(false) }
+
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Icon(
+            imageVector = Icons.Filled.Star,
+            contentDescription = "Favorite",
+            tint = if (isFavorited) Color(0xFFFFD700) else Color.White,
+            modifier = Modifier
+                .size(40.dp)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) {
+                    isFavorited = !isFavorited
+                }
+        )
+        Text(text = "2.1w", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 4.dp))
+    }
+}
+
+@Composable
+fun ShareButton() {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Icon(
+            imageVector = Icons.Filled.Share,
+            contentDescription = "Share",
+            tint = Color.White,
+            modifier = Modifier.size(40.dp)
+        )
+        Text(text = "8.5w", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 4.dp))
+    }
 }
 
 data class LikeHeart(val id: String = UUID.randomUUID().toString(), val x: Float, val y: Float)
