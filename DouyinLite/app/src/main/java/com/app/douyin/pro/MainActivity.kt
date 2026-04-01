@@ -51,7 +51,7 @@ import androidx.navigation.compose.rememberNavController
 import com.app.douyin.pro.feature.home.ui.HomeScreen
 import com.app.douyin.pro.feature.record.ui.RecordScreen
 import com.app.douyin.pro.feature.profile.ui.ProfileScreen
-import com.app.douyin.pro.feature.mall.ui.MallScreen
+import com.app.douyin.pro.feature.edit.ui.EditScreen
 
 @androidx.compose.foundation.ExperimentalFoundationApi
 class MainActivity : ComponentActivity() {
@@ -123,8 +123,8 @@ fun DouyinLiteApp(navController: NavHostController) {
             val navBackStackEntry by navController.currentBackStackEntryAsState()
             val currentRoute = navBackStackEntry?.destination?.route
 
-            // Optional: Hide bottom bar on specific screens like Record
-            if (currentRoute != BottomNavItem.Record.route) {
+        // Optional: Hide bottom bar on specific screens like Record and Edit
+        if (currentRoute != BottomNavItem.Record.route && currentRoute?.startsWith("edit") != true) {
                 NavigationBar(
                     containerColor = if (currentRoute == BottomNavItem.Home.route || currentRoute == BottomNavItem.Mall.route) Color.Transparent else Color.White,
                     contentColor = if (currentRoute == BottomNavItem.Home.route || currentRoute == BottomNavItem.Mall.route) Color.White else Color.Black
@@ -203,11 +203,11 @@ fun DouyinLiteApp(navController: NavHostController) {
         NavHost(
             navController = navController,
             startDestination = BottomNavItem.Home.route,
-            // Do not pad the Home screen, Record screen, and Mall screen so they can be full-screen
+            // Do not pad the Home screen, Record screen, and Edit screen so they can be full-screen
             modifier = Modifier.padding(
                 bottom = if (navController.currentBackStackEntryAsState().value?.destination?.route == BottomNavItem.Home.route ||
                              navController.currentBackStackEntryAsState().value?.destination?.route == BottomNavItem.Record.route ||
-                             navController.currentBackStackEntryAsState().value?.destination?.route == BottomNavItem.Mall.route)
+                             navController.currentBackStackEntryAsState().value?.destination?.route?.startsWith("edit") == true)
                          0.dp else innerPadding.calculateBottomPadding()
             )
         ) {
@@ -219,7 +219,26 @@ fun DouyinLiteApp(navController: NavHostController) {
                 Box(modifier = Modifier.fillMaxSize()) { Text("Friends Screen") }
             }
             composable(BottomNavItem.Record.route) {
-                RecordScreen()
+                RecordScreen(
+                    onNavigateToEdit = { videoUriStr ->
+                        navController.navigate("edit?videoUri=${android.net.Uri.encode(videoUriStr)}")
+                    }
+                )
+            }
+            composable(
+                route = "edit?videoUri={videoUri}",
+                arguments = listOf(androidx.navigation.navArgument("videoUri") { type = androidx.navigation.NavType.StringType; defaultValue = "" })
+            ) { backStackEntry ->
+                val videoUri = backStackEntry.arguments?.getString("videoUri") ?: ""
+                EditScreen(
+                    videoUri = videoUri,
+                    onClose = { navController.popBackStack() },
+                    onNext = {
+                        navController.navigate(BottomNavItem.Home.route) {
+                            popUpTo(BottomNavItem.Home.route) { inclusive = true }
+                        }
+                    }
+                )
             }
             composable(BottomNavItem.Mall.route) {
 

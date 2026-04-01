@@ -166,25 +166,31 @@ fun HomeScreen() {
         ) { page ->
             when (page) {
                 0 -> {
+                    // 直播骨架
+                    Box(modifier = Modifier.fillMaxSize().background(Color.DarkGray)) {
+                        Text("直播占位内容", color = Color.White, modifier = Modifier.align(Alignment.Center))
+                    }
+                }
+                1 -> {
                     // 同城骨架
                     Box(modifier = Modifier.fillMaxSize().background(Color.DarkGray)) {
                         Text("同城占位内容", color = Color.White, modifier = Modifier.align(Alignment.Center))
                     }
                 }
-                1 -> {
+                2 -> {
                     // 关注骨架
                     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
                         Text("关注页占位内容", color = Color.White, modifier = Modifier.align(Alignment.Center))
                     }
                 }
-                2 -> {
+                3 -> {
                     // 推荐视频流
                     VerticalPager(
                         state = pagerState,
                         beyondBoundsPageCount = 1,
                         modifier = Modifier.fillMaxSize()
                     ) { vPage ->
-                        val isVisible = pagerState.currentPage == vPage && horizontalPagerState.currentPage == 2
+                        val isVisible = pagerState.currentPage == vPage && horizontalPagerState.currentPage == 3
                         VideoPage(
                             url = videos[vPage],
                             isVisible = isVisible

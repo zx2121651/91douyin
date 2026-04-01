@@ -32,9 +32,11 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+import java.io.File
+
 @SuppressLint("RestrictedApi")
 @Composable
-fun RecordScreen() {
+fun RecordScreen(onNavigateToEdit: (String) -> Unit = {}) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
@@ -118,16 +120,17 @@ fun RecordScreen() {
         // Record Button
         Button(
             onClick = {
-                if (!isRecording) {
-                    // Start Recording
-                    val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
-                    val outputPath = File(context.getExternalFilesDir(null), "VID_${timestamp}.mp4").absolutePath
-                    cameraGLSurfaceView?.startRecording(outputPath)
-                    isRecording = true
-                } else {
-                    // Stop Recording
-                    cameraGLSurfaceView?.stopRecording()
+                if (isRecording) {
+                    // Stop recording
                     isRecording = false
+                    // Mock: Assuming video was saved to cache dir
+                    val dummyVideoPath = File(context.cacheDir, "mock_recorded_video.mp4").absolutePath
+                    // In a real app, video encoding stops and we await the actual file URI.
+                    onNavigateToEdit(dummyVideoPath)
+                } else {
+                    // Start recording
+                    isRecording = true
+                    // Trigger encoding start here in a real scenario via view model calling GL thread
                 }
             },
             modifier = Modifier
