@@ -32,8 +32,6 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-import java.io.File
-
 @SuppressLint("RestrictedApi")
 @Composable
 fun RecordScreen(onNavigateToEdit: (String) -> Unit = {}) {
