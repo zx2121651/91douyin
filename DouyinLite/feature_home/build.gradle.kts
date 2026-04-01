@@ -39,6 +39,7 @@ android {
 }
 
 dependencies {
+    implementation(libs.coil.compose)
     implementation(project(":lib_media"))
 
     implementation(libs.androidx.core.ktx)
