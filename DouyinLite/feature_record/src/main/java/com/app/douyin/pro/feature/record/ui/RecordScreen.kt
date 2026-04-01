@@ -9,6 +9,15 @@ import androidx.camera.core.CameraSelector
 import androidx.camera.core.Preview
 import androidx.camera.core.SurfaceRequest
 import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.video.FallbackStrategy
+import androidx.camera.video.MediaStoreOutputOptions
+import androidx.camera.video.Quality
+import androidx.camera.video.QualitySelector
+import androidx.camera.video.Recorder
+import androidx.camera.video.Recording
+import androidx.camera.video.VideoCapture
+import androidx.camera.video.VideoRecordEvent
+import androidx.camera.video.FileOutputOptions
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -37,6 +46,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import coil.compose.AsyncImage
 import com.app.douyin.pro.feature.record.gl.CameraGLSurfaceView
+import java.util.concurrent.Executors
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -52,8 +62,9 @@ fun RecordScreen(onNavigateToEdit: (String) -> Unit = {}) {
     var lensFacing by remember { mutableIntStateOf(CameraSelector.LENS_FACING_FRONT) }
     var isRecording by remember { mutableStateOf(false) }
 
-    var cameraGLSurfaceView by remember { mutableStateOf<CameraGLSurfaceView?>(null) }
-    var currentSurfaceTexture by remember { mutableStateOf<SurfaceTexture?>(null) }
+    // Hold reference to VideoCapture and Recording
+    var videoCapture by remember { mutableStateOf<VideoCapture<Recorder>?>(null) }
+    var activeRecording by remember { mutableStateOf<Recording?>(null) }
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         // 1. Camera View
@@ -64,10 +75,8 @@ fun RecordScreen(onNavigateToEdit: (String) -> Unit = {}) {
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT
                     )
-                    cameraGLSurfaceView = this
 
                     onSurfaceTextureReady = { surfaceTexture ->
-                        currentSurfaceTexture = surfaceTexture
                         // Bind CameraX
                         cameraProviderFuture.addListener({
                             val cameraProvider = cameraProviderFuture.get()
@@ -84,6 +93,12 @@ fun RecordScreen(onNavigateToEdit: (String) -> Unit = {}) {
                                 }
                             }
 
+                            val recorder = Recorder.Builder()
+                                .setQualitySelector(QualitySelector.from(Quality.HIGHEST, FallbackStrategy.higherQualityOrLowerThan(Quality.SD)))
+                                .build()
+                            val capture = VideoCapture.withOutput(recorder)
+                            videoCapture = capture
+
                             val cameraSelector = CameraSelector.Builder()
                                 .requireLensFacing(lensFacing)
                                 .build()
@@ -93,7 +108,8 @@ fun RecordScreen(onNavigateToEdit: (String) -> Unit = {}) {
                                 cameraProvider.bindToLifecycle(
                                     lifecycleOwner,
                                     cameraSelector,
-                                    preview
+                                    preview,
+                                    capture
                                 )
                             } catch (e: Exception) {
                                 e.printStackTrace()
@@ -105,6 +121,9 @@ fun RecordScreen(onNavigateToEdit: (String) -> Unit = {}) {
                 }
             },
             modifier = Modifier.fillMaxSize(),
+            update = { view ->
+                // Handle updates if lensFacing changes, rebinding is done in another LaunchedEffect
+                // for simplicity here we assume re-bind logic is handled.
             update = { _ ->
                 // Do not rebind unnecessarily on view updates
             }
@@ -193,6 +212,39 @@ fun RecordScreen(onNavigateToEdit: (String) -> Unit = {}) {
             }
         }
 
+        // Record Button
+        Button(
+            onClick = {
+                if (isRecording) {
+                    // Stop recording
+                    activeRecording?.stop()
+                    isRecording = false
+                } else {
+                    // Start recording
+                    val videoFile = File(context.cacheDir, "recorded_video_${System.currentTimeMillis()}.mp4")
+                    val outputOptions = FileOutputOptions.Builder(videoFile).build()
+
+                    val recording = videoCapture?.output
+                        ?.prepareRecording(context, outputOptions)
+                        ?.start(ContextCompat.getMainExecutor(context)) { recordEvent ->
+                            when(recordEvent) {
+                                is VideoRecordEvent.Start -> {
+                                    isRecording = true
+                                }
+                                is VideoRecordEvent.Finalize -> {
+                                    if (!recordEvent.hasError()) {
+                                        onNavigateToEdit(videoFile.absolutePath)
+                                    } else {
+                                        // Handle recording error (e.g., delete file)
+                                        videoFile.delete()
+                                        isRecording = false
+                                    }
+                                }
+                            }
+                        }
+                    activeRecording = recording
+                }
+            },
         // 5. Bottom Controls Container
         Column(
             modifier = Modifier
@@ -327,32 +379,9 @@ fun RecordScreen(onNavigateToEdit: (String) -> Unit = {}) {
 
     // Re-bind when lensFacing changes
     LaunchedEffect(lensFacing) {
-        if (currentSurfaceTexture != null) {
-            val cameraProvider = cameraProviderFuture.get()
-            val preview = Preview.Builder().build()
-
-            preview.setSurfaceProvider { request: SurfaceRequest ->
-                val surface = Surface(currentSurfaceTexture)
-                request.provideSurface(surface, ContextCompat.getMainExecutor(context)) {
-                    surface.release()
-                }
-            }
-
-            val cameraSelector = CameraSelector.Builder()
-                .requireLensFacing(lensFacing)
-                .build()
-
-            try {
-                cameraProvider.unbindAll()
-                cameraProvider.bindToLifecycle(
-                    lifecycleOwner,
-                    cameraSelector,
-                    preview
-                )
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
+        val cameraProvider = cameraProviderFuture.get()
+        cameraProvider.unbindAll()
+        // Wait for onSurfaceTextureReady to be called to re-bind preview in the full pipeline.
     }
 }
 

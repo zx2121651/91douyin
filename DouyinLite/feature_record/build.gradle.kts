@@ -60,8 +60,3 @@ dependencies {
     implementation(libs.androidx.camera.extensions)
     implementation(libs.guava)
 }
-android {
-    lint {
-        abortOnError = false
-    }
-}
