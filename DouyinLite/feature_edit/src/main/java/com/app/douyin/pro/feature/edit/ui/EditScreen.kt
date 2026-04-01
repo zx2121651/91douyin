@@ -21,23 +21,105 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+import android.net.Uri
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.common.MediaItem
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.PlayerView
+import android.view.ViewGroup
+
+import com.app.douyin.pro.lib.media.VideoEditorHelper
+import android.widget.Toast
+import kotlinx.coroutines.delay
+
 @Composable
-fun EditScreen() {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFF161823)) // Douyin dark background
-            .systemBarsPadding()
-    ) {
-        TopBar()
-        VideoPreviewArea(modifier = Modifier.weight(1f))
-        TimelineArea()
-        BottomToolbar()
+fun EditScreen(
+    videoUri: String = "",
+    onClose: () -> Unit = {},
+    onNext: () -> Unit = {}
+) {
+    val context = LocalContext.current
+    val editorHelper = remember { VideoEditorHelper(context) }
+    var isExporting by remember { mutableStateOf(false) }
+    var exportProgress by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(isExporting) {
+        if (isExporting) {
+            while (isExporting) {
+                exportProgress = editorHelper.getProgress()
+                delay(200)
+            }
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFF161823)) // Douyin dark background
+                .systemBarsPadding()
+        ) {
+            TopBar(
+                onClose = onClose,
+                onNext = {
+                    if (videoUri.isNotEmpty() && java.io.File(videoUri).exists()) {
+                        isExporting = true
+                        val outputPath = java.io.File(context.cacheDir, "exported_video.mp4").absolutePath
+
+                        // Default mock: trim to first 3 seconds and mute audio for now
+                        editorHelper.exportTrimmedAndMutedVideo(
+                            inputUri = Uri.parse(videoUri),
+                            outputPath = outputPath,
+                            startMs = 0L,
+                            endMs = 3000L,
+                            listener = object : VideoEditorHelper.ExportListener {
+                                override fun onProgress(progress: Int) {
+                                    exportProgress = progress
+                                }
+
+                                override fun onCompleted(outputUri: Uri) {
+                                    isExporting = false
+                                    Toast.makeText(context, "导出成功: ${outputUri.path}", Toast.LENGTH_SHORT).show()
+                                    onNext() // Navigation hook
+                                }
+
+                                override fun onError(exception: Exception) {
+                                    isExporting = false
+                                    Toast.makeText(context, "导出失败: ${exception.message}", Toast.LENGTH_LONG).show()
+                                }
+                            }
+                        )
+                    } else {
+                        onNext()
+                    }
+                }
+            )
+            VideoPreviewArea(videoUri = videoUri, modifier = Modifier.weight(1f))
+            TimelineArea()
+            BottomToolbar()
+        }
+
+        if (isExporting) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.7f))
+                    .clickable(enabled = false) {}, // intercept clicks
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator(color = Color(0xFFFF2C55))
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("正在导出... $exportProgress%", color = Color.White)
+                }
+            }
+        }
     }
 }
 
 @Composable
-fun TopBar() {
+fun TopBar(onClose: () -> Unit, onNext: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -51,7 +133,7 @@ fun TopBar() {
             modifier = Modifier
                 .align(Alignment.CenterStart)
                 .size(28.dp)
-                .clickable { /* Handle close */ }
+                .clickable { onClose() }
         )
 
         // Resolution and Frame Rate Settings
@@ -74,7 +156,7 @@ fun TopBar() {
 
         // Export/Next Button
         Button(
-            onClick = { /* Handle Export */ },
+            onClick = { onNext() },
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF2C55)), // Douyin Red
             shape = RoundedCornerShape(4.dp),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
@@ -88,7 +170,25 @@ fun TopBar() {
 }
 
 @Composable
-fun VideoPreviewArea(modifier: Modifier = Modifier) {
+fun VideoPreviewArea(videoUri: String, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val exoPlayer = remember {
+        ExoPlayer.Builder(context).build().apply {
+            repeatMode = ExoPlayer.REPEAT_MODE_ALL
+            if (videoUri.isNotEmpty()) {
+                setMediaItem(MediaItem.fromUri(Uri.parse(videoUri)))
+                prepare()
+                playWhenReady = true
+            }
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            exoPlayer.release()
+        }
+    }
+
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -98,26 +198,43 @@ fun VideoPreviewArea(modifier: Modifier = Modifier) {
             .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp)),
         contentAlignment = Alignment.Center
     ) {
-        // Placeholder background mock to simulate video
-        Box(modifier = Modifier.fillMaxSize().background(Color(0xFF1E202B).copy(alpha = 0.5f)))
+        if (videoUri.isEmpty() || !java.io.File(videoUri).exists()) {
+            // Placeholder background mock to simulate video
+            Box(modifier = Modifier.fillMaxSize().background(Color(0xFF1E202B).copy(alpha = 0.5f)))
 
-        // Placeholder for the actual video player
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(28.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.PlayArrow,
-                    contentDescription = "Play",
-                    tint = Color.White.copy(alpha = 0.8f),
-                    modifier = Modifier.size(36.dp)
-                )
+            // Placeholder for the actual video player
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(28.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.PlayArrow,
+                        contentDescription = "Play",
+                        tint = Color.White.copy(alpha = 0.8f),
+                        modifier = Modifier.size(36.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                Text("暂无视频片段", color = Color.White.copy(alpha = 0.6f), fontSize = 14.sp)
             }
-            Spacer(modifier = Modifier.height(12.dp))
-            Text("预览区域", color = Color.White.copy(alpha = 0.6f), fontSize = 14.sp)
+        } else {
+            // Real Video Player
+            AndroidView(
+                factory = { ctx ->
+                    PlayerView(ctx).apply {
+                        player = exoPlayer
+                        useController = false
+                        layoutParams = ViewGroup.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.MATCH_PARENT
+                        )
+                    }
+                },
+                modifier = Modifier.fillMaxSize()
+            )
         }
 
         // Timeline indicator (current time)

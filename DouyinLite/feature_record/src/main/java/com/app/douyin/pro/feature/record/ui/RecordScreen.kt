@@ -29,9 +29,11 @@ import androidx.core.content.ContextCompat
 import com.app.douyin.pro.feature.record.gl.CameraGLSurfaceView
 import java.util.concurrent.Executors
 
+import java.io.File
+
 @SuppressLint("RestrictedApi")
 @Composable
-fun RecordScreen() {
+fun RecordScreen(onNavigateToEdit: (String) -> Unit = {}) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
@@ -111,8 +113,18 @@ fun RecordScreen() {
         // Record Button
         Button(
             onClick = {
-                isRecording = !isRecording
-                // Trigger encoding start/stop here in a real scenario via view model calling GL thread
+                if (isRecording) {
+                    // Stop recording
+                    isRecording = false
+                    // Mock: Assuming video was saved to cache dir
+                    val dummyVideoPath = File(context.cacheDir, "mock_recorded_video.mp4").absolutePath
+                    // In a real app, video encoding stops and we await the actual file URI.
+                    onNavigateToEdit(dummyVideoPath)
+                } else {
+                    // Start recording
+                    isRecording = true
+                    // Trigger encoding start here in a real scenario via view model calling GL thread
+                }
             },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
