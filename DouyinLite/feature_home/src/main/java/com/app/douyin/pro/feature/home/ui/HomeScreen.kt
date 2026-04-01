@@ -127,6 +127,13 @@ fun HomeScreen() {
     // Using BeyondBoundsPageCount = 1 to pre-load adjacent pages for smoother scrolling
     val pagerState = rememberPagerState(pageCount = { videos.size })
 
+    var showSearchScreen by remember { mutableStateOf(false) }
+
+    if (showSearchScreen) {
+        SearchScreen(onCancel = { showSearchScreen = false })
+        return
+    }
+
     // Pagination logic
     LaunchedEffect(pagerState.currentPage) {
         // Load more when reaching the 2nd to last item
@@ -207,6 +214,7 @@ fun HomeScreen() {
                     horizontalPagerState.animateScrollToPage(index)
                 }
             },
+            onSearchClick = { showSearchScreen = true },
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .statusBarsPadding()
@@ -218,6 +226,7 @@ fun HomeScreen() {
 fun TopNavigationBar(
     selectedTabIndex: Int,
     onTabSelected: (Int) -> Unit,
+    onSearchClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val tabs = listOf("直播", "南京", "关注", "推荐")
@@ -268,7 +277,7 @@ fun TopNavigationBar(
             imageVector = Icons.Filled.Search,
             contentDescription = "Search",
             tint = Color.White,
-            modifier = Modifier.size(28.dp)
+            modifier = Modifier.size(28.dp).clickable { onSearchClick() }
         )
     }
 }

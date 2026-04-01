@@ -52,7 +52,6 @@ import com.app.douyin.pro.feature.home.ui.HomeScreen
 import com.app.douyin.pro.feature.record.ui.RecordScreen
 import com.app.douyin.pro.feature.profile.ui.ProfileScreen
 import com.app.douyin.pro.feature.edit.ui.EditScreen
-import com.app.douyin.pro.feature.mall.ui.MallScreen
 
 @androidx.compose.foundation.ExperimentalFoundationApi
 class MainActivity : ComponentActivity() {
