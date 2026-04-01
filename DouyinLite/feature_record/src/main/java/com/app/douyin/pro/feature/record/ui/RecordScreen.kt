@@ -1,4 +1,5 @@
 package com.app.douyin.pro.feature.record.ui
+import java.io.File
 
 import android.annotation.SuppressLint
 import android.graphics.SurfaceTexture
@@ -36,14 +37,14 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import coil.compose.AsyncImage
 import com.app.douyin.pro.feature.record.gl.CameraGLSurfaceView
-import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+
 @SuppressLint("RestrictedApi")
 @Composable
-fun RecordScreen() {
+fun RecordScreen(onNavigateToEdit: (String) -> Unit = {}) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
