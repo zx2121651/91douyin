@@ -121,7 +121,7 @@ import androidx.compose.ui.layout.ContentScale
 
 @androidx.compose.foundation.ExperimentalFoundationApi
 @Composable
-fun HomeScreen() {
+fun HomeScreen(onNavigateToMall: () -> Unit = {}) {
     val initialVideos = remember { MockData.videos }
     val videos = remember { mutableStateListOf<String>().apply { addAll(initialVideos) } }
     var isLoading by remember { mutableStateOf(false) }
@@ -223,9 +223,10 @@ fun HomeScreen() {
 fun TopNavigationBar(
     selectedTabIndex: Int,
     onTabSelected: (Int) -> Unit,
+    onNavigateToMall: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val tabs = listOf("直播", "南京", "关注", "推荐")
+    val tabs = listOf("商城", "直播", "南京", "关注", "推荐")
 
     Row(
         modifier = modifier
@@ -253,7 +254,7 @@ fun TopNavigationBar(
 
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.clickable { onTabSelected(index) }
+                    modifier = Modifier.clickable { if (index == 0) onNavigateToMall() else onTabSelected(index - 1) }
                 ) {
                     Text(
                         text = title,
