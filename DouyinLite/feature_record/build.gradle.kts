@@ -49,6 +49,7 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation(libs.coil.compose)
 
     // CameraX
     implementation(libs.androidx.camera.core)
@@ -58,9 +59,4 @@ dependencies {
     implementation(libs.androidx.camera.view)
     implementation(libs.androidx.camera.extensions)
     implementation(libs.guava)
-}
-android {
-    lint {
-        abortOnError = false
-    }
 }

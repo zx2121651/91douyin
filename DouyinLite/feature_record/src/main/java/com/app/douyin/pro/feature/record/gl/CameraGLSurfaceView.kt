@@ -27,16 +27,4 @@ class CameraGLSurfaceView @JvmOverloads constructor(
         setRenderer(renderer)
         renderMode = RENDERMODE_WHEN_DIRTY
     }
-
-    fun startRecording(outputPath: String) {
-        queueEvent {
-            renderer.startRecording(outputPath)
-        }
-    }
-
-    fun stopRecording() {
-        queueEvent {
-            renderer.stopRecording()
-        }
-    }
 }
