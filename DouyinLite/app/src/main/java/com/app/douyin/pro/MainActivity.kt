@@ -124,9 +124,10 @@ fun DouyinLiteApp(navController: NavHostController) {
 
             // Optional: Hide bottom bar on specific screens like Record
             if (currentRoute != BottomNavItem.Record.route) {
+                val isDarkBgRoute = currentRoute == BottomNavItem.Home.route || currentRoute == BottomNavItem.Friends.route
                 NavigationBar(
-                    containerColor = if (currentRoute == BottomNavItem.Home.route) Color.Transparent else Color.White,
-                    contentColor = if (currentRoute == BottomNavItem.Home.route) Color.White else Color.Black
+                    containerColor = if (isDarkBgRoute) Color.Transparent else Color.White,
+                    contentColor = if (isDarkBgRoute) Color.White else Color.Black
                 ) {
                     items.forEach { item ->
                         val isSelected = currentRoute == item.route
@@ -178,9 +179,9 @@ fun DouyinLiteApp(navController: NavHostController) {
                             },
                             selected = isSelected,
                             colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = if (currentRoute == BottomNavItem.Home.route) Color.White else Color.Black,
+                                selectedIconColor = if (isDarkBgRoute) Color.White else Color.Black,
                                 unselectedIconColor = Color.LightGray,
-                                selectedTextColor = if (currentRoute == BottomNavItem.Home.route) Color.White else Color.Black,
+                                selectedTextColor = if (isDarkBgRoute) Color.White else Color.Black,
                                 unselectedTextColor = Color.LightGray,
                                 indicatorColor = Color.Transparent
                             ),
@@ -202,9 +203,10 @@ fun DouyinLiteApp(navController: NavHostController) {
         NavHost(
             navController = navController,
             startDestination = BottomNavItem.Home.route,
-            // Do not pad the Home screen and Record screen so they can be full-screen
+            // Do not pad the Home screen, Friends screen and Record screen so they can be full-screen
             modifier = Modifier.padding(
                 bottom = if (navController.currentBackStackEntryAsState().value?.destination?.route == BottomNavItem.Home.route ||
+                             navController.currentBackStackEntryAsState().value?.destination?.route == BottomNavItem.Friends.route ||
                              navController.currentBackStackEntryAsState().value?.destination?.route == BottomNavItem.Record.route)
                          0.dp else innerPadding.calculateBottomPadding()
             )
@@ -213,8 +215,7 @@ fun DouyinLiteApp(navController: NavHostController) {
                 HomeScreen()
             }
             composable(BottomNavItem.Friends.route) {
-                // Placeholder
-                Box(modifier = Modifier.fillMaxSize()) { Text("Friends Screen") }
+                com.app.douyin.pro.feature.home.ui.FriendsScreen()
             }
             composable(BottomNavItem.Record.route) {
                 RecordScreen()
