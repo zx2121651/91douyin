@@ -126,8 +126,8 @@ fun DouyinLiteApp(navController: NavHostController) {
         // Optional: Hide bottom bar on specific screens like Record and Edit
         if (currentRoute != BottomNavItem.Record.route && currentRoute?.startsWith("edit") != true) {
                 NavigationBar(
-                    containerColor = if (currentRoute == BottomNavItem.Home.route || currentRoute == BottomNavItem.Mall.route) Color.Transparent else Color.White,
-                    contentColor = if (currentRoute == BottomNavItem.Home.route || currentRoute == BottomNavItem.Mall.route) Color.White else Color.Black
+                    containerColor = if (currentRoute == BottomNavItem.Home.route) Color.Transparent else Color.White,
+                    contentColor = if (currentRoute == BottomNavItem.Home.route) Color.White else Color.Black
                 ) {
                     items.forEach { item ->
                         val isSelected = currentRoute == item.route
@@ -179,9 +179,9 @@ fun DouyinLiteApp(navController: NavHostController) {
                             },
                             selected = isSelected,
                             colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = if (currentRoute == BottomNavItem.Home.route || currentRoute == BottomNavItem.Mall.route) Color.White else Color.Black,
+                                selectedIconColor = if (currentRoute == BottomNavItem.Home.route) Color.White else Color.Black,
                                 unselectedIconColor = Color.LightGray,
-                                selectedTextColor = if (currentRoute == BottomNavItem.Home.route || currentRoute == BottomNavItem.Mall.route) Color.White else Color.Black,
+                                selectedTextColor = if (currentRoute == BottomNavItem.Home.route) Color.White else Color.Black,
                                 unselectedTextColor = Color.LightGray,
                                 indicatorColor = Color.Transparent
                             ),
@@ -215,7 +215,7 @@ fun DouyinLiteApp(navController: NavHostController) {
                 HomeScreen()
             }
             composable(BottomNavItem.Friends.route) {
-
+                // Placeholder
                 Box(modifier = Modifier.fillMaxSize()) { Text("Friends Screen") }
             }
             composable(BottomNavItem.Record.route) {
@@ -241,8 +241,8 @@ fun DouyinLiteApp(navController: NavHostController) {
                 )
             }
             composable(BottomNavItem.Mall.route) {
-
-                MallScreen()
+                // Placeholder
+                Box(modifier = Modifier.fillMaxSize()) { Text("Mall Screen") }
             }
             composable(BottomNavItem.Me.route) {
                 ProfileScreen()
