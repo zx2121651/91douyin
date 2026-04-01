@@ -130,6 +130,13 @@ fun HomeScreen(onNavigateToMall: () -> Unit = {}) {
     // Using BeyondBoundsPageCount = 1 to pre-load adjacent pages for smoother scrolling
     val pagerState = rememberPagerState(pageCount = { videos.size })
 
+    var showSearchScreen by remember { mutableStateOf(false) }
+
+    if (showSearchScreen) {
+        SearchScreen(onCancel = { showSearchScreen = false })
+        return
+    }
+
     // Pagination logic
     LaunchedEffect(pagerState.currentPage) {
         // Load more when reaching the 2nd to last item
@@ -200,6 +207,18 @@ fun HomeScreen(onNavigateToMall: () -> Unit = {}) {
             }
         }
 
+        TopNavigationBar(
+            selectedTabIndex = horizontalPagerState.currentPage,
+            onTabSelected = { index ->
+                coroutineScope.launch {
+                    horizontalPagerState.animateScrollToPage(index)
+                }
+            },
+            onSearchClick = { showSearchScreen = true },
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .statusBarsPadding()
+        )
         AnimatedVisibility(
             visible = horizontalPagerState.currentPage != 0,
             enter = fadeIn(),
@@ -223,6 +242,7 @@ fun HomeScreen(onNavigateToMall: () -> Unit = {}) {
 fun TopNavigationBar(
     selectedTabIndex: Int,
     onTabSelected: (Int) -> Unit,
+    onSearchClick: () -> Unit = {},
     onNavigateToMall: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -274,7 +294,7 @@ fun TopNavigationBar(
             imageVector = Icons.Filled.Search,
             contentDescription = "Search",
             tint = Color.White,
-            modifier = Modifier.size(28.dp)
+            modifier = Modifier.size(28.dp).clickable { onSearchClick() }
         )
     }
 }
