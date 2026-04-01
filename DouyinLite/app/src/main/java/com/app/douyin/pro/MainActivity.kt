@@ -51,6 +51,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.app.douyin.pro.feature.home.ui.HomeScreen
 import com.app.douyin.pro.feature.record.ui.RecordScreen
+import com.app.douyin.pro.feature.mall.ui.MallScreen
 import com.app.douyin.pro.feature.profile.ui.ProfileScreen
 import com.app.douyin.pro.feature.edit.ui.EditScreen
 import com.app.douyin.pro.feature.inbox.ui.InboxScreen
