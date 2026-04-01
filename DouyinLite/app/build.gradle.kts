@@ -56,6 +56,7 @@ dependencies {
     implementation(project(":feature_record"))
     implementation(project(":feature_edit"))
     implementation(project(":feature_profile"))
+    implementation(project(":feature_mall"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

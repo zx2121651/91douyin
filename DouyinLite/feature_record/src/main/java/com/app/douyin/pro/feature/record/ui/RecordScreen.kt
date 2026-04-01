@@ -27,7 +27,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import com.app.douyin.pro.feature.record.gl.CameraGLSurfaceView
-import java.util.concurrent.Executors
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 import java.io.File
 
@@ -41,6 +44,9 @@ fun RecordScreen(onNavigateToEdit: (String) -> Unit = {}) {
     var lensFacing by remember { mutableIntStateOf(CameraSelector.LENS_FACING_FRONT) }
     var isRecording by remember { mutableStateOf(false) }
 
+    var cameraGLSurfaceView by remember { mutableStateOf<CameraGLSurfaceView?>(null) }
+    var currentSurfaceTexture by remember { mutableStateOf<SurfaceTexture?>(null) }
+
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         AndroidView(
             factory = { ctx ->
@@ -49,8 +55,10 @@ fun RecordScreen(onNavigateToEdit: (String) -> Unit = {}) {
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT
                     )
+                    cameraGLSurfaceView = this
 
                     onSurfaceTextureReady = { surfaceTexture ->
+                        currentSurfaceTexture = surfaceTexture
                         // Bind CameraX
                         cameraProviderFuture.addListener({
                             val cameraProvider = cameraProviderFuture.get()
@@ -89,8 +97,7 @@ fun RecordScreen(onNavigateToEdit: (String) -> Unit = {}) {
             },
             modifier = Modifier.fillMaxSize(),
             update = { view ->
-                // Handle updates if lensFacing changes, rebinding is done in another LaunchedEffect
-                // for simplicity here we assume re-bind logic is handled.
+                // Do not rebind unnecessarily on view updates
             }
         )
 
@@ -137,8 +144,31 @@ fun RecordScreen(onNavigateToEdit: (String) -> Unit = {}) {
 
     // Re-bind when lensFacing changes
     LaunchedEffect(lensFacing) {
-        val cameraProvider = cameraProviderFuture.get()
-        cameraProvider.unbindAll()
-        // Wait for onSurfaceTextureReady to be called to re-bind preview in the full pipeline.
+        if (currentSurfaceTexture != null) {
+            val cameraProvider = cameraProviderFuture.get()
+            val preview = Preview.Builder().build()
+
+            preview.setSurfaceProvider { request: SurfaceRequest ->
+                val surface = Surface(currentSurfaceTexture)
+                request.provideSurface(surface, ContextCompat.getMainExecutor(context)) {
+                    surface.release()
+                }
+            }
+
+            val cameraSelector = CameraSelector.Builder()
+                .requireLensFacing(lensFacing)
+                .build()
+
+            try {
+                cameraProvider.unbindAll()
+                cameraProvider.bindToLifecycle(
+                    lifecycleOwner,
+                    cameraSelector,
+                    preview
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
     }
 }

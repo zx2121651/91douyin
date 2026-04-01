@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.app.douyin.pro.feature.home"
+    namespace = "com.app.douyin.pro.feature.mall"
     compileSdk = 34
 
     defaultConfig {
@@ -40,8 +40,6 @@ android {
 
 dependencies {
     implementation(libs.coil.compose)
-    implementation(project(":lib_media"))
-
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -50,13 +48,5 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
-
-    // Media3 UI for PlayerView
-    implementation(libs.androidx.media3.ui)
-    implementation(libs.androidx.media3.exoplayer)
-}
-android {
-    lint {
-        abortOnError = false
-    }
+    implementation("androidx.compose.material:material-icons-extended:1.5.0")
 }
