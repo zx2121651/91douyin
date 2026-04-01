@@ -51,6 +51,7 @@ import androidx.navigation.compose.rememberNavController
 import com.app.douyin.pro.feature.home.ui.HomeScreen
 import com.app.douyin.pro.feature.record.ui.RecordScreen
 import com.app.douyin.pro.feature.profile.ui.ProfileScreen
+import com.app.douyin.pro.feature.mall.ui.MallScreen
 
 @androidx.compose.foundation.ExperimentalFoundationApi
 class MainActivity : ComponentActivity() {
@@ -125,8 +126,8 @@ fun DouyinLiteApp(navController: NavHostController) {
             // Optional: Hide bottom bar on specific screens like Record
             if (currentRoute != BottomNavItem.Record.route) {
                 NavigationBar(
-                    containerColor = if (currentRoute == BottomNavItem.Home.route) Color.Transparent else Color.White,
-                    contentColor = if (currentRoute == BottomNavItem.Home.route) Color.White else Color.Black
+                    containerColor = if (currentRoute == BottomNavItem.Home.route || currentRoute == BottomNavItem.Mall.route) Color.Transparent else Color.White,
+                    contentColor = if (currentRoute == BottomNavItem.Home.route || currentRoute == BottomNavItem.Mall.route) Color.White else Color.Black
                 ) {
                     items.forEach { item ->
                         val isSelected = currentRoute == item.route
@@ -178,9 +179,9 @@ fun DouyinLiteApp(navController: NavHostController) {
                             },
                             selected = isSelected,
                             colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = if (currentRoute == BottomNavItem.Home.route) Color.White else Color.Black,
+                                selectedIconColor = if (currentRoute == BottomNavItem.Home.route || currentRoute == BottomNavItem.Mall.route) Color.White else Color.Black,
                                 unselectedIconColor = Color.LightGray,
-                                selectedTextColor = if (currentRoute == BottomNavItem.Home.route) Color.White else Color.Black,
+                                selectedTextColor = if (currentRoute == BottomNavItem.Home.route || currentRoute == BottomNavItem.Mall.route) Color.White else Color.Black,
                                 unselectedTextColor = Color.LightGray,
                                 indicatorColor = Color.Transparent
                             ),
@@ -202,10 +203,11 @@ fun DouyinLiteApp(navController: NavHostController) {
         NavHost(
             navController = navController,
             startDestination = BottomNavItem.Home.route,
-            // Do not pad the Home screen and Record screen so they can be full-screen
+            // Do not pad the Home screen, Record screen, and Mall screen so they can be full-screen
             modifier = Modifier.padding(
                 bottom = if (navController.currentBackStackEntryAsState().value?.destination?.route == BottomNavItem.Home.route ||
-                             navController.currentBackStackEntryAsState().value?.destination?.route == BottomNavItem.Record.route)
+                             navController.currentBackStackEntryAsState().value?.destination?.route == BottomNavItem.Record.route ||
+                             navController.currentBackStackEntryAsState().value?.destination?.route == BottomNavItem.Mall.route)
                          0.dp else innerPadding.calculateBottomPadding()
             )
         ) {
@@ -213,15 +215,15 @@ fun DouyinLiteApp(navController: NavHostController) {
                 HomeScreen()
             }
             composable(BottomNavItem.Friends.route) {
-                // Placeholder
+
                 Box(modifier = Modifier.fillMaxSize()) { Text("Friends Screen") }
             }
             composable(BottomNavItem.Record.route) {
                 RecordScreen()
             }
             composable(BottomNavItem.Mall.route) {
-                // Placeholder
-                Box(modifier = Modifier.fillMaxSize()) { Text("Mall Screen") }
+
+                MallScreen()
             }
             composable(BottomNavItem.Me.route) {
                 ProfileScreen()
