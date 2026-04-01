@@ -27,7 +27,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import com.app.douyin.pro.feature.record.gl.CameraGLSurfaceView
-import java.util.concurrent.Executors
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @SuppressLint("RestrictedApi")
 @Composable
@@ -39,6 +42,9 @@ fun RecordScreen() {
     var lensFacing by remember { mutableIntStateOf(CameraSelector.LENS_FACING_FRONT) }
     var isRecording by remember { mutableStateOf(false) }
 
+    var cameraGLSurfaceView by remember { mutableStateOf<CameraGLSurfaceView?>(null) }
+    var currentSurfaceTexture by remember { mutableStateOf<SurfaceTexture?>(null) }
+
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         AndroidView(
             factory = { ctx ->
@@ -47,8 +53,10 @@ fun RecordScreen() {
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT
                     )
+                    cameraGLSurfaceView = this
 
                     onSurfaceTextureReady = { surfaceTexture ->
+                        currentSurfaceTexture = surfaceTexture
                         // Bind CameraX
                         cameraProviderFuture.addListener({
                             val cameraProvider = cameraProviderFuture.get()
@@ -87,8 +95,7 @@ fun RecordScreen() {
             },
             modifier = Modifier.fillMaxSize(),
             update = { view ->
-                // Handle updates if lensFacing changes, rebinding is done in another LaunchedEffect
-                // for simplicity here we assume re-bind logic is handled.
+                // Do not rebind unnecessarily on view updates
             }
         )
 
@@ -111,8 +118,17 @@ fun RecordScreen() {
         // Record Button
         Button(
             onClick = {
-                isRecording = !isRecording
-                // Trigger encoding start/stop here in a real scenario via view model calling GL thread
+                if (!isRecording) {
+                    // Start Recording
+                    val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+                    val outputPath = File(context.getExternalFilesDir(null), "VID_${timestamp}.mp4").absolutePath
+                    cameraGLSurfaceView?.startRecording(outputPath)
+                    isRecording = true
+                } else {
+                    // Stop Recording
+                    cameraGLSurfaceView?.stopRecording()
+                    isRecording = false
+                }
             },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -125,8 +141,31 @@ fun RecordScreen() {
 
     // Re-bind when lensFacing changes
     LaunchedEffect(lensFacing) {
-        val cameraProvider = cameraProviderFuture.get()
-        cameraProvider.unbindAll()
-        // Wait for onSurfaceTextureReady to be called to re-bind preview in the full pipeline.
+        if (currentSurfaceTexture != null) {
+            val cameraProvider = cameraProviderFuture.get()
+            val preview = Preview.Builder().build()
+
+            preview.setSurfaceProvider { request: SurfaceRequest ->
+                val surface = Surface(currentSurfaceTexture)
+                request.provideSurface(surface, ContextCompat.getMainExecutor(context)) {
+                    surface.release()
+                }
+            }
+
+            val cameraSelector = CameraSelector.Builder()
+                .requireLensFacing(lensFacing)
+                .build()
+
+            try {
+                cameraProvider.unbindAll()
+                cameraProvider.bindToLifecycle(
+                    lifecycleOwner,
+                    cameraSelector,
+                    preview
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
     }
 }
