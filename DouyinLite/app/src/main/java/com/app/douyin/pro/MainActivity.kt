@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MailOutline
@@ -50,8 +51,10 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.app.douyin.pro.feature.home.ui.HomeScreen
 import com.app.douyin.pro.feature.record.ui.RecordScreen
+import com.app.douyin.pro.feature.mall.ui.MallScreen
 import com.app.douyin.pro.feature.profile.ui.ProfileScreen
 import com.app.douyin.pro.feature.edit.ui.EditScreen
+import com.app.douyin.pro.feature.inbox.ui.InboxScreen
 import com.app.douyin.pro.feature.mall.ui.MallScreen
 
 @androidx.compose.foundation.ExperimentalFoundationApi
@@ -104,7 +107,7 @@ sealed class BottomNavItem(val route: String, val title: String, val icon: Image
     object Home : BottomNavItem("home", "首页", Icons.Filled.Home)
     object Friends : BottomNavItem("friends", "朋友", Icons.Filled.Person)
     object Record : BottomNavItem("record", "拍摄", null)
-    object Mall : BottomNavItem("mall", "商城", Icons.Filled.ShoppingCart)
+    object Inbox : BottomNavItem("inbox", "消息", Icons.Filled.Email)
     object Me : BottomNavItem("me", "我", Icons.Filled.Person)
 }
 
@@ -115,7 +118,7 @@ fun DouyinLiteApp(navController: NavHostController) {
         BottomNavItem.Home,
         BottomNavItem.Friends,
         BottomNavItem.Record,
-        BottomNavItem.Mall,
+        BottomNavItem.Inbox,
         BottomNavItem.Me
     )
 
@@ -127,8 +130,8 @@ fun DouyinLiteApp(navController: NavHostController) {
         // Optional: Hide bottom bar on specific screens like Record and Edit
         if (currentRoute != BottomNavItem.Record.route && currentRoute?.startsWith("edit") != true) {
                 NavigationBar(
-                    containerColor = if (currentRoute == BottomNavItem.Home.route || currentRoute == BottomNavItem.Mall.route) Color.Transparent else Color.White,
-                    contentColor = if (currentRoute == BottomNavItem.Home.route || currentRoute == BottomNavItem.Mall.route) Color.White else Color.Black
+                    containerColor = if (currentRoute == BottomNavItem.Home.route || currentRoute == BottomNavItem.Inbox.route) Color.Transparent else Color.White,
+                    contentColor = if (currentRoute == BottomNavItem.Home.route || currentRoute == BottomNavItem.Inbox.route) Color.White else Color.Black
                 ) {
                     items.forEach { item ->
                         val isSelected = currentRoute == item.route
@@ -180,9 +183,9 @@ fun DouyinLiteApp(navController: NavHostController) {
                             },
                             selected = isSelected,
                             colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = if (currentRoute == BottomNavItem.Home.route || currentRoute == BottomNavItem.Mall.route) Color.White else Color.Black,
+                                selectedIconColor = if (currentRoute == BottomNavItem.Home.route || currentRoute == BottomNavItem.Inbox.route) Color.White else Color.Black,
                                 unselectedIconColor = Color.LightGray,
-                                selectedTextColor = if (currentRoute == BottomNavItem.Home.route || currentRoute == BottomNavItem.Mall.route) Color.White else Color.Black,
+                                selectedTextColor = if (currentRoute == BottomNavItem.Home.route || currentRoute == BottomNavItem.Inbox.route) Color.White else Color.Black,
                                 unselectedTextColor = Color.LightGray,
                                 indicatorColor = Color.Transparent
                             ),
@@ -213,7 +216,7 @@ fun DouyinLiteApp(navController: NavHostController) {
             )
         ) {
             composable(BottomNavItem.Home.route) {
-                HomeScreen()
+                HomeScreen(onNavigateToMall = { navController.navigate("mall_standalone") })
             }
             composable(BottomNavItem.Friends.route) {
 
@@ -241,9 +244,9 @@ fun DouyinLiteApp(navController: NavHostController) {
                     }
                 )
             }
-            composable(BottomNavItem.Mall.route) {
+            composable(BottomNavItem.Inbox.route) {
 
-                MallScreen()
+                InboxScreen()
             }
             composable(BottomNavItem.Me.route) {
                 ProfileScreen()

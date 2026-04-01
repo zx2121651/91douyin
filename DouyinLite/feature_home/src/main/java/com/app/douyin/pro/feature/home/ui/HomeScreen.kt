@@ -114,11 +114,14 @@ import androidx.media3.ui.PlayerView
 import com.app.douyin.pro.lib.media.VideoPlayerManager
 import androidx.compose.runtime.snapshotFlow
 import androidx.media3.common.Player
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.ui.layout.ContentScale
 
 @androidx.compose.foundation.ExperimentalFoundationApi
 @Composable
-fun HomeScreen() {
+fun HomeScreen(onNavigateToMall: () -> Unit = {}) {
     val initialVideos = remember { MockData.videos }
     val videos = remember { mutableStateListOf<String>().apply { addAll(initialVideos) } }
     var isLoading by remember { mutableStateOf(false) }
@@ -173,10 +176,7 @@ fun HomeScreen() {
         ) { page ->
             when (page) {
                 0 -> {
-                    // 直播骨架
-                    Box(modifier = Modifier.fillMaxSize().background(Color.DarkGray)) {
-                        Text("直播占位内容", color = Color.White, modifier = Modifier.align(Alignment.Center))
-                    }
+                    LiveScreen()
                 }
                 1 -> {
                     // 同城骨架
@@ -219,6 +219,22 @@ fun HomeScreen() {
                 .align(Alignment.TopCenter)
                 .statusBarsPadding()
         )
+        AnimatedVisibility(
+            visible = horizontalPagerState.currentPage != 0,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.TopCenter)
+        ) {
+            TopNavigationBar(
+                selectedTabIndex = horizontalPagerState.currentPage,
+                onTabSelected = { index ->
+                    coroutineScope.launch {
+                        horizontalPagerState.animateScrollToPage(index)
+                    }
+                },
+                modifier = Modifier.statusBarsPadding()
+            )
+        }
     }
 }
 
@@ -227,9 +243,10 @@ fun TopNavigationBar(
     selectedTabIndex: Int,
     onTabSelected: (Int) -> Unit,
     onSearchClick: () -> Unit = {},
+    onNavigateToMall: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val tabs = listOf("直播", "南京", "关注", "推荐")
+    val tabs = listOf("商城", "直播", "南京", "关注", "推荐")
 
     Row(
         modifier = modifier
@@ -257,7 +274,7 @@ fun TopNavigationBar(
 
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.clickable { onTabSelected(index) }
+                    modifier = Modifier.clickable { if (index == 0) onNavigateToMall() else onTabSelected(index - 1) }
                 ) {
                     Text(
                         text = title,
