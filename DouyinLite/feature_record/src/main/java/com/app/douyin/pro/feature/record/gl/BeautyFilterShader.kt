@@ -48,9 +48,16 @@ object BeautyFilterShader {
             }
 
             vec4 finalColor = sum / totalWeight;
-            // 简单的皮肤提亮
-            finalColor.r = min(1.0, finalColor.r * 1.1);
-            finalColor.g = min(1.0, finalColor.g * 1.05);
+
+            // 抖音风格：高级冷白皮调色矩阵 (Cool White Toning)
+            // 提升 R/G 通道增益，微调 B 通道保持清冷感
+            finalColor.r = min(1.0, finalColor.r * 1.12);
+            finalColor.g = min(1.0, finalColor.g * 1.08);
+            finalColor.b = min(1.0, finalColor.b * 1.05);
+
+            // 增加饱和度微调 (Saturation Adjustment)
+            float luminance = dot(finalColor.rgb, vec3(0.299, 0.587, 0.114));
+            finalColor.rgb = mix(vec3(luminance), finalColor.rgb, 1.1);
 
             gl_FragColor = finalColor;
         }
