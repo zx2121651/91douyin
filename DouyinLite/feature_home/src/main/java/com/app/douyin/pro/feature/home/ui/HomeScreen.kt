@@ -167,6 +167,7 @@ fun HomeScreen(onNavigateToMall: () -> Unit = {}) {
     }
 
     val horizontalPagerState = rememberPagerState(initialPage = 3, pageCount = { 4 })
+    val selectedTopTabIndex = horizontalPagerState.currentPage + 1 // prepend "商城" tab at index 0
     val coroutineScope = rememberCoroutineScope()
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -207,18 +208,6 @@ fun HomeScreen(onNavigateToMall: () -> Unit = {}) {
             }
         }
 
-        TopNavigationBar(
-            selectedTabIndex = horizontalPagerState.currentPage,
-            onTabSelected = { index ->
-                coroutineScope.launch {
-                    horizontalPagerState.animateScrollToPage(index)
-                }
-            },
-            onSearchClick = { showSearchScreen = true },
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .statusBarsPadding()
-        )
         AnimatedVisibility(
             visible = horizontalPagerState.currentPage != 0,
             enter = fadeIn(),
@@ -226,12 +215,14 @@ fun HomeScreen(onNavigateToMall: () -> Unit = {}) {
             modifier = Modifier.align(Alignment.TopCenter)
         ) {
             TopNavigationBar(
-                selectedTabIndex = horizontalPagerState.currentPage,
+                selectedTabIndex = selectedTopTabIndex,
                 onTabSelected = { index ->
                     coroutineScope.launch {
                         horizontalPagerState.animateScrollToPage(index)
                     }
                 },
+                onSearchClick = { showSearchScreen = true },
+                onNavigateToMall = onNavigateToMall,
                 modifier = Modifier.statusBarsPadding()
             )
         }

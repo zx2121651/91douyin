@@ -1,28 +1,24 @@
 package com.app.douyin.pro
 
-import android.os.Bundle
-import androidx.core.view.WindowCompat
-
 import android.Manifest
 import android.os.Build
-import androidx.activity.result.contract.ActivityResultContracts
+import android.os.Bundle
 import android.widget.Toast
-
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AddCircle
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.MailOutline
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -31,50 +27,44 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.app.douyin.pro.feature.home.ui.HomeScreen
-import com.app.douyin.pro.feature.record.ui.RecordScreen
-import com.app.douyin.pro.feature.mall.ui.MallScreen
-import com.app.douyin.pro.feature.profile.ui.ProfileScreen
+import androidx.navigation.navArgument
 import com.app.douyin.pro.feature.edit.ui.EditScreen
+import com.app.douyin.pro.feature.home.ui.FriendsScreen
+import com.app.douyin.pro.feature.home.ui.HomeScreen
 import com.app.douyin.pro.feature.inbox.ui.InboxScreen
 import com.app.douyin.pro.feature.mall.ui.MallScreen
+import com.app.douyin.pro.feature.profile.ui.ProfileScreen
+import com.app.douyin.pro.feature.record.ui.RecordScreen
 
 @androidx.compose.foundation.ExperimentalFoundationApi
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Setup edge-to-edge content for immersive mode
         WindowCompat.setDecorFitsSystemWindows(window, false)
         enableEdgeToEdge()
 
-
-        // Request Permissions
         val requestPermissionLauncher = registerForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions()
         ) { permissions ->
-            var allGranted = true
-            permissions.entries.forEach {
-                if (!it.value) allGranted = false
-            }
+            val allGranted = permissions.values.all { it }
             if (!allGranted) {
                 Toast.makeText(this, "需要授予必要权限才能正常使用", Toast.LENGTH_SHORT).show()
             }
@@ -97,18 +87,17 @@ class MainActivity : ComponentActivity() {
         requestPermissionLauncher.launch(requiredPermissions)
 
         setContent {
-            val navController = rememberNavController()
-            DouyinLiteApp(navController)
+            DouyinLiteApp(rememberNavController())
         }
     }
 }
 
 sealed class BottomNavItem(val route: String, val title: String, val icon: ImageVector?) {
-    object Home : BottomNavItem("home", "首页", Icons.Filled.Home)
-    object Friends : BottomNavItem("friends", "朋友", Icons.Filled.Person)
-    object Record : BottomNavItem("record", "拍摄", null)
-    object Inbox : BottomNavItem("inbox", "消息", Icons.Filled.Email)
-    object Me : BottomNavItem("me", "我", Icons.Filled.Person)
+    data object Home : BottomNavItem("home", "首页", Icons.Filled.Home)
+    data object Friends : BottomNavItem("friends", "朋友", Icons.Filled.Person)
+    data object Record : BottomNavItem("record", "拍摄", null)
+    data object Inbox : BottomNavItem("inbox", "消息", Icons.Filled.Email)
+    data object Me : BottomNavItem("me", "我", Icons.Filled.Person)
 }
 
 @Composable
@@ -126,20 +115,13 @@ fun DouyinLiteApp(navController: NavHostController) {
         bottomBar = {
             val navBackStackEntry by navController.currentBackStackEntryAsState()
             val currentRoute = navBackStackEntry?.destination?.route
+            val hideBottom = currentRoute == BottomNavItem.Record.route || currentRoute?.startsWith("edit") == true
 
-            // Optional: Hide bottom bar on specific screens like Record
-            if (currentRoute != BottomNavItem.Record.route) {
+            if (!hideBottom) {
                 val isDarkBgRoute = currentRoute == BottomNavItem.Home.route || currentRoute == BottomNavItem.Friends.route
                 NavigationBar(
                     containerColor = if (isDarkBgRoute) Color.Transparent else Color.White,
                     contentColor = if (isDarkBgRoute) Color.White else Color.Black
-        // Optional: Hide bottom bar on specific screens like Record and Edit
-        if (currentRoute != BottomNavItem.Record.route && currentRoute?.startsWith("edit") != true) {
-                NavigationBar(
-                    containerColor = if (currentRoute == BottomNavItem.Home.route) Color.Transparent else Color.White,
-                    contentColor = if (currentRoute == BottomNavItem.Home.route) Color.White else Color.Black
-                    containerColor = if (currentRoute == BottomNavItem.Home.route || currentRoute == BottomNavItem.Inbox.route) Color.Transparent else Color.White,
-                    contentColor = if (currentRoute == BottomNavItem.Home.route || currentRoute == BottomNavItem.Inbox.route) Color.White else Color.Black
                 ) {
                     items.forEach { item ->
                         val isSelected = currentRoute == item.route
@@ -154,10 +136,7 @@ fun DouyinLiteApp(navController: NavHostController) {
                                             .drawBehind {
                                                 drawRoundRect(
                                                     brush = Brush.horizontalGradient(
-                                                        colors = listOf(
-                                                            Color(0xFF00E5FF), // Cyan
-                                                            Color(0xFFFF0050)  // Red
-                                                        ),
+                                                        colors = listOf(Color(0xFF00E5FF), Color(0xFFFF0050))
                                                     ),
                                                     cornerRadius = androidx.compose.ui.geometry.CornerRadius(8.dp.toPx())
                                                 )
@@ -170,11 +149,7 @@ fun DouyinLiteApp(navController: NavHostController) {
                                             },
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Icon(
-                                            Icons.Filled.Add,
-                                            contentDescription = item.title,
-                                            tint = Color.Black
-                                        )
+                                        Icon(Icons.Filled.Add, contentDescription = item.title, tint = Color.Black)
                                     }
                                 } else {
                                     item.icon?.let { Icon(it, contentDescription = item.title, modifier = Modifier.padding(bottom = 2.dp)) }
@@ -194,18 +169,12 @@ fun DouyinLiteApp(navController: NavHostController) {
                                 selectedIconColor = if (isDarkBgRoute) Color.White else Color.Black,
                                 unselectedIconColor = Color.LightGray,
                                 selectedTextColor = if (isDarkBgRoute) Color.White else Color.Black,
-                                selectedTextColor = if (currentRoute == BottomNavItem.Home.route) Color.White else Color.Black,
-                                selectedIconColor = if (currentRoute == BottomNavItem.Home.route || currentRoute == BottomNavItem.Inbox.route) Color.White else Color.Black,
-                                unselectedIconColor = Color.LightGray,
-                                selectedTextColor = if (currentRoute == BottomNavItem.Home.route || currentRoute == BottomNavItem.Inbox.route) Color.White else Color.Black,
                                 unselectedTextColor = Color.LightGray,
                                 indicatorColor = Color.Transparent
                             ),
                             onClick = {
                                 navController.navigate(item.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
-                                    }
+                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                                     launchSingleTop = true
                                     restoreState = true
                                 }
@@ -216,38 +185,28 @@ fun DouyinLiteApp(navController: NavHostController) {
             }
         }
     ) { innerPadding ->
+        val route = navController.currentBackStackEntryAsState().value?.destination?.route
+        val noBottomPadding = route == BottomNavItem.Home.route || route == BottomNavItem.Friends.route || route == BottomNavItem.Record.route || route?.startsWith("edit") == true
+
         NavHost(
             navController = navController,
             startDestination = BottomNavItem.Home.route,
-            // Do not pad the Home screen, Friends screen and Record screen so they can be full-screen
-            modifier = Modifier.padding(
-                bottom = if (navController.currentBackStackEntryAsState().value?.destination?.route == BottomNavItem.Home.route ||
-                             navController.currentBackStackEntryAsState().value?.destination?.route == BottomNavItem.Friends.route ||
-                             navController.currentBackStackEntryAsState().value?.destination?.route == BottomNavItem.Record.route)
-            // Do not pad the Home screen, Record screen, and Edit screen so they can be full-screen
-            modifier = Modifier.padding(
-                bottom = if (navController.currentBackStackEntryAsState().value?.destination?.route == BottomNavItem.Home.route ||
-                             navController.currentBackStackEntryAsState().value?.destination?.route == BottomNavItem.Record.route ||
-                             navController.currentBackStackEntryAsState().value?.destination?.route?.startsWith("edit") == true)
-                         0.dp else innerPadding.calculateBottomPadding()
-            )
+            modifier = Modifier.padding(bottom = if (noBottomPadding) 0.dp else innerPadding.calculateBottomPadding())
         ) {
             composable(BottomNavItem.Home.route) {
                 HomeScreen(onNavigateToMall = { navController.navigate("mall_standalone") })
             }
             composable(BottomNavItem.Friends.route) {
-                com.app.douyin.pro.feature.home.ui.FriendsScreen()
+                FriendsScreen()
             }
             composable(BottomNavItem.Record.route) {
-                RecordScreen(
-                    onNavigateToEdit = { videoUriStr ->
-                        navController.navigate("edit?videoUri=${android.net.Uri.encode(videoUriStr)}")
-                    }
-                )
+                RecordScreen(onNavigateToEdit = { videoUriStr ->
+                    navController.navigate("edit?videoUri=${android.net.Uri.encode(videoUriStr)}")
+                })
             }
             composable(
                 route = "edit?videoUri={videoUri}",
-                arguments = listOf(androidx.navigation.navArgument("videoUri") { type = androidx.navigation.NavType.StringType; defaultValue = "" })
+                arguments = listOf(navArgument("videoUri") { type = NavType.StringType; defaultValue = "" })
             ) { backStackEntry ->
                 val videoUri = backStackEntry.arguments?.getString("videoUri") ?: ""
                 EditScreen(
@@ -260,15 +219,14 @@ fun DouyinLiteApp(navController: NavHostController) {
                     }
                 )
             }
-            composable(BottomNavItem.Mall.route) {
-                // Placeholder
-                Box(modifier = Modifier.fillMaxSize()) { Text("Mall Screen") }
             composable(BottomNavItem.Inbox.route) {
-
                 InboxScreen()
             }
             composable(BottomNavItem.Me.route) {
                 ProfileScreen()
+            }
+            composable("mall_standalone") {
+                MallScreen(onBack = { navController.popBackStack() })
             }
         }
     }
