@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 @Composable
 fun MallScreen(onBack: () -> Unit = {}) {
@@ -33,7 +34,7 @@ fun MallScreen(onBack: () -> Unit = {}) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF8F8F8))
+            .background(Color(0xFF161823))
     ) {
         Row(
             modifier = Modifier
@@ -42,9 +43,9 @@ fun MallScreen(onBack: () -> Unit = {}) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onBack) {
-                Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                Icon(Icons.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
             }
-            Text("商城", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text("抖音商城", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
         }
 
         LazyColumn(
@@ -52,13 +53,13 @@ fun MallScreen(onBack: () -> Unit = {}) {
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(goods) { item ->
-                Card(shape = RoundedCornerShape(12.dp)) {
+                Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF2E2E2E))) {
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(16.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(item, style = MaterialTheme.typography.titleMedium)
+                        Text(item, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                         Text("去购买", color = Color(0xFFFF0050), fontWeight = FontWeight.Bold)
                     }
                 }

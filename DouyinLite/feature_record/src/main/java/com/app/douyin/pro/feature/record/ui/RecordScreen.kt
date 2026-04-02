@@ -18,11 +18,14 @@ import androidx.camera.video.VideoCapture
 import androidx.camera.video.VideoRecordEvent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.material.icons.filled.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -30,10 +33,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Cameraswitch
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.FiberManualRecord
-import androidx.compose.material.icons.filled.FlipCameraAndroid
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -46,12 +46,20 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.material.icons.filled.Face
+
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import com.app.douyin.pro.feature.record.gl.CameraGLSurfaceView
@@ -69,6 +77,8 @@ fun RecordScreen(onNavigateToEdit: (String) -> Unit = {}) {
     var videoCapture by remember { mutableStateOf<VideoCapture<Recorder>?>(null) }
     var activeRecording by remember { mutableStateOf<Recording?>(null) }
     var previewTexture by remember { mutableStateOf<SurfaceTexture?>(null) }
+    var countdownTime by remember { mutableIntStateOf(0) }
+    var showFilters by remember { mutableStateOf(false) }
 
     fun bindCamera(surfaceTexture: SurfaceTexture) {
         cameraProviderFuture.addListener({
@@ -109,6 +119,18 @@ fun RecordScreen(onNavigateToEdit: (String) -> Unit = {}) {
     }
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+
+        if (countdownTime > 0) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(
+                    text = countdownTime.toString(),
+                    color = Color.White,
+                    fontSize = 120.sp,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                )
+            }
+        }
+
         AndroidView(
             factory = { ctx ->
                 CameraGLSurfaceView(ctx).apply {
@@ -143,7 +165,7 @@ fun RecordScreen(onNavigateToEdit: (String) -> Unit = {}) {
             IconButton(onClick = {
                 lensFacing = if (lensFacing == CameraSelector.LENS_FACING_FRONT) CameraSelector.LENS_FACING_BACK else CameraSelector.LENS_FACING_FRONT
             }) {
-                Icon(Icons.Filled.Cameraswitch, contentDescription = "Flip", tint = Color.White)
+                Icon(Icons.Default.Refresh, contentDescription = "Flip", tint = Color.White)
             }
         }
 
@@ -155,10 +177,59 @@ fun RecordScreen(onNavigateToEdit: (String) -> Unit = {}) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             IconButton(onClick = { }) { Icon(Icons.Filled.Info, contentDescription = null, tint = Color.White) }
+
+            IconButton(onClick = { showFilters = true }) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(Icons.Default.Face, contentDescription = "Filters", tint = Color.White)
+                    Text("滤镜", color = Color.White, fontSize = 10.sp)
+                }
+            }
+
+
+            IconButton(onClick = { countdownTime = 3 }) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(Icons.Default.Notifications, contentDescription = "Notifications", tint = Color.White)
+                    Text("3s", color = Color.White, fontSize = 10.sp)
+                }
+            }
+
             IconButton(onClick = {
                 lensFacing = if (lensFacing == CameraSelector.LENS_FACING_FRONT) CameraSelector.LENS_FACING_BACK else CameraSelector.LENS_FACING_FRONT
-            }) { Icon(Icons.Filled.FlipCameraAndroid, contentDescription = null, tint = Color.White) }
+            }) { Icon(Icons.Default.Refresh, contentDescription = null, tint = Color.White) }
         }
+
+
+        if (showFilters) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+                    .height(180.dp)
+                    .background(Color.Black.copy(alpha = 0.7f))
+                    .clickable { showFilters = false }
+            ) {
+                Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                    Text("选择滤镜", color = Color.White, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        val filters = listOf("原图", "磨皮", "冷白", "复古", "胶片", "黑白")
+                        items(filters) { filter ->
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(64.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (filter == "磨皮") Color(0xFFFF2C55) else Color.DarkGray)
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(filter, color = Color.White, fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
 
         FloatingActionButton(
             onClick = {
@@ -193,7 +264,7 @@ fun RecordScreen(onNavigateToEdit: (String) -> Unit = {}) {
             containerColor = if (isRecording) Color(0xFFFF0050) else Color.White
         ) {
             Icon(
-                imageVector = Icons.Filled.FiberManualRecord,
+                imageVector = Icons.Default.Check,
                 contentDescription = "Record",
                 tint = if (isRecording) Color.White else Color(0xFFFF0050),
                 modifier = Modifier.size(38.dp)
