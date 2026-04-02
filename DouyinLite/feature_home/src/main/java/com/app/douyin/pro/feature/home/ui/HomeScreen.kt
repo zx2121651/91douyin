@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class, androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.app.douyin.pro.feature.home.ui
 
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.animation.core.Spring
 
 import androidx.compose.animation.core.*
@@ -121,7 +123,7 @@ import androidx.compose.ui.layout.ContentScale
 
 @androidx.compose.foundation.ExperimentalFoundationApi
 @Composable
-fun HomeScreen(onNavigateToMall: () -> Unit = {}) {
+fun HomeScreen(onNavigateToMall: () -> Unit = {}, onNavigateToProfile: () -> Unit = {}) {
     val initialVideos = remember { MockData.videos }
     val videos = remember { mutableStateListOf<String>().apply { addAll(initialVideos) } }
     var isLoading by remember { mutableStateOf(false) }
@@ -196,7 +198,15 @@ fun HomeScreen(onNavigateToMall: () -> Unit = {}) {
                     VerticalPager(
                         state = pagerState,
                         beyondBoundsPageCount = 1,
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .pointerInput(Unit) {
+                                detectHorizontalDragGestures { change, dragAmount ->
+                                    if (dragAmount < -30f) { // Left swipe
+                                        onNavigateToProfile()
+                                    }
+                                }
+                            }
                     ) { vPage ->
                         val isVisible = pagerState.currentPage == vPage && horizontalPagerState.currentPage == 3
                         VideoPage(
@@ -293,6 +303,9 @@ fun TopNavigationBar(
 @Composable
 fun VideoPage(url: String, isVisible: Boolean) {
     val hearts = remember { mutableStateListOf<LikeHeart>() }
+    var showCommentsSheet by remember { mutableStateOf(false) }
+    var showShareSheet by remember { mutableStateOf(false) }
+    var showLongPressMenu by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -302,6 +315,9 @@ fun VideoPage(url: String, isVisible: Boolean) {
                 detectTapGestures(
                     onDoubleTap = { offset ->
                         hearts.add(LikeHeart(x = offset.x, y = offset.y))
+                    },
+                    onLongPress = {
+                        showLongPressMenu = true
                     }
                 )
             }
@@ -316,23 +332,34 @@ fun VideoPage(url: String, isVisible: Boolean) {
             )
         }
 
-        var showCommentsSheet by remember { mutableStateOf(false) }
+
+
 
         // Video Player Layer
         VideoPlayer(url = url, isVisible = isVisible, isDucked = showCommentsSheet)
 
         // UI Layer
         RightSideActions(
-            onCommentClick = { showCommentsSheet = true },
+            onCommentClick = { showCommentsSheet = true }, onShareClick = { showShareSheet = true },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .navigationBarsPadding() // Avoid system nav bar
                 .padding(bottom = 100.dp, end = 16.dp)
         )
 
+
         if (showCommentsSheet) {
             CommentsBottomSheet(onDismiss = { showCommentsSheet = false })
         }
+
+        if (showShareSheet) {
+            ShareBottomSheet(onDismiss = { showShareSheet = false })
+        }
+
+        if (showLongPressMenu) {
+            LongPressMenu(onDismiss = { showLongPressMenu = false })
+        }
+
 
         // Bottom Info Layer
         Column(
@@ -580,13 +607,14 @@ fun VideoPlayer(url: String, isVisible: Boolean, isDucked: Boolean = false) {
 }
 
 @Composable
-fun RightSideActions(onCommentClick: () -> Unit, modifier: Modifier = Modifier) {
+fun RightSideActions(onCommentClick: () -> Unit, onShareClick: () -> Unit, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier.padding(bottom = 120.dp, end = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
         // Profile Picture with Follow Button
+        var isFollowed by remember { mutableStateOf(false) }
         Box(contentAlignment = Alignment.BottomCenter, modifier = Modifier.padding(bottom = 8.dp)) {
             AsyncImage(
                 model = "https://lh3.googleusercontent.com/aida-public/AB6AXuAFRJnvPgLJTZNlp2beH3rKkgrIq79yAByHrNztp31d3S5Ql5HDcVsXOtOffLNhtuX4qaajnkwFgdAFL5OCuwdLzNBs9QDqqeiJejfbJPzXVeArU5eX10395R9he1IM-Eoy2kh6lmFA_v6n8auwbHfT6iBKAZdZODWoz0wWWJn57dDE7AybZhChYpQ6vVgt7ESF1A6VaNFSrjxMK6MuHftCkoxICASpEx6ooT2VDLv3mlsVbLQNXGa1uCeoOWCamXI699HkQHUvmOk",
@@ -597,23 +625,30 @@ fun RightSideActions(onCommentClick: () -> Unit, modifier: Modifier = Modifier) 
                     .clip(CircleShape)
                     .border(1.5.dp, Color.White, CircleShape)
             )
-            Icon(
-                imageVector = Icons.Filled.AddCircle,
-                contentDescription = "Follow",
-                tint = Color(0xFFFF2C55), // Douyin Red
-                modifier = Modifier
-                    .size(20.dp)
-                    .offset(y = 10.dp)
-                    .clip(CircleShape)
-                    .background(Color.White)
-            )
+
+            androidx.compose.animation.AnimatedVisibility(
+                visible = !isFollowed,
+                exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.scaleOut(),
+                modifier = Modifier.offset(y = 10.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.AddCircle,
+                    contentDescription = "Follow",
+                    tint = Color(0xFFFF2C55),
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clip(CircleShape)
+                        .background(Color.White)
+                        .clickable { isFollowed = true }
+                )
+            }
         }
 
         // Interactive Buttons
         LikeButton()
         CommentButton(onClick = onCommentClick)
         FavoriteButton()
-        ShareButton()
+        ShareButton(onClick = onShareClick)
 
         // Rotating Music Disc
         Box {
@@ -701,8 +736,15 @@ fun FavoriteButton() {
 }
 
 @Composable
-fun ShareButton() {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+fun ShareButton(onClick: () -> Unit) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.clickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = null,
+            onClick = onClick
+        )
+    ) {
         Icon(
             imageVector = Icons.Filled.Share,
             contentDescription = "Share",
@@ -1047,6 +1089,77 @@ fun CommentsBottomSheet(onDismiss: () -> Unit) {
                     ),
                     textStyle = MaterialTheme.typography.bodyMedium
                 )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ShareBottomSheet(onDismiss: () -> Unit) {
+    val sheetState = rememberModalBottomSheetState()
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = Color(0xFF161823),
+        dragHandle = { BottomSheetDefaults.DragHandle(color = Color.Gray) }
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp)) {
+            Text(
+                "分享到",
+                color = Color.White,
+                modifier = Modifier.padding(16.dp),
+                style = MaterialTheme.typography.titleMedium
+            )
+            LazyRow(
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
+                val shares = listOf("私信", "群聊", "朋友圈", "微信", "QQ", "复制链接")
+                items(shares) { item ->
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Box(
+                            modifier = Modifier.size(56.dp).clip(CircleShape).background(Color(0xFF2E2E2E)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Filled.Share, contentDescription = null, tint = Color.White)
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(item, color = Color.Gray, fontSize = 12.sp)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun LongPressMenu(onDismiss: () -> Unit) {
+    Box(
+        modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)).clickable { onDismiss() },
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier
+                .width(280.dp)
+                .background(Color(0xFF2E2E2E), RoundedCornerShape(16.dp))
+                .padding(vertical = 8.dp)
+        ) {
+            val options = listOf("不感兴趣", "保存视频", "收藏", "举报")
+            options.forEach { option ->
+                Text(
+                    text = option,
+                    color = Color.White,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onDismiss() }
+                        .padding(16.dp),
+                    textAlign = TextAlign.Center
+                )
+                if (option != options.last()) {
+                    HorizontalDivider(color = Color.Gray.copy(alpha = 0.3f), thickness = 0.5.dp)
+                }
             }
         }
     }

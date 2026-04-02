@@ -194,7 +194,7 @@ fun DouyinLiteApp(navController: NavHostController) {
             modifier = Modifier.padding(bottom = if (noBottomPadding) 0.dp else innerPadding.calculateBottomPadding())
         ) {
             composable(BottomNavItem.Home.route) {
-                HomeScreen(onNavigateToMall = { navController.navigate("mall_standalone") })
+                HomeScreen(onNavigateToMall = { navController.navigate("mall_standalone") }, onNavigateToProfile = { navController.navigate(BottomNavItem.Me.route) })
             }
             composable(BottomNavItem.Friends.route) {
                 FriendsScreen()
