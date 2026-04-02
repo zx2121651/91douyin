@@ -1,4 +1,5 @@
-package com.app.douyin.pro.feature.profile.ui
+import os
+content = r"""package com.app.douyin.pro.feature.profile.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -230,7 +231,7 @@ fun ProfileScreen() {
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "${Random.nextInt(100, 9999)}",
+                            text = f"{Random.nextInt(100, 9999)}",
                             color = Color.White.copy(alpha = 0.8f),
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Medium
@@ -249,3 +250,6 @@ fun StatItem(count: String, label: String) {
         Text(text = label, color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
     }
 }
+"""
+with open('DouyinLite/feature_profile/src/main/java/com/app/douyin/pro/feature/profile/ui/ProfileScreen.kt', 'w') as f:
+    f.write(content)
