@@ -123,7 +123,7 @@ import androidx.compose.ui.layout.ContentScale
 
 @androidx.compose.foundation.ExperimentalFoundationApi
 @Composable
-fun HomeScreen(onNavigateToMall: () -> Unit = {}) {
+fun HomeScreen(onNavigateToMall: () -> Unit = {}, onNavigateToProfile: () -> Unit = {}) {
     val initialVideos = remember { MockData.videos }
     val videos = remember { mutableStateListOf<String>().apply { addAll(initialVideos) } }
     var isLoading by remember { mutableStateOf(false) }
@@ -198,7 +198,15 @@ fun HomeScreen(onNavigateToMall: () -> Unit = {}) {
                     VerticalPager(
                         state = pagerState,
                         beyondBoundsPageCount = 1,
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .pointerInput(Unit) {
+                                detectHorizontalDragGestures { change, dragAmount ->
+                                    if (dragAmount < -30f) { // Left swipe
+                                        onNavigateToProfile()
+                                    }
+                                }
+                            }
                     ) { vPage ->
                         val isVisible = pagerState.currentPage == vPage && horizontalPagerState.currentPage == 3
                         VideoPage(
