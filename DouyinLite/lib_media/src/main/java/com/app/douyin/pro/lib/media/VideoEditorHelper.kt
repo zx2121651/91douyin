@@ -2,15 +2,15 @@ package com.app.douyin.pro.lib.media
 
 import android.content.Context
 import android.net.Uri
+import androidx.annotation.OptIn
 import androidx.media3.common.MediaItem
-import androidx.media3.common.MimeTypes
-import androidx.media3.transformer.Composition
-import androidx.media3.transformer.EditedMediaItem
-import androidx.media3.transformer.EditedMediaItemSequence
-import androidx.media3.transformer.ExportException
-import androidx.media3.transformer.ExportResult
-import androidx.media3.transformer.Transformer
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.transformer.*
+import com.app.douyin.pro.lib.media.model.EditingTimeline
+import com.app.douyin.pro.lib.media.model.VideoClip
+import java.io.File
 
+@OptIn(UnstableApi::class)
 class VideoEditorHelper(private val context: Context) {
 
     private var transformer: Transformer? = null
@@ -22,118 +22,74 @@ class VideoEditorHelper(private val context: Context) {
     }
 
     /**
-     * Initializes the Transformer.
+     * 将真实的 Timeline 模型转换为 Media3 Composition 并开始导出
      */
-    fun setupTransformer(listener: ExportListener) {
-        transformer = Transformer.Builder(context)
+    fun exportTimeline(
+        timeline: EditingTimeline,
+        outputPath: String,
+        listener: ExportListener
+    ) {
+        val transformerBuilder = Transformer.Builder(context)
             .addListener(object : Transformer.Listener {
                 override fun onCompleted(composition: Composition, exportResult: ExportResult) {
-                    // Handled below, since there are two overrides (one deprecated in some versions, but we use the new one)
+                    listener.onCompleted(Uri.fromFile(File(outputPath)))
                 }
 
                 override fun onError(composition: Composition, exportResult: ExportResult, exportException: ExportException) {
                     listener.onError(exportException)
                 }
             })
-            // Use the standard start method to supply an output path, so we don't need all onCompleted overrides to carry output uri.
-            .build()
-    }
 
-    /**
-     * Trims a video and removes audio, then exports it to the specified output path.
-     */
-    fun exportTrimmedAndMutedVideo(
-        inputUri: Uri,
-        outputPath: String,
-        startMs: Long,
-        endMs: Long,
-        listener: ExportListener
-    ) {
-        val transformerBuilder = Transformer.Builder(context)
+        val transformer = transformerBuilder.build()
+        this.transformer = transformer
 
-        val newTransformer = transformerBuilder.addListener(object : Transformer.Listener {
-            override fun onCompleted(composition: Composition, exportResult: ExportResult) {
-                listener.onCompleted(Uri.parse("file://$outputPath"))
-            }
+        // 构建视频序列 (Video Sequence)
+        val editedMediaItems = timeline.videoMainTrack.map { clip ->
+            val mediaItem = MediaItem.Builder()
+                .setUri(clip.uri)
+                .setClippingConfiguration(
+                    MediaItem.ClippingConfiguration.Builder()
+                        .setStartPositionMs(clip.startMs)
+                        .setEndPositionMs(clip.endMs)
+                        .build()
+                )
+                .build()
 
-            override fun onError(composition: Composition, exportResult: ExportResult, exportException: ExportException) {
-                listener.onError(exportException)
-            }
-        }).build()
+            EditedMediaItem.Builder(mediaItem)
+                .setRemoveAudio(clip.volume == 0f)
+                .build()
+        }
 
-        this.transformer = newTransformer
+        val videoSequence = EditedMediaItemSequence(editedMediaItems)
 
-        // 1. Configure trimming
-        val mediaItem = MediaItem.Builder()
-            .setUri(inputUri)
-            .setClippingConfiguration(
-                MediaItem.ClippingConfiguration.Builder()
-                    .setStartPositionMs(startMs)
-                    .setEndPositionMs(endMs)
-                    .build()
-            )
-            .build()
+        // 构建音频序列 (Audio Tracks)
+        val audioSequences = timeline.audioTracks.map { track ->
+            val mediaItem = MediaItem.Builder()
+                .setUri(track.uri)
+                .setClippingConfiguration(
+                    MediaItem.ClippingConfiguration.Builder()
+                        .setStartPositionMs(track.clipStartMs)
+                        .setEndPositionMs(track.clipEndMs)
+                        .build()
+                )
+                .build()
 
-        // 2. Remove audio
-        val editedMediaItem = EditedMediaItem.Builder(mediaItem)
-            .setRemoveAudio(true)
-            .build()
+            EditedMediaItemSequence(EditedMediaItem.Builder(mediaItem).build())
+        }
 
-        // 3. Start export
-        newTransformer.start(editedMediaItem, outputPath)
-    }
+        val sequences = mutableListOf<EditedMediaItemSequence>()
+        sequences.add(videoSequence)
+        sequences.addAll(audioSequences)
 
-    /**
-     * Replaces the audio of a video by stripping the original and mixing in a new audio file.
-     */
-    fun exportVideoWithReplacedAudio(
-        videoUri: Uri,
-        audioUri: Uri,
-        outputPath: String,
-        listener: ExportListener
-    ) {
-        val newTransformer = Transformer.Builder(context).addListener(object : Transformer.Listener {
-            override fun onCompleted(composition: Composition, exportResult: ExportResult) {
-                listener.onCompleted(Uri.parse("file://$outputPath"))
-            }
+        val composition = Composition.Builder(sequences).build()
 
-            override fun onError(composition: Composition, exportResult: ExportResult, exportException: ExportException) {
-                listener.onError(exportException)
-            }
-        }).build()
-
-        this.transformer = newTransformer
-
-        // Mute original video
-        val videoItem = MediaItem.fromUri(videoUri)
-        val mutedVideoEditedItem = EditedMediaItem.Builder(videoItem)
-            .setRemoveAudio(true)
-            .build()
-        val videoSequence = EditedMediaItemSequence(mutedVideoEditedItem)
-
-        // New audio track
-        val audioItem = MediaItem.fromUri(audioUri)
-        val audioEditedItem = EditedMediaItem.Builder(audioItem)
-            .setRemoveVideo(true)
-            .build()
-        val audioSequence = EditedMediaItemSequence(audioEditedItem)
-
-        // Combine
-        val composition = Composition.Builder(listOf(videoSequence, audioSequence))
-            // .experimentalSetForceAudioTrack(true) // Sometimes necessary if audio track is missing
-            .build()
-
-        newTransformer.start(composition, outputPath)
+        transformer.start(composition, outputPath)
     }
 
     fun getProgress(): Int {
-        val progressHolder = androidx.media3.transformer.ProgressHolder()
+        val progressHolder = ProgressHolder()
         val state = transformer?.getProgress(progressHolder)
-        return if (state == Transformer.PROGRESS_STATE_AVAILABLE) {
-            progressHolder.progress
-        } else {
-            -1
-        }
+        return if (state == Transformer.PROGRESS_STATE_AVAILABLE) progressHolder.progress else -1
     }
 
     fun cancel() {
