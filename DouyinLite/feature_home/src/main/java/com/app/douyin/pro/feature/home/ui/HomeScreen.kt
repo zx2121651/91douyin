@@ -120,14 +120,20 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.ui.layout.ContentScale
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.app.douyin.pro.feature.home.viewmodel.HomeViewModel
+import androidx.compose.runtime.collectAsState
+
 
 @androidx.compose.foundation.ExperimentalFoundationApi
 @Composable
-fun HomeScreen(onNavigateToMall: () -> Unit = {}, onNavigateToProfile: () -> Unit = {}) {
-    val initialVideos = remember { MockData.videos }
-    val videos = remember { mutableStateListOf<String>().apply { addAll(initialVideos) } }
-    var isLoading by remember { mutableStateOf(false) }
-    var pageCount by remember { mutableIntStateOf(1) }
+fun HomeScreen(
+    onNavigateToMall: () -> Unit = {},
+    onNavigateToProfile: () -> Unit = {},
+    viewModel: HomeViewModel = hiltViewModel()
+) {
+    val videos = viewModel.videos
+    val isLoading by viewModel.isLoading.collectAsState()
 
     // Using BeyondBoundsPageCount = 1 to pre-load adjacent pages for smoother scrolling
     val pagerState = rememberPagerState(pageCount = { videos.size })
@@ -140,14 +146,10 @@ fun HomeScreen(onNavigateToMall: () -> Unit = {}, onNavigateToProfile: () -> Uni
     }
 
     // Pagination logic
-    LaunchedEffect(pagerState.currentPage) {
+    LaunchedEffect(pagerState.currentPage, videos.size) {
         // Load more when reaching the 2nd to last item
-        if (pagerState.currentPage >= videos.size - 2 && !isLoading) {
-            isLoading = true
-            val newVideos = MockData.loadMoreVideos(pageCount)
-            videos.addAll(newVideos)
-            pageCount++
-            isLoading = false
+        if (videos.isNotEmpty() && pagerState.currentPage >= videos.size - 2 && !isLoading) {
+            viewModel.loadMore()
         }
     }
 

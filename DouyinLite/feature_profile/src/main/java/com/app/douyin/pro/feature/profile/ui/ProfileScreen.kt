@@ -29,9 +29,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import kotlin.random.Random
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.app.douyin.pro.feature.profile.viewmodel.ProfileViewModel
+
 
 @Composable
-fun ProfileScreen() {
+fun ProfileScreen(
+    viewModel: ProfileViewModel = hiltViewModel()
+) {
+    val username by viewModel.username.collectAsState()
+    val douyinId by viewModel.douyinId.collectAsState()
     val darkBg = Color(0xFF161823)
     val grayText = Color(0xFF8E8E93)
 
@@ -111,13 +118,13 @@ fun ProfileScreen() {
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "南京最帅程序员",
+                text = username,
                 color = Color.White,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "抖音号: JulesCode_99",
+                text = "抖音号: ",
                 color = Color.White.copy(alpha = 0.6f),
                 fontSize = 12.sp,
                 modifier = Modifier.padding(top = 4.dp)
