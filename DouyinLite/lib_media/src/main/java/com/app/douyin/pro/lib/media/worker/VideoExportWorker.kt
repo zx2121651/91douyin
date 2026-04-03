@@ -8,6 +8,8 @@ import androidx.work.workDataOf
 import com.app.douyin.pro.lib.media.VideoEditorHelper
 import com.app.douyin.pro.lib.media.model.EditingTimeline
 import com.app.douyin.pro.lib.media.model.VideoClip
+import com.app.douyin.pro.lib.media.util.MediaMetadataUtils
+
 import kotlinx.coroutines.CompletableDeferred
 
 class VideoExportWorker(
@@ -19,14 +21,16 @@ class VideoExportWorker(
         val outputPath = inputData.getString("output_path") ?: return Result.failure()
         val videoUri = inputData.getString("video_uri") ?: return Result.failure()
 
-        // 简化的 Timeline 重构（实际应从数据库或持久化 JSON 中读取）
+        // 使用真实元数据重构 Timeline
+        val uri = Uri.parse(videoUri)
+        val duration = MediaMetadataUtils.getVideoDurationMs(applicationContext, uri)
         val timeline = EditingTimeline().apply {
             videoMainTrack.add(VideoClip(
-                id = "main",
-                uri = Uri.parse(videoUri),
+                id = "main_export",
+                uri = uri,
                 startMs = 0L,
-                endMs = 5000L, // Mock 5s
-                durationMs = 5000L
+                endMs = if (duration > 0) duration else 5000L,
+                durationMs = if (duration > 0) duration else 5000L
             ))
         }
 

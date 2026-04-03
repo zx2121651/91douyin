@@ -1,6 +1,8 @@
 package com.app.douyin.pro.feature.edit.ui.vm
 
 import android.net.Uri
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.launch
 import androidx.lifecycle.ViewModel
 import com.app.douyin.pro.feature.edit.domain.model.ClipItem
 import com.app.douyin.pro.feature.edit.domain.model.EditTrack

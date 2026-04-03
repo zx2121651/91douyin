@@ -9,6 +9,8 @@ import androidx.media3.transformer.*
 import com.app.douyin.pro.lib.media.model.EditingTimeline
 import com.app.douyin.pro.lib.media.model.VideoClip
 import java.io.File
+import kotlinx.coroutines.*
+
 
 @OptIn(UnstableApi::class)
 class VideoEditorHelper(private val context: Context) {
@@ -84,6 +86,22 @@ class VideoEditorHelper(private val context: Context) {
         val composition = Composition.Builder(sequences).build()
 
         transformer.start(composition, outputPath)
+
+        // 启动协程轮询进度
+        CoroutineScope(Dispatchers.Main).launch {
+            while (transformer.getProgress(ProgressHolder()) != Transformer.PROGRESS_STATE_NOT_STARTED) {
+                val progressHolder = ProgressHolder()
+                val state = transformer.getProgress(progressHolder)
+                if (state == Transformer.PROGRESS_STATE_AVAILABLE) {
+                    listener.onProgress(progressHolder.progress)
+                } else if (state == Transformer.PROGRESS_STATE_WAITING_FOR_AVAILABILITY) {
+                    // Do nothing
+                } else {
+                    break
+                }
+                delay(200)
+            }
+        }
     }
 
     fun getProgress(): Int {
