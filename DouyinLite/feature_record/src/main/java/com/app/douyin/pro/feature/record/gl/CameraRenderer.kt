@@ -3,7 +3,7 @@ package com.app.douyin.pro.feature.record.gl
 import android.content.Context
 import android.graphics.SurfaceTexture
 import android.opengl.GLES11Ext
-import android.opengl.GLES20
+import android.opengl.GLES30
 import android.opengl.GLSurfaceView
 import android.opengl.Matrix
 import java.nio.ByteBuffer
@@ -19,6 +19,7 @@ class CameraRenderer(
 
     private var programId = -1
     private var oesTextureId = -1
+    private var vaoId = -1
     private var surfaceTexture: SurfaceTexture? = null
 
     private var aPositionHandle = -1
@@ -57,10 +58,34 @@ class CameraRenderer(
         val fragmentShaderSource = OpenGLUtils.readShaderFromAssets(context, "shaders/fragment_shader.glsl")
 
         programId = OpenGLUtils.createProgram(vertexShaderSource, fragmentShaderSource)
-        aPositionHandle = GLES20.glGetAttribLocation(programId, "aPosition")
-        aTextureCoordHandle = GLES20.glGetAttribLocation(programId, "aTextureCoord")
-        uMVPMatrixHandle = GLES20.glGetUniformLocation(programId, "uMVPMatrix")
-        uSTMatrixHandle = GLES20.glGetUniformLocation(programId, "uSTMatrix")
+        uMVPMatrixHandle = GLES30.glGetUniformLocation(programId, "uMVPMatrix")
+        uSTMatrixHandle = GLES30.glGetUniformLocation(programId, "uSTMatrix")
+
+        // Create VAO
+        val vaos = IntArray(1)
+        GLES30.glGenVertexArrays(1, vaos, 0)
+        vaoId = vaos[0]
+
+        // Create VBOs
+        val vbos = IntArray(2)
+        GLES30.glGenBuffers(2, vbos, 0)
+
+        GLES30.glBindVertexArray(vaoId)
+
+        // Position Buffer
+        GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, vbos[0])
+        GLES30.glBufferData(GLES30.GL_ARRAY_BUFFER, vertexData.size * 4, vertexBuffer, GLES30.GL_STATIC_DRAW)
+        GLES30.glEnableVertexAttribArray(0) // layout location 0
+        GLES30.glVertexAttribPointer(0, 2, GLES30.GL_FLOAT, false, 0, 0)
+
+        // Texture Buffer
+        GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, vbos[1])
+        GLES30.glBufferData(GLES30.GL_ARRAY_BUFFER, textureData.size * 4, textureBuffer, GLES30.GL_STATIC_DRAW)
+        GLES30.glEnableVertexAttribArray(1) // layout location 1
+        GLES30.glVertexAttribPointer(1, 2, GLES30.GL_FLOAT, false, 0, 0)
+
+        GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, 0)
+        GLES30.glBindVertexArray(0)
 
         oesTextureId = OpenGLUtils.createOESTextureObject()
         surfaceTexture = SurfaceTexture(oesTextureId)
@@ -71,13 +96,13 @@ class CameraRenderer(
     }
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
-        GLES20.glViewport(0, 0, width, height)
+        GLES30.glViewport(0, 0, width, height)
         Matrix.setIdentityM(mvpMatrix, 0)
     }
 
     override fun onDrawFrame(gl: GL10?) {
-        GLES20.glClearColor(0.0f, 0.0f, 0.0f, 1.0f)
-        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
+        GLES30.glClearColor(0.0f, 0.0f, 0.0f, 1.0f)
+        GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT or GLES30.GL_DEPTH_BUFFER_BIT)
 
         if (updateSurface) {
             surfaceTexture?.updateTexImage()
@@ -85,27 +110,19 @@ class CameraRenderer(
             updateSurface = false
         }
 
-        GLES20.glUseProgram(programId)
+        GLES30.glUseProgram(programId)
 
-        GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
-        GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, oesTextureId)
+        GLES30.glActiveTexture(GLES30.GL_TEXTURE0)
+        GLES30.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, oesTextureId)
 
-        vertexBuffer.position(0)
-        GLES20.glVertexAttribPointer(aPositionHandle, 2, GLES20.GL_FLOAT, false, 0, vertexBuffer)
-        GLES20.glEnableVertexAttribArray(aPositionHandle)
+        GLES30.glUniformMatrix4fv(uMVPMatrixHandle, 1, false, mvpMatrix, 0)
+        GLES30.glUniformMatrix4fv(uSTMatrixHandle, 1, false, stMatrix, 0)
 
-        textureBuffer.position(0)
-        GLES20.glVertexAttribPointer(aTextureCoordHandle, 2, GLES20.GL_FLOAT, false, 0, textureBuffer)
-        GLES20.glEnableVertexAttribArray(aTextureCoordHandle)
+        GLES30.glBindVertexArray(vaoId)
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, 4)
+        GLES30.glBindVertexArray(0)
 
-        GLES20.glUniformMatrix4fv(uMVPMatrixHandle, 1, false, mvpMatrix, 0)
-        GLES20.glUniformMatrix4fv(uSTMatrixHandle, 1, false, stMatrix, 0)
-
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
-
-        GLES20.glDisableVertexAttribArray(aPositionHandle)
-        GLES20.glDisableVertexAttribArray(aTextureCoordHandle)
-        GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, 0)
+        GLES30.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, 0)
     }
 
     override fun onFrameAvailable(surfaceTexture: SurfaceTexture?) {
