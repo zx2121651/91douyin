@@ -4,14 +4,16 @@ import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ContentCut
+import androidx.compose.material.icons.automirrored.filled.Redo
+import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.app.douyin.pro.feature.edit.ui.component.TimelineArea
 import com.app.douyin.pro.feature.edit.ui.vm.EditViewModel
@@ -27,50 +29,34 @@ fun EditScreen(
 
     LaunchedEffect(videoUri) {
         if (videoUri.isNotEmpty()) {
-            // In real app, we would get duration from MediaMetadataRetriever
             viewModel.initProject(Uri.parse(videoUri), 15000L)
         }
     }
 
     Scaffold(
         topBar = {
-            // Simplified TopBar
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                TextButton(onClick = onClose) { Text("取消", color = Color.White) }
-                Button(onClick = onNext) { Text("下一步") }
-            }
+            TopBar(
+                canUndo = uiState.canUndo,
+                canRedo = uiState.canRedo,
+                onUndo = viewModel::undo,
+                onRedo = viewModel::redo,
+                onClose = onClose,
+                onNext = onNext
+            )
         },
         bottomBar = {
-            Column {
-                // Quick Actions (Split)
-                Row(
-                    modifier = Modifier.fillMaxWidth().background(Color(0xFF161823)).padding(8.dp),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    IconButton(onClick = { viewModel.splitClip() }) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(Icons.Filled.ContentCut, contentDescription = "分割", tint = Color.White)
-                            Text("分割", color = Color.White, fontSize = 10.sp)
-                        }
-                    }
-                }
-                // Placeholder for Toolbar
-                Box(modifier = Modifier.fillMaxWidth().height(80.dp).background(Color.Black))
-            }
+            BottomBar(
+                onSplit = viewModel::splitClip,
+                onDelete = viewModel::deleteSelectedClip
+            )
         },
         containerColor = Color(0xFF161823)
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
-            // Preview Placeholder
-            Box(
-                modifier = Modifier.weight(1f).fillMaxWidth().padding(16.dp).background(Color.Black),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("Video Preview", color = Color.White)
-            }
+            PreviewPanel(
+                isPlaying = uiState.isPlaying,
+                onTogglePlay = viewModel::togglePlay
+            )
 
             TimelineArea(
                 tracks = uiState.tracks,
@@ -78,5 +64,85 @@ fun EditScreen(
                 totalDurationMs = uiState.totalDurationMs
             )
         }
+    }
+}
+
+@Composable
+fun TopBar(
+    canUndo: Boolean,
+    canRedo: Boolean,
+    onUndo: () -> Unit,
+    onRedo: () -> Unit,
+    onClose: () -> Unit,
+    onNext: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        IconButton(onClick = onClose) {
+            Icon(Icons.Filled.Close, contentDescription = "Close", tint = Color.White)
+        }
+
+        Row {
+            IconButton(onClick = onUndo, enabled = canUndo) {
+                Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = "Undo", tint = if (canUndo) Color.White else Color.Gray)
+            }
+            IconButton(onClick = onRedo, enabled = canRedo) {
+                Icon(Icons.AutoMirrored.Filled.Redo, contentDescription = "Redo", tint = if (canRedo) Color.White else Color.Gray)
+            }
+        }
+
+        Button(
+            onClick = onNext,
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF2C55)),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp)
+        ) {
+            Text("下一步", fontSize = 14.sp)
+        }
+    }
+}
+
+@Composable
+fun PreviewPanel(isPlaying: Boolean, onTogglePlay: () -> Unit) {
+    Box(
+        modifier = Modifier.weight(1f).fillMaxWidth().padding(16.dp).background(Color.Black),
+        contentAlignment = Alignment.Center
+    ) {
+        IconButton(onClick = onTogglePlay) {
+            Icon(
+                imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.5f),
+                modifier = Modifier.size(64.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun BottomBar(onSplit: () -> Unit, onDelete: () -> Unit) {
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth().background(Color(0xFF161823)).padding(8.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            EditActionItem(Icons.Filled.ContentCut, "分割", onSplit)
+            EditActionItem(Icons.Filled.Delete, "删除", onDelete)
+        }
+        Box(modifier = Modifier.fillMaxWidth().height(80.dp).background(Color.Black))
+    }
+}
+
+@Composable
+fun EditActionItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = androidx.compose.ui.Modifier.clickable { onClick() }.padding(8.dp)
+    ) {
+        Icon(icon, contentDescription = label, tint = Color.White, modifier = Modifier.size(24.dp))
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(label, color = Color.White, fontSize = 10.sp)
     }
 }
