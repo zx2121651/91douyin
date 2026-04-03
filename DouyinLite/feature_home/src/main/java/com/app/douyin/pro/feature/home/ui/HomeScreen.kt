@@ -1,6 +1,11 @@
 @file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class, androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.app.douyin.pro.feature.home.ui
 
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.app.douyin.pro.feature.home.presentation.HomeViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+
+
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.animation.core.Spring
@@ -123,11 +128,13 @@ import androidx.compose.ui.layout.ContentScale
 
 @androidx.compose.foundation.ExperimentalFoundationApi
 @Composable
-fun HomeScreen(onNavigateToMall: () -> Unit = {}, onNavigateToProfile: () -> Unit = {}) {
-    val initialVideos = remember { MockData.videos }
-    val videos = remember { mutableStateListOf<String>().apply { addAll(initialVideos) } }
-    var isLoading by remember { mutableStateOf(false) }
-    var pageCount by remember { mutableIntStateOf(1) }
+fun HomeScreen(
+    onNavigateToMall: () -> Unit = {},
+    onNavigateToProfile: () -> Unit = {},
+    viewModel: HomeViewModel = hiltViewModel()
+) {
+    val videos by viewModel.videos.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
 
     // Using BeyondBoundsPageCount = 1 to pre-load adjacent pages for smoother scrolling
     val pagerState = rememberPagerState(pageCount = { videos.size })
@@ -143,11 +150,7 @@ fun HomeScreen(onNavigateToMall: () -> Unit = {}, onNavigateToProfile: () -> Uni
     LaunchedEffect(pagerState.currentPage) {
         // Load more when reaching the 2nd to last item
         if (pagerState.currentPage >= videos.size - 2 && !isLoading) {
-            isLoading = true
-            val newVideos = MockData.loadMoreVideos(pageCount)
-            videos.addAll(newVideos)
-            pageCount++
-            isLoading = false
+            viewModel.loadMore()
         }
     }
 
