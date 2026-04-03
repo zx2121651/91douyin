@@ -14,6 +14,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import com.app.douyin.pro.feature.edit.domain.model.EditTrack
 import com.app.douyin.pro.feature.edit.domain.model.TrackType
 
@@ -22,6 +24,8 @@ fun TimelineArea(
     tracks: List<EditTrack>,
     currentTimeMs: Long,
     totalDurationMs: Long,
+    onSeek: (Long) -> Unit,
+    onSelectClip: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -31,10 +35,9 @@ fun TimelineArea(
             .background(Color(0xFF1E202B))
             .padding(top = 16.dp, bottom = 12.dp)
     ) {
-        // Time Ruler (Simplified)
         Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
              Text(
-                "00:00 / ${formatTime(totalDurationMs)}",
+                "${formatTime(currentTimeMs)} / ${formatTime(totalDurationMs)}",
                 color = Color.White.copy(alpha = 0.5f),
                 fontSize = 10.sp
             )
@@ -42,20 +45,31 @@ fun TimelineArea(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .pointerInput(totalDurationMs) {
+                    detectDragGestures { _, dragAmount ->
+                        val ratio = dragAmount.x / size.width
+                        val seekDelta = (ratio * totalDurationMs).toLong()
+                        onSeek((currentTimeMs + seekDelta).coerceIn(0, totalDurationMs))
+                    }
+                }
+        ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 tracks.forEach { track ->
-                    TrackRow(track)
+                    TrackRow(track, onSelectClip)
                     Spacer(modifier = Modifier.height(8.dp))
                 }
             }
 
-            // Playhead
+            val progress = if (totalDurationMs > 0) currentTimeMs.toFloat() / totalDurationMs else 0f
             Box(
                 modifier = Modifier
-                    .align(Alignment.Center)
-                    .width(2.dp)
                     .fillMaxHeight()
+                    .width(2.dp)
+                    .offset(x = (16.dp + (320.dp * progress))) // Approximate track width
                     .background(Color.White)
             )
         }
@@ -63,7 +77,7 @@ fun TimelineArea(
 }
 
 @Composable
-fun TrackRow(track: EditTrack) {
+fun TrackRow(track: EditTrack, onSelectClip: (String) -> Unit) {
     val bgColor = when(track.type) {
         TrackType.VIDEO -> Color(0xFF2E303C)
         TrackType.AUDIO -> Color(0xFF00B3FF).copy(alpha = 0.15f)
@@ -83,9 +97,10 @@ fun TrackRow(track: EditTrack) {
             Box(
                 modifier = Modifier
                     .fillMaxHeight()
-                    .weight(clip.getTimelineDurationMs().toFloat())
+                    .weight(clip.getTimelineDurationMs().coerceAtLeast(1L).toFloat())
                     .background(Color.Gray.copy(alpha = 0.3f))
-                    .border(0.5.dp, Color.Black.copy(alpha = 0.3f)),
+                    .border(0.5.dp, Color.Black.copy(alpha = 0.3f))
+                    .clickable { onSelectClip(clip.id) },
                 contentAlignment = Alignment.Center
             ) {
                 if (track.type == TrackType.VIDEO) {

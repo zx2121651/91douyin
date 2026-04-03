@@ -15,7 +15,9 @@ import java.util.Stack
 import javax.inject.Inject
 
 @HiltViewModel
-class EditViewModel @Inject constructor() : ViewModel() {
+class EditViewModel @Inject constructor(
+    @dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(EditUiState())
     val uiState: StateFlow<EditUiState> = _uiState.asStateFlow()
@@ -23,6 +25,7 @@ class EditViewModel @Inject constructor() : ViewModel() {
     // 撤销重做栈
     private val undoStack = Stack<List<EditTrack>>()
     private val redoStack = Stack<List<EditTrack>>()
+    private val editorHelper = com.app.douyin.pro.lib.media.VideoEditorHelper(context)
 
     fun initProject(videoUri: Uri, duration: Long) {
         val initialClip = ClipItem(
@@ -151,6 +154,45 @@ class EditViewModel @Inject constructor() : ViewModel() {
 
     fun updateCurrentTime(timeMs: Long) {
         _uiState.update { it.copy(currentTimeMs = timeMs) }
+    }
+
+
+    fun exportProject(onSuccess: (android.net.Uri) -> Unit) {
+        val timeline = com.app.douyin.pro.lib.media.model.EditingTimeline().apply {
+            _uiState.value.tracks.forEach { track ->
+                if (track.type == com.app.douyin.pro.feature.edit.domain.model.TrackType.VIDEO) {
+                    track.clips.forEach { clip ->
+                        this.videoMainTrack.add(com.app.douyin.pro.lib.media.model.VideoClip(
+                            id = clip.id,
+                            uri = clip.sourceUri,
+                            startMs = clip.startInSourceMs,
+                            endMs = clip.endInSourceMs,
+                            durationMs = clip.sourceDurationMs,
+                            speed = clip.speed,
+                            volume = clip.volume
+                        ))
+                    }
+                }
+            }
+        }
+
+        val outputPath = java.io.File(context.cacheDir, "exported_user_video.mp4").absolutePath
+        _uiState.update { it.copy(isExporting = true, exportProgress = 0) }
+
+        editorHelper.exportTimeline(timeline, outputPath, object : com.app.douyin.pro.lib.media.VideoEditorHelper.ExportListener {
+            override fun onProgress(progress: Int) {
+                _uiState.update { it.copy(exportProgress = progress) }
+            }
+
+            override fun onCompleted(outputUri: android.net.Uri) {
+                _uiState.update { it.copy(isExporting = false) }
+                onSuccess(outputUri)
+            }
+
+            override fun onError(exception: Exception) {
+                _uiState.update { it.copy(isExporting = false) }
+            }
+        })
     }
 
     fun togglePlay() {

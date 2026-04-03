@@ -36,12 +36,13 @@ fun EditScreen(
     Scaffold(
         topBar = {
             TopBar(
+                isExporting = uiState.isExporting,
                 canUndo = uiState.canUndo,
                 canRedo = uiState.canRedo,
                 onUndo = viewModel::undo,
                 onRedo = viewModel::redo,
                 onClose = onClose,
-                onNext = onNext
+                onNext = { viewModel.exportProject { onNext() } }
             )
         },
         bottomBar = {
@@ -52,6 +53,20 @@ fun EditScreen(
         },
         containerColor = Color(0xFF161823)
     ) { padding ->
+
+    if (uiState.isExporting) {
+        Box(
+            modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.7f)).clickable(enabled = false) {},
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                CircularProgressIndicator(progress = uiState.exportProgress / 100f, color = Color(0xFFFF2C55))
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("正在导出 ${uiState.exportProgress}%", color = Color.White)
+            }
+        }
+    }
+
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
             PreviewPanel(
                 isPlaying = uiState.isPlaying,
@@ -61,7 +76,9 @@ fun EditScreen(
             TimelineArea(
                 tracks = uiState.tracks,
                 currentTimeMs = uiState.currentTimeMs,
-                totalDurationMs = uiState.totalDurationMs
+                totalDurationMs = uiState.totalDurationMs,
+                onSeek = viewModel::updateCurrentTime,
+                onSelectClip = viewModel::selectClip
             )
         }
     }
@@ -69,6 +86,7 @@ fun EditScreen(
 
 @Composable
 fun TopBar(
+    isExporting: Boolean,
     canUndo: Boolean,
     canRedo: Boolean,
     onUndo: () -> Unit,
@@ -96,6 +114,7 @@ fun TopBar(
 
         Button(
             onClick = onNext,
+            enabled = !isExporting,
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF2C55)),
             shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp)
         ) {
