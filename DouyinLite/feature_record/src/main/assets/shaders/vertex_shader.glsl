@@ -1,10 +1,11 @@
-attribute vec4 aPosition;
-attribute vec4 aTextureCoord;
+#version 300 es
+layout (location = 0) in vec4 aPosition;
+layout (location = 1) in vec4 aTextureCoord;
 
-uniform mat4 uSTMatrix; // 纹理变换矩阵 (从 SurfaceTexture 获得)
-uniform mat4 uMVPMatrix; // 模型视图投影矩阵
+uniform mat4 uSTMatrix;
+uniform mat4 uMVPMatrix;
 
-varying vec2 vTextureCoord;
+out vec2 vTextureCoord;
 
 void main() {
     gl_Position = uMVPMatrix * aPosition;

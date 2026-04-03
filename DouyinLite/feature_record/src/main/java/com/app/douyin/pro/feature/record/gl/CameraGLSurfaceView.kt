@@ -13,7 +13,7 @@ class CameraGLSurfaceView @JvmOverloads constructor(
     var onSurfaceTextureReady: ((SurfaceTexture) -> Unit)? = null
 
     init {
-        setEGLContextClientVersion(2)
+        setEGLContextClientVersion(3)
     }
 
     fun initRenderer() {

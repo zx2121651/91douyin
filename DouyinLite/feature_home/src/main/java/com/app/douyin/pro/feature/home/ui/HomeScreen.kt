@@ -194,26 +194,11 @@ fun HomeScreen(onNavigateToMall: () -> Unit = {}, onNavigateToProfile: () -> Uni
                     }
                 }
                 3 -> {
-                    // 推荐视频流
-                    VerticalPager(
-                        state = pagerState,
-                        beyondBoundsPageCount = 1,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .pointerInput(Unit) {
-                                detectHorizontalDragGestures { change, dragAmount ->
-                                    if (dragAmount < -30f) { // Left swipe
-                                        onNavigateToProfile()
-                                    }
-                                }
-                            }
-                    ) { vPage ->
-                        val isVisible = pagerState.currentPage == vPage && horizontalPagerState.currentPage == 3
-                        VideoPage(
-                            url = videos[vPage],
-                            isVisible = isVisible
-                        )
-                    }
+                    VideoFeed(
+                        videos = videos,
+                        isVisible = horizontalPagerState.currentPage == 3,
+                        onNavigateToProfile = onNavigateToProfile
+                    )
                 }
             }
         }
@@ -306,6 +291,7 @@ fun VideoPage(url: String, isVisible: Boolean) {
     var showCommentsSheet by remember { mutableStateOf(false) }
     var showShareSheet by remember { mutableStateOf(false) }
     var showLongPressMenu by remember { mutableStateOf(false) }
+    var isPaused by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -313,6 +299,9 @@ fun VideoPage(url: String, isVisible: Boolean) {
             .background(Color.Black)
             .pointerInput(Unit) {
                 detectTapGestures(
+                    onTap = {
+                        isPaused = !isPaused
+                    },
                     onDoubleTap = { offset ->
                         hearts.add(LikeHeart(x = offset.x, y = offset.y))
                     },
@@ -336,7 +325,21 @@ fun VideoPage(url: String, isVisible: Boolean) {
 
 
         // Video Player Layer
-        VideoPlayer(url = url, isVisible = isVisible, isDucked = showCommentsSheet)
+        VideoPlayer(url = url, isVisible = isVisible, isDucked = showCommentsSheet, isPaused = isPaused)
+
+        androidx.compose.animation.AnimatedVisibility(
+            visible = isPaused,
+            enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.scaleIn(initialScale = 1.5f),
+            exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.scaleOut(targetScale = 1.5f),
+            modifier = Modifier.align(Alignment.Center)
+        ) {
+            Icon(
+                imageVector = Icons.Filled.PlayArrow,
+                contentDescription = "Paused",
+                tint = Color.White.copy(alpha = 0.5f),
+                modifier = Modifier.size(80.dp)
+            )
+        }
 
         // UI Layer
         RightSideActions(
@@ -444,7 +447,7 @@ fun VideoPage(url: String, isVisible: Boolean) {
 }
 
 @Composable
-fun VideoPlayer(url: String, isVisible: Boolean, isDucked: Boolean = false) {
+fun VideoPlayer(url: String, isVisible: Boolean, isDucked: Boolean = false, isPaused: Boolean = false) {
     val context = LocalContext.current
     val playerManager = remember { VideoPlayerManager.getInstance(context) }
 
@@ -1131,6 +1134,35 @@ fun ShareBottomSheet(onDismiss: () -> Unit) {
                 }
             }
         }
+    }
+}
+
+
+@Composable
+fun VideoFeed(
+    videos: List<String>,
+    isVisible: Boolean,
+    onNavigateToProfile: () -> Unit
+) {
+    val pagerState = rememberPagerState(pageCount = { videos.size })
+
+    VerticalPager(
+        state = pagerState,
+        beyondBoundsPageCount = 1,
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                detectHorizontalDragGestures { change, dragAmount ->
+                    if (dragAmount < -30f) {
+                        onNavigateToProfile()
+                    }
+                }
+            }
+    ) { vPage ->
+        VideoPage(
+            url = videos[vPage],
+            isVisible = isVisible && pagerState.currentPage == vPage
+        )
     }
 }
 
