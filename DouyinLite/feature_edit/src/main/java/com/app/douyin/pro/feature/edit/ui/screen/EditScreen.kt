@@ -17,6 +17,9 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.app.douyin.pro.feature.edit.ui.component.TimelineArea
 import com.app.douyin.pro.feature.edit.ui.vm.EditViewModel
+import com.app.douyin.pro.lib.media.util.MediaMetadataUtils
+import androidx.compose.ui.platform.LocalContext
+
 
 @Composable
 fun EditScreen(
@@ -27,9 +30,12 @@ fun EditScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
+    val context = LocalContext.current
     LaunchedEffect(videoUri) {
         if (videoUri.isNotEmpty()) {
-            viewModel.initProject(Uri.parse(videoUri), 15000L)
+            val uri = Uri.parse(videoUri)
+            val duration = MediaMetadataUtils.getVideoDurationMs(context, uri)
+            viewModel.initProject(uri, if (duration > 0) duration else 15000L)
         }
     }
 
