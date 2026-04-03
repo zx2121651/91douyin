@@ -1,4 +1,8 @@
-package com.app.douyin.pro.feature.edit.ui.vm
+import os
+
+file_path = 'DouyinLite/feature_edit/src/main/java/com/app/douyin/pro/feature/edit/ui/vm/EditViewModel.kt'
+
+content = r"""package com.app.douyin.pro.feature.edit.ui.vm
 
 import android.net.Uri
 import androidx.lifecycle.ViewModel
@@ -157,3 +161,7 @@ class EditViewModel @Inject constructor() : ViewModel() {
         _uiState.update { it.copy(isPlaying = !it.isPlaying) }
     }
 }
+"""
+
+with open(file_path, 'w') as f:
+    f.write(content)
