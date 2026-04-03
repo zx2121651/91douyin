@@ -2,7 +2,7 @@ package com.app.douyin.pro.feature.record.gl
 
 object BeautyFilterShader {
 
-    const val VERTEX_SHADER = """#version 300 es
+    const val VERTEX_SHADER = """#version 310 es
         layout (location = 0) in vec4 aPosition;
         layout (location = 1) in vec2 aTextureCoord;
         out vec2 vTextureCoord;
@@ -12,7 +12,7 @@ object BeautyFilterShader {
         }
     """
 
-    const val FRAGMENT_SHADER = """#version 300 es
+    const val FRAGMENT_SHADER = """#version 310 es
         precision mediump float;
         in vec2 vTextureCoord;
         uniform sampler2D sTexture;
