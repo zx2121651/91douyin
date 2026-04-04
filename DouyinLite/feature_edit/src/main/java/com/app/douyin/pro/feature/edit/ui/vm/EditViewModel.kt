@@ -21,7 +21,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class EditViewModel @Inject constructor(
-    private val repository: EditorRepository,
+    private val exportVideoUseCase: com.app.douyin.pro.feature.edit.domain.usecase.ExportVideoUseCase,
     @dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context
 ) : ViewModel() {
 
@@ -122,7 +122,7 @@ class EditViewModel @Inject constructor(
         val out = File(context.cacheDir, "exported_v22.mp4").absolutePath
         _uiState.update { it.copy(isExporting = true, exportProgress = 0) }
 
-        repository.export(timeline, out, object : VideoEditorHelper.ExportListener {
+        exportVideoUseCase(timeline, out, object : VideoEditorHelper.ExportListener {
             override fun onProgress(p: Int) { _uiState.update { it.copy(exportProgress = p) } }
             override fun onCompleted(uri: Uri) {
                 _uiState.update { it.copy(isExporting = false) }
