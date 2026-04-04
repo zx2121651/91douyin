@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import com.app.douyin.pro.feature.inbox.data.InboxRepository
 import com.app.douyin.pro.feature.inbox.domain.model.Message
 import com.app.douyin.pro.feature.inbox.domain.model.NotificationCategory
+import com.app.douyin.pro.lib.media.model.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,7 +21,10 @@ class InboxViewModel @Inject constructor(
     val categories: StateFlow<List<NotificationCategory>> = _categories
 
     init {
-        _messages.value = repository.getMessages()
-        _categories.value = repository.getCategories()
+        val msgResult = repository.getMessages()
+        if (msgResult is Resource.Success) _messages.value = msgResult.data
+
+        val catResult = repository.getCategories()
+        if (catResult is Resource.Success) _categories.value = catResult.data
     }
 }

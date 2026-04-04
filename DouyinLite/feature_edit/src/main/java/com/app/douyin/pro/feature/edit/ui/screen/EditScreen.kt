@@ -2,11 +2,17 @@ package com.app.douyin.pro.feature.edit.ui.screen
 
 import android.net.Uri
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Redo
 import androidx.compose.material.icons.automirrored.filled.Undo
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentCut
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,7 +25,6 @@ import com.app.douyin.pro.feature.edit.ui.component.TimelineArea
 import com.app.douyin.pro.feature.edit.ui.vm.EditViewModel
 import com.app.douyin.pro.lib.media.util.MediaMetadataUtils
 import androidx.compose.ui.platform.LocalContext
-
 
 @Composable
 fun EditScreen(
@@ -59,33 +64,35 @@ fun EditScreen(
         },
         containerColor = Color(0xFF161823)
     ) { padding ->
+        Box(modifier = Modifier.padding(padding).fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                PreviewPanel(
+                    isPlaying = uiState.isPlaying,
+                    onTogglePlay = viewModel::togglePlay,
+                    modifier = Modifier.weight(1f)
+                )
 
-    if (uiState.isExporting) {
-        Box(
-            modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.7f)).clickable(enabled = false) {},
-            contentAlignment = Alignment.Center
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                CircularProgressIndicator(progress = uiState.exportProgress / 100f, color = Color(0xFFFF2C55))
-                Spacer(modifier = Modifier.height(16.dp))
-                Text("正在导出 ${uiState.exportProgress}%", color = Color.White)
+                TimelineArea(
+                    tracks = uiState.tracks,
+                    currentTimeMs = uiState.currentTimeMs,
+                    totalDurationMs = uiState.totalDurationMs,
+                    onSeek = viewModel::updateCurrentTime,
+                    onSelectClip = viewModel::selectClip
+                )
             }
-        }
-    }
 
-        Column(modifier = Modifier.padding(padding).fillMaxSize()) {
-            PreviewPanel(
-                isPlaying = uiState.isPlaying,
-                onTogglePlay = viewModel::togglePlay
-            )
-
-            TimelineArea(
-                tracks = uiState.tracks,
-                currentTimeMs = uiState.currentTimeMs,
-                totalDurationMs = uiState.totalDurationMs,
-                onSeek = viewModel::updateCurrentTime,
-                onSelectClip = viewModel::selectClip
-            )
+            if (uiState.isExporting) {
+                Box(
+                    modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.7f)).clickable(enabled = false) {},
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator(progress = uiState.exportProgress / 100f, color = Color(0xFFFF2C55))
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("正在导出 ${uiState.exportProgress}%", color = Color.White)
+                    }
+                }
+            }
         }
     }
 }
@@ -122,7 +129,7 @@ fun TopBar(
             onClick = onNext,
             enabled = !isExporting,
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF2C55)),
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp)
+            shape = RoundedCornerShape(4.dp)
         ) {
             Text("下一步", fontSize = 14.sp)
         }
@@ -130,9 +137,9 @@ fun TopBar(
 }
 
 @Composable
-fun PreviewPanel(isPlaying: Boolean, onTogglePlay: () -> Unit) {
+fun PreviewPanel(isPlaying: Boolean, onTogglePlay: () -> Unit, modifier: Modifier = Modifier) {
     Box(
-        modifier = Modifier.weight(1f).fillMaxWidth().padding(16.dp).background(Color.Black),
+        modifier = modifier.fillMaxWidth().padding(16.dp).background(Color.Black),
         contentAlignment = Alignment.Center
     ) {
         IconButton(onClick = onTogglePlay) {
@@ -164,7 +171,7 @@ fun BottomBar(onSplit: () -> Unit, onDelete: () -> Unit) {
 fun EditActionItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = androidx.compose.ui.Modifier.clickable { onClick() }.padding(8.dp)
+        modifier = Modifier.clickable { onClick() }.padding(8.dp)
     ) {
         Icon(icon, contentDescription = label, tint = Color.White, modifier = Modifier.size(24.dp))
         Spacer(modifier = Modifier.height(4.dp))

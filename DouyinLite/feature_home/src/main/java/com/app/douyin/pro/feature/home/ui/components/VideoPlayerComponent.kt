@@ -60,7 +60,7 @@ fun VideoPlayerComponent(
         AnimatedVisibility(
             visible = isPaused,
             enter = fadeIn() + scaleIn(initialScale = 1.5f),
-            \x65xit = fadeOut() + scaleOut(targetScale = 1.5f),
+            exit = fadeOut() + scaleOut(targetScale = 1.5f),
             modifier = Modifier.align(Alignment.Center)
         ) {
             Icon(

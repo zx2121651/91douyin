@@ -3,6 +3,7 @@ package com.app.douyin.pro.feature.mall.ui.vm
 import androidx.lifecycle.ViewModel
 import com.app.douyin.pro.feature.mall.data.MallRepository
 import com.app.douyin.pro.feature.mall.domain.model.Product
+import com.app.douyin.pro.lib.media.model.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,6 +17,9 @@ class MallViewModel @Inject constructor(
     val products: StateFlow<List<Product>> = _products
 
     init {
-        _products.value = repository.getMallProducts()
+        val result = repository.getMallProducts()
+        if (result is Resource.Success) {
+            _products.value = result.data
+        }
     }
 }
