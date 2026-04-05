@@ -52,3 +52,8 @@ dependencies {
     implementation(libs.androidx.media3.transformer)
     implementation(libs.androidx.media3.effect)
 }
+
+dependencies {
+    testImplementation(libs.junit)
+    testImplementation("org.mockito:mockito-core:5.11.0")
+}

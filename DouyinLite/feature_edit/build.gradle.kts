@@ -37,6 +37,7 @@ android {
 
 dependencies {
     implementation(project(":lib_media"))
+    implementation(libs.androidx.work.runtime.ktx)
 
     // Hilt
     implementation(libs.hilt.android)
@@ -58,4 +59,10 @@ dependencies {
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.ui)
     implementation(libs.androidx.media3.common)
+}
+
+dependencies {
+    testImplementation(libs.junit)
+    testImplementation("org.mockito:mockito-core:5.11.0")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
 }

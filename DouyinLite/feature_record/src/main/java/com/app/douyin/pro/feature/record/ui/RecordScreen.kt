@@ -3,7 +3,6 @@ package com.app.douyin.pro.feature.record.ui
 import android.annotation.SuppressLint
 import android.graphics.SurfaceTexture
 import android.view.Surface
-import android.view.ViewGroup
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.Preview
 import androidx.camera.core.SurfaceRequest
@@ -34,7 +33,6 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.app.douyin.pro.feature.record.gl.CameraGLSurfaceView
 import com.app.douyin.pro.feature.record.ui.vm.RecordViewModel
-import kotlinx.coroutines.delay
 import java.io.File
 
 @SuppressLint("RestrictedApi")
@@ -46,6 +44,7 @@ fun RecordScreen(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val uiState by viewModel.uiState.collectAsState()
+    val availableFilters by viewModel.availableFilters.collectAsState()
 
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
     var videoCapture by remember { mutableStateOf<VideoCapture<Recorder>?>(null) }
@@ -112,6 +111,7 @@ fun RecordScreen(
 
         if (uiState.showFilters) {
             FilterPanel(
+                filters = availableFilters,
                 selectedFilter = uiState.selectedFilter,
                 onSelectFilter = viewModel::selectFilter,
                 onDismiss = { viewModel.setShowFilters(false) }
@@ -176,19 +176,25 @@ fun ControlItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label: St
 }
 
 @Composable
-fun FilterPanel(selectedFilter: String, onSelectFilter: (String) -> Unit, onDismiss: () -> Unit) {
+fun FilterPanel(filters: List<String>, selectedFilter: String, onSelectFilter: (String) -> Unit, onDismiss: () -> Unit) {
     Box(modifier = Modifier.fillMaxSize().clickable { onDismiss() }) {
         Column(
             modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter).background(Color.Black.copy(alpha = 0.8f)).padding(16.dp)
         ) {
             Text("选择滤镜", color = Color.White, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
             Spacer(modifier = Modifier.height(16.dp))
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                val filters = listOf("原图", "磨皮", "冷白", "复古", "胶片", "黑白")
-                items(filters) { filter ->
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { onSelectFilter(filter) }) {
-                        Box(modifier = Modifier.size(64.dp).clip(RoundedCornerShape(8.dp)).background(if (filter == selectedFilter) Color(0xFFFF2C55) else Color.DarkGray))
-                        Text(filter, color = Color.White, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+
+            if (filters.isEmpty()) {
+                Box(modifier = Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = Color(0xFFFF2C55))
+                }
+            } else {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    items(filters) { filter ->
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { onSelectFilter(filter) }) {
+                            Box(modifier = Modifier.size(64.dp).clip(RoundedCornerShape(8.dp)).background(if (filter == selectedFilter) Color(0xFFFF2C55) else Color.DarkGray))
+                            Text(filter, color = Color.White, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+                        }
                     }
                 }
             }

@@ -6,10 +6,10 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.app.douyin.pro.lib.media.VideoEditorHelper
+import com.app.douyin.pro.lib.media.api.IVideoEditor
 import com.app.douyin.pro.lib.media.model.EditingTimeline
 import com.app.douyin.pro.lib.media.model.VideoClip
 import com.app.douyin.pro.lib.media.util.MediaMetadataUtils
-
 import kotlinx.coroutines.CompletableDeferred
 
 class VideoExportWorker(
@@ -21,7 +21,6 @@ class VideoExportWorker(
         val outputPath = inputData.getString("output_path") ?: return Result.failure()
         val videoUri = inputData.getString("video_uri") ?: return Result.failure()
 
-        // 使用真实元数据重构 Timeline
         val uri = Uri.parse(videoUri)
         val duration = MediaMetadataUtils.getVideoDurationMs(applicationContext, uri)
         val timeline = EditingTimeline().apply {
@@ -35,17 +34,15 @@ class VideoExportWorker(
         }
 
         val deferred = CompletableDeferred<Result>()
-        val editorHelper = VideoEditorHelper(applicationContext)
+        val editorHelper: IVideoEditor = VideoEditorHelper(applicationContext)
 
-        editorHelper.exportTimeline(timeline, outputPath, object : VideoEditorHelper.ExportListener {
+        editorHelper.exportTimeline(timeline, outputPath, object : IVideoEditor.ExportListener {
             override fun onProgress(progress: Int) {
                 setProgressAsync(workDataOf("progress" to progress))
             }
-
             override fun onCompleted(outputUri: Uri) {
                 deferred.complete(Result.success(workDataOf("output_uri" to outputUri.toString())))
             }
-
             override fun onError(exception: Exception) {
                 deferred.complete(Result.retry())
             }

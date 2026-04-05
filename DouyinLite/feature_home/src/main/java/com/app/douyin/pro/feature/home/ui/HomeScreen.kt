@@ -42,6 +42,7 @@ fun HomeScreen(
 ) {
     val videos = viewModel.videos
     val isLoading by viewModel.isLoading.collectAsState()
+    val error by viewModel.error.collectAsState()
     val coroutineScope = rememberCoroutineScope()
     val horizontalPagerState = rememberPagerState(initialPage = 3, pageCount = { 4 })
     val selectedTopTabIndex = horizontalPagerState.currentPage + 1
@@ -54,33 +55,43 @@ fun HomeScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        HorizontalPager(
-            state = horizontalPagerState,
-            modifier = Modifier.fillMaxSize()
-        ) { page ->
-            when (page) {
-                0 -> LiveScreen()
-                1 -> { /* Place for Local Screen */ }
-                2 -> VideoFeed(videos = videos.reversed(), isVisible = horizontalPagerState.currentPage == 2, onNavigateToProfile = onNavigateToProfile)
-                3 -> VideoFeed(videos = videos, isVisible = horizontalPagerState.currentPage == 3, onNavigateToProfile = onNavigateToProfile)
+        if (isLoading && videos.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = Color(0xFFFF2C55))
             }
-        }
+        } else if (error != null && videos.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
+                Text(text = "加载失败: ", color = Color.White)
+            }
+        } else {
+            HorizontalPager(
+                state = horizontalPagerState,
+                modifier = Modifier.fillMaxSize()
+            ) { page ->
+                when (page) {
+                    0 -> LiveScreen()
+                    1 -> { /* Place for Local Screen */ }
+                    2 -> VideoFeed(videos = videos.reversed(), isVisible = horizontalPagerState.currentPage == 2, onNavigateToProfile = onNavigateToProfile)
+                    3 -> VideoFeed(videos = videos, isVisible = horizontalPagerState.currentPage == 3, onNavigateToProfile = onNavigateToProfile)
+                }
+            }
 
-        AnimatedVisibility(
-            visible = horizontalPagerState.currentPage != 0,
-            enter = fadeIn(),
-            exit = fadeOut(),
-            modifier = Modifier.align(Alignment.TopCenter)
-        ) {
-            TopNavigationBar(
-                selectedTabIndex = selectedTopTabIndex,
-                onTabSelected = { index ->
-                    coroutineScope.launch { horizontalPagerState.animateScrollToPage(index) }
-                },
-                onSearchClick = { showSearchScreen = true },
-                onNavigateToMall = onNavigateToMall,
-                modifier = Modifier.statusBarsPadding()
-            )
+            AnimatedVisibility(
+                visible = horizontalPagerState.currentPage != 0,
+                enter = fadeIn(),
+                exit = fadeOut(),
+                modifier = Modifier.align(Alignment.TopCenter)
+            ) {
+                TopNavigationBar(
+                    selectedTabIndex = selectedTopTabIndex,
+                    onTabSelected = { index ->
+                        coroutineScope.launch { horizontalPagerState.animateScrollToPage(index) }
+                    },
+                    onSearchClick = { showSearchScreen = true },
+                    onNavigateToMall = onNavigateToMall,
+                    modifier = Modifier.statusBarsPadding()
+                )
+            }
         }
     }
 }
@@ -169,7 +180,7 @@ fun CommentsBottomSheet(onDismiss: () -> Unit) {
             Text("评论 (128)", color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = Color.Gray.copy(alpha = 0.3f))
             LazyColumn(modifier = Modifier.weight(1f)) {
-                items(20) { Text("精彩评论 #$it", color = Color.White, modifier = Modifier.padding(vertical = 8.dp)) }
+                items(20) { Text("精彩评论 #", color = Color.White, modifier = Modifier.padding(vertical = 8.dp)) }
             }
         }
     }

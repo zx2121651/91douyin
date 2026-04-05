@@ -43,6 +43,12 @@ fun MallScreen(
             Text("抖音商城", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
         }
 
+
+        if (products.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = Color(0xFFFF0050))
+            }
+        }
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
