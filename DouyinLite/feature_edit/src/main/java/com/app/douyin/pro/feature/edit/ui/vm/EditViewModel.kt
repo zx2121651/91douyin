@@ -2,7 +2,9 @@ package com.app.douyin.pro.feature.edit.ui.vm
 
 import android.net.Uri
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.workDataOf
 import com.app.douyin.pro.feature.edit.domain.command.DeleteClipCommand
@@ -21,6 +23,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import java.io.File
 import java.util.*
 import javax.inject.Inject
@@ -96,14 +99,7 @@ class EditViewModel @Inject constructor(
     fun updateCurrentTime(t: Long) { _uiState.update { it.copy(currentTimeMs = t) } }
     fun togglePlay() { _uiState.update { it.copy(isPlaying = !it.isPlaying) } }
 
-    /**
-     * Start background export via WorkManager
-     */
     fun exportProject(onSuccess: (Uri) -> Unit) {
-        // For simplicity in this demo, we use the first clip as the source for the worker
-        // OR we could serialize the whole timeline.
-        // Real-world: Serialize EditingTimeline to JSON and pass to Worker.
-
         val videoTrack = _uiState.value.tracks.find { it.type == TrackType.VIDEO }
         val firstClip = videoTrack?.clips?.firstOrNull() ?: return
 
@@ -116,14 +112,34 @@ class EditViewModel @Inject constructor(
             ))
             .build()
 
-        WorkManager.getInstance(context).enqueue(exportRequest)
+        val workManager = WorkManager.getInstance(context)
+        workManager.enqueue(exportRequest)
 
-        // Update UI state for immediate feedback
         _uiState.update { it.copy(isExporting = true, exportProgress = 0) }
 
-        // In a real app, we would observe the WorkInfo to update progress and trigger onSuccess
-        // For now, we simulate completion after a short delay for UI purposes if not observing properly
-        onSuccess(Uri.fromFile(File(outPath)))
-        _uiState.update { it.copy(isExporting = false) }
+        // Observe WorkInfo via Flow (mapping LiveData to Flow for Clean Architecture consistency)
+        viewModelScope.launch {
+            workManager.getWorkInfoByIdFlow(exportRequest.id).collect { workInfo ->
+                if (workInfo == null) return@collect
+
+                when (workInfo.state) {
+                    WorkInfo.State.RUNNING -> {
+                        val progress = workInfo.progress.getInt("progress", 0)
+                        _uiState.update { it.copy(exportProgress = progress) }
+                    }
+                    WorkInfo.State.SUCCEEDED -> {
+                        val uriStr = workInfo.outputData.getString("output_uri")
+                        if (uriStr != null) {
+                            _uiState.update { it.copy(isExporting = false, exportProgress = 100) }
+                            onSuccess(Uri.parse(uriStr))
+                        }
+                    }
+                    WorkInfo.State.FAILED, WorkInfo.State.CANCELLED -> {
+                        _uiState.update { it.copy(isExporting = false) }
+                    }
+                    else -> {}
+                }
+            }
+        }
     }
 }

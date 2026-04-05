@@ -3,7 +3,8 @@ package com.app.douyin.pro.feature.home.viewmodel
 import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.app.douyin.pro.feature.home.data.HomeRepository
+import com.app.douyin.pro.feature.home.domain.usecase.GetVideosUseCase
+import com.app.douyin.pro.feature.home.domain.usecase.LoadMoreVideosUseCase
 import com.app.douyin.pro.lib.media.model.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,7 +15,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val repository: HomeRepository
+    private val getVideosUseCase: GetVideosUseCase,
+    private val loadMoreVideosUseCase: LoadMoreVideosUseCase
 ) : ViewModel() {
 
     private val _videos = mutableStateListOf<String>()
@@ -36,7 +38,7 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
-            when (val result = repository.getInitialVideos()) {
+            when (val result = getVideosUseCase()) {
                 is Resource.Success -> _videos.addAll(result.data)
                 is Resource.Error -> _error.value = result.message
                 else -> {}
@@ -50,7 +52,7 @@ class HomeViewModel @Inject constructor(
 
         viewModelScope.launch {
             _isLoading.value = true
-            when (val result = repository.loadMoreVideos(pageCount)) {
+            when (val result = loadMoreVideosUseCase(pageCount)) {
                 is Resource.Success -> {
                     _videos.addAll(result.data)
                     pageCount++

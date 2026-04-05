@@ -2,6 +2,7 @@ package com.app.douyin.pro.feature.inbox.data
 
 import com.app.douyin.pro.feature.inbox.data.source.InboxDataSource
 import com.app.douyin.pro.lib.media.model.Resource
+import com.app.douyin.pro.lib.media.model.AppError
 import javax.inject.Inject
 import javax.inject.Singleton
 
