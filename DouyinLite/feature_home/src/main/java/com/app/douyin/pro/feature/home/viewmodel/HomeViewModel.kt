@@ -8,6 +8,7 @@ import com.app.douyin.pro.lib.media.model.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -20,7 +21,10 @@ class HomeViewModel @Inject constructor(
     val videos: List<String> = _videos
 
     private val _isLoading = MutableStateFlow(false)
-    val isLoading: StateFlow<Boolean> = _isLoading
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error.asStateFlow()
 
     private var pageCount = 1
 
@@ -30,10 +34,14 @@ class HomeViewModel @Inject constructor(
 
     private fun loadInitialData() {
         viewModelScope.launch {
+            _isLoading.value = true
+            _error.value = null
             when (val result = repository.getInitialVideos()) {
                 is Resource.Success -> _videos.addAll(result.data)
+                is Resource.Error -> _error.value = result.message
                 else -> {}
             }
+            _isLoading.value = false
         }
     }
 
@@ -47,6 +55,7 @@ class HomeViewModel @Inject constructor(
                     _videos.addAll(result.data)
                     pageCount++
                 }
+                is Resource.Error -> _error.value = result.message
                 else -> {}
             }
             _isLoading.value = false

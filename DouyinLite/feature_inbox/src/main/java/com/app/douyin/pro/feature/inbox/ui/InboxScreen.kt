@@ -58,6 +58,12 @@ fun InboxScreen(
         },
         containerColor = DarkSurface
     ) { paddingValues ->
+
+        if (messages.isEmpty() && categories.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = Color(0xFFFF0050))
+            }
+        }
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(paddingValues),
             contentPadding = PaddingValues(bottom = 80.dp)

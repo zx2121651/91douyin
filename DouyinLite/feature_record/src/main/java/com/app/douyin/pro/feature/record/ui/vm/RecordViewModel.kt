@@ -3,21 +3,37 @@ package com.app.douyin.pro.feature.record.ui.vm
 import androidx.camera.core.CameraSelector
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.app.douyin.pro.feature.record.domain.usecase.CountdownUseCase
+import com.app.douyin.pro.feature.record.domain.usecase.GetAvailableFiltersUseCase
 import com.app.douyin.pro.feature.record.ui.state.RecordUiState
+import com.app.douyin.pro.lib.media.model.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class RecordViewModel @Inject constructor() : ViewModel() {
+class RecordViewModel @Inject constructor(
+    private val getAvailableFiltersUseCase: GetAvailableFiltersUseCase,
+    private val countdownUseCase: CountdownUseCase
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(RecordUiState())
     val uiState: StateFlow<RecordUiState> = _uiState.asStateFlow()
+
+    private val _availableFilters = MutableStateFlow<List<String>>(emptyList())
+    val availableFilters: StateFlow<List<String>> = _availableFilters.asStateFlow()
+
+    init {
+        loadFilters()
+    }
+
+    private fun loadFilters() {
+        val result = getAvailableFiltersUseCase()
+        if (result is Resource.Success) {
+            _availableFilters.value = result.data
+        }
+    }
 
     fun toggleLens() {
         _uiState.update {
@@ -28,13 +44,9 @@ class RecordViewModel @Inject constructor() : ViewModel() {
 
     fun startCountdown(seconds: Int) {
         viewModelScope.launch {
-            _uiState.update { it.copy(countdownTime = seconds) }
-            for (i in seconds downTo 1) {
-                _uiState.update { it.copy(countdownTime = i) }
-                delay(1000)
+            countdownUseCase(seconds).collect { time ->
+                _uiState.update { it.copy(countdownTime = time) }
             }
-            _uiState.update { it.copy(countdownTime = 0) }
-            // Trigger recording in UI via some effect or shared state
         }
     }
 
