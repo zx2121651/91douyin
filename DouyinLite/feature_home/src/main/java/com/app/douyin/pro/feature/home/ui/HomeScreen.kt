@@ -69,7 +69,7 @@ fun HomeScreen(
         AnimatedVisibility(
             visible = horizontalPagerState.currentPage != 0,
             enter = fadeIn(),
-            \x65xit = fadeOut(),
+            exit = fadeOut(),
             modifier = Modifier.align(Alignment.TopCenter)
         ) {
             TopNavigationBar(
@@ -107,6 +107,11 @@ fun VideoPage(url: String, isVisible: Boolean) {
         VideoPlayerComponent(url = url, isVisible = isVisible, isDucked = showCommentsSheet, isPaused = isPaused)
 
         ActionPanel(
+            isLiked = false,
+            likeCount = "12.5w",
+            commentCount = "856",
+            shareCount = "1.2k",
+            onLikeClick = { },
             onCommentClick = { showCommentsSheet = true },
             onShareClick = { showShareSheet = true },
             modifier = Modifier.align(Alignment.BottomEnd)

@@ -72,7 +72,7 @@ fun SpinningRecord() {
         initialValue = 0f,
         targetValue = 360f,
         animationSpec = infiniteRepeatable(
-            animation = tween(3000, \x65asing = LinearEasing),
+            animation = tween(3000, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         )
     )

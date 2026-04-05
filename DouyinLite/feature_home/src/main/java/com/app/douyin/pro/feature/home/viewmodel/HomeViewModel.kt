@@ -4,6 +4,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.app.douyin.pro.feature.home.data.HomeRepository
+import com.app.douyin.pro.lib.media.model.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -29,8 +30,10 @@ class HomeViewModel @Inject constructor(
 
     private fun loadInitialData() {
         viewModelScope.launch {
-            val initial = repository.getInitialVideos()
-            _videos.addAll(initial)
+            when (val result = repository.getInitialVideos()) {
+                is Resource.Success -> _videos.addAll(result.data)
+                else -> {}
+            }
         }
     }
 
@@ -39,9 +42,13 @@ class HomeViewModel @Inject constructor(
 
         viewModelScope.launch {
             _isLoading.value = true
-            val more = repository.loadMoreVideos(pageCount)
-            _videos.addAll(more)
-            pageCount++
+            when (val result = repository.loadMoreVideos(pageCount)) {
+                is Resource.Success -> {
+                    _videos.addAll(result.data)
+                    pageCount++
+                }
+                else -> {}
+            }
             _isLoading.value = false
         }
     }
