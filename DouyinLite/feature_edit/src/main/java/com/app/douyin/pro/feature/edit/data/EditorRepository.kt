@@ -4,6 +4,7 @@ import android.content.Context
 import com.app.douyin.pro.lib.media.api.IVideoEditor
 import com.app.douyin.pro.lib.media.model.EditingTimeline
 import com.app.douyin.pro.lib.media.model.Resource
+import com.app.douyin.pro.lib.media.model.AppError
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton

@@ -2,6 +2,7 @@ package com.app.douyin.pro.feature.mall.data
 
 import com.app.douyin.pro.feature.mall.data.source.MallDataSource
 import com.app.douyin.pro.lib.media.model.Resource
+import com.app.douyin.pro.lib.media.model.AppError
 import javax.inject.Inject
 import javax.inject.Singleton
 

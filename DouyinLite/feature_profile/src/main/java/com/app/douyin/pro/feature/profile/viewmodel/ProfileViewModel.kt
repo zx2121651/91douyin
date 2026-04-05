@@ -1,8 +1,8 @@
 package com.app.douyin.pro.feature.profile.viewmodel
 
 import androidx.lifecycle.ViewModel
-import com.app.douyin.pro.feature.profile.data.ProfileRepository
 import com.app.douyin.pro.feature.profile.data.source.ProfileInfo
+import com.app.douyin.pro.feature.profile.domain.usecase.GetProfileInfoUseCase
 import com.app.douyin.pro.lib.media.model.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -12,7 +12,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
-    private val repository: ProfileRepository
+    private val getProfileInfoUseCase: GetProfileInfoUseCase
 ) : ViewModel() {
     private val _profileInfo = MutableStateFlow<ProfileInfo?>(null)
     val profileInfo: StateFlow<ProfileInfo?> = _profileInfo.asStateFlow()
@@ -26,7 +26,7 @@ class ProfileViewModel @Inject constructor(
 
     private fun loadProfile() {
         _isLoading.value = true
-        when (val result = repository.getProfileInfo()) {
+        when (val result = getProfileInfoUseCase()) {
             is Resource.Success -> _profileInfo.value = result.data
             else -> {}
         }
