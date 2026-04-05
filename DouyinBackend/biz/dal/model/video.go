@@ -1,0 +1,16 @@
+package model
+
+import (
+	"gorm.io/gorm"
+)
+
+type Video struct {
+	gorm.Model
+	AuthorID      uint   `gorm:"index;not null"`
+	Author        User   `gorm:"foreignKey:AuthorID"`
+	PlayURL       string `gorm:"type:varchar(255);not null"`
+	CoverURL      string `gorm:"type:varchar(255);not null"`
+	FavoriteCount int64  `gorm:"default:0"`
+	CommentCount  int64  `gorm:"default:0"`
+	Title         string `gorm:"type:varchar(128);not null"`
+}

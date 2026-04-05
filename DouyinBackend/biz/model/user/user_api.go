@@ -3,8 +3,8 @@ package user
 import "github.com/douyin/backend/biz/model/common"
 
 type UserRegisterRequest struct {
-	Username string `query:"username" vd:"$!='';msg:'username is required'"`
-	Password string `query:"password" vd:"$!='';msg:'password is required'"`
+	Username string `query:"username" form:"username" vd:"$!='';msg:'username is required'"`
+	Password string `query:"password" form:"password" vd:"$!='';msg:'password is required'"`
 }
 
 type UserRegisterResponse struct {
@@ -14,8 +14,8 @@ type UserRegisterResponse struct {
 }
 
 type UserLoginRequest struct {
-	Username string `query:"username" vd:"$!='';msg:'username is required'"`
-	Password string `query:"password" vd:"$!='';msg:'password is required'"`
+	Username string `query:"username" form:"username" vd:"$!='';msg:'username is required'"`
+	Password string `query:"password" form:"password" vd:"$!='';msg:'password is required'"`
 }
 
 type UserLoginResponse struct {
