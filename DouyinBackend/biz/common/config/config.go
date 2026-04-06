@@ -2,8 +2,10 @@ package config
 
 import (
 	"log"
+	"os"
 
 	"github.com/spf13/viper"
+	"github.com/joho/godotenv"
 )
 
 type Config struct {
@@ -53,6 +55,9 @@ type OSSConfig struct {
 var GlobalConfig *Config
 
 func Init() {
+	// Load .env if exists (ignore error if not found in production)
+	_ = godotenv.Load()
+
 	viper.SetConfigFile("config/config.yaml")
 	viper.SetConfigType("yaml")
 
@@ -64,5 +69,11 @@ func Init() {
 	if err := viper.Unmarshal(GlobalConfig); err != nil {
 		log.Fatalf("Unable to decode into struct, %v", err)
 	}
+
+	// Override JWT Secret with environment variable if present
+	if envSecret := os.Getenv("DOUYIN_JWT_SECRET"); envSecret != "" {
+		GlobalConfig.JWT.Secret = envSecret
+	}
+
 	log.Println("Configuration loaded successfully")
 }

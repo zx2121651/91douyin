@@ -32,11 +32,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
+import javax.inject.Inject
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
+import com.app.douyin.pro.lib.media.auth.SilentLoginInitializer
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -55,10 +57,15 @@ import com.app.douyin.pro.feature.record.ui.RecordScreen
 
 @androidx.compose.foundation.ExperimentalFoundationApi
 class MainActivity : ComponentActivity() {
+
+    @Inject
+    lateinit var silentLoginInitializer: SilentLoginInitializer
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
+        silentLoginInitializer.initialize()
         enableEdgeToEdge()
 
         val requestPermissionLauncher = registerForActivityResult(

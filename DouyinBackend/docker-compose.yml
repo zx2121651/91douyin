@@ -8,7 +8,7 @@ services:
       - "8080:8080"
     volumes:
       - ./public:/app/public
-      - ./douyin.db:/app/douyin.db
+      - ./data:/app/data
     restart: unless-stopped
     # Environment variables can be injected here to override config.yaml later
     environment:
@@ -31,7 +31,7 @@ services:
     ports:
       - "3306:3306"
     environment:
-      MYSQL_ROOT_PASSWORD: douyin_root_pwd
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-default_unsafe_pwd}
       MYSQL_DATABASE: douyin
     volumes:
       - mysql_data:/var/lib/mysql

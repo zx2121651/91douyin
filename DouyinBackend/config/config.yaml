@@ -5,10 +5,10 @@ server:
 
 database:
   driver: "sqlite"
-  dsn: "douyin.db"
+  dsn: "data/douyin.db"
 
 jwt:
-  secret: "douyin_secret_key_change_me_in_prod"
+  secret: "" # Use DOUYIN_JWT_SECRET env var
   expire_hours: 168
 
 storage:
@@ -18,7 +18,7 @@ storage:
     cover_path: "public/covers"
     avatar_path: "public/avatars"
     background_path: "public/backgrounds"
-    domain: "127.0.0.1:8080"
+    domain: "10.0.2.2:8080"
   oss:
     endpoint: ""
     access_key_id: ""
