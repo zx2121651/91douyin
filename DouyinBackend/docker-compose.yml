@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    container_name: douyin_backend
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./public:/app/public
+      - ./douyin.db:/app/douyin.db
+    restart: unless-stopped
+    # Environment variables can be injected here to override config.yaml later
+    environment:
+      - TZ=Asia/Shanghai
+
+  # Prepared for future migration to Redis
+  redis:
+    image: redis:7-alpine
+    container_name: douyin_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  # Prepared for future migration from SQLite to MySQL
+  mysql:
+    image: mysql:8.0
+    container_name: douyin_mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: douyin_root_pwd
+      MYSQL_DATABASE: douyin
+    volumes:
+      - mysql_data:/var/lib/mysql
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+  mysql_data:
