@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.app.douyin.pro.feature.home.ui.components.*
 import com.app.douyin.pro.feature.home.viewmodel.HomeViewModel
+import com.app.douyin.pro.feature.home.domain.model.VideoModel
 import kotlinx.coroutines.launch
 import java.util.*
 
@@ -97,7 +98,8 @@ fun HomeScreen(
 }
 
 @Composable
-fun VideoPage(url: String, isVisible: Boolean) {
+fun VideoPage(video: VideoModel, isVisible: Boolean) {
+    val viewModel: HomeViewModel = hiltViewModel()
     var showCommentsSheet by remember { mutableStateOf(false) }
     var showShareSheet by remember { mutableStateOf(false) }
     var showLongPressMenu by remember { mutableStateOf(false) }
@@ -110,27 +112,32 @@ fun VideoPage(url: String, isVisible: Boolean) {
             .pointerInput(Unit) {
                 detectTapGestures(
                     onTap = { isPaused = !isPaused },
-                    onDoubleTap = { /* Double tap for heart animation could be added here */ },
+                    onDoubleTap = {
+                        if (!video.isLiked) viewModel.toggleLike(video.id)
+                    },
                     onLongPress = { showLongPressMenu = true }
                 )
             }
     ) {
-        VideoPlayerComponent(url = url, isVisible = isVisible, isDucked = showCommentsSheet, isPaused = isPaused)
+        VideoPlayerComponent(url = video.playUrl, isVisible = isVisible, isDucked = showCommentsSheet, isPaused = isPaused)
 
         ActionPanel(
-            isLiked = false,
-            likeCount = "12.5w",
-            commentCount = "856",
-            shareCount = "1.2k",
-            onLikeClick = { },
+            isLiked = video.isLiked,
+            likeCount = video.likeCount,
+            commentCount = video.commentCount,
+            shareCount = video.shareCount,
+            avatarUrl = video.authorAvatar,
+            isFollowed = video.isFollowed,
+            onLikeClick = { viewModel.toggleLike(video.id) },
+            onFollowClick = { viewModel.toggleFollow(video.id) },
             onCommentClick = { showCommentsSheet = true },
             onShareClick = { showShareSheet = true },
             modifier = Modifier.align(Alignment.BottomEnd)
         )
 
         VideoOverlay(
-            author = "潮流先锋",
-            description = "这是一段非常精彩的视频描述 #抖音 #Compose",
+            author = video.authorName,
+            description = video.title,
             musicTitle = "原声 - 潮流音乐库"
         )
 

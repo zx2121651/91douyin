@@ -11,28 +11,28 @@ import org.mockito.Mock
 import org.mockito.Mockito.`when`
 import org.mockito.MockitoAnnotations
 
-class GetVideosUseCaseTest {
+class LoadMoreVideosUseCaseTest {
 
     @Mock
     private lateinit var mockRepository: HomeRepository
 
-    private lateinit var getVideosUseCase: GetVideosUseCase
+    private lateinit var loadMoreVideosUseCase: LoadMoreVideosUseCase
 
     @Before
     fun setup() {
         MockitoAnnotations.initMocks(this)
-        getVideosUseCase = GetVideosUseCase(mockRepository)
+        loadMoreVideosUseCase = LoadMoreVideosUseCase(mockRepository)
     }
 
     @Test
-    fun `invoke should return videos from repository`() = runBlocking {
+    fun `invoke should return more videos from repository`() = runBlocking {
+        val page = 2
         val mockVideos = listOf(
-            VideoModel(1, "video1", "", 1, "", null, "0", "0", "0", false, false),
-            VideoModel(2, "video2", "", 2, "", null, "0", "0", "0", false, false)
+            VideoModel(3, "video3", "", 3, "", null, "0", "0", "0", false, false)
         )
-        `when`(mockRepository.getInitialVideos()).thenReturn(Resource.Success(mockVideos))
+        `when`(mockRepository.loadMoreVideos(page)).thenReturn(Resource.Success(mockVideos))
 
-        val result = getVideosUseCase()
+        val result = loadMoreVideosUseCase(page)
 
         assert(result is Resource.Success)
         assertEquals(mockVideos, (result as Resource.Success).data)

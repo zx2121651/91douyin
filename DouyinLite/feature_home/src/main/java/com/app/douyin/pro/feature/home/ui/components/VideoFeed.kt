@@ -9,11 +9,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import com.app.douyin.pro.feature.home.ui.VideoPage
+import com.app.douyin.pro.feature.home.domain.model.VideoModel
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun VideoFeed(
-    videos: List<String>,
+    videos: List<VideoModel>,
     isVisible: Boolean,
     onNavigateToProfile: () -> Unit
 ) {
@@ -33,7 +34,7 @@ fun VideoFeed(
             }
     ) { vPage ->
         VideoPage(
-            url = videos[vPage],
+            video = videos[vPage],
             isVisible = isVisible && pagerState.currentPage == vPage
         )
     }

@@ -61,4 +61,10 @@ interface DouyinApiService {
         @Query("to_user_id") toUserId: Long,
         @Query("pre_msg_time") preMsgTime: Long? = null
     ): MessageChatResponse
+
+    @POST("douyin/relation/action/")
+    suspend fun relationAction(
+        @Query("to_user_id") toUserId: Long,
+        @Query("action_type") actionType: Int
+    ): AuthResponse
 }
