@@ -16,6 +16,8 @@ storage:
   local:
     video_path: "public/videos"
     cover_path: "public/covers"
+    avatar_path: "public/avatars"
+    background_path: "public/backgrounds"
     domain: "127.0.0.1:8080"
   oss:
     endpoint: ""

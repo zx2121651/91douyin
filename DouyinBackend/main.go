@@ -30,6 +30,8 @@ func main() {
 	// Serve static files for uploaded videos and generated covers
 	h.Static("/static/videos", config.GlobalConfig.Storage.Local.VideoPath)
 	h.Static("/static/covers", config.GlobalConfig.Storage.Local.CoverPath)
+	h.Static("/static/avatars", config.GlobalConfig.Storage.Local.AvatarPath)
+	h.Static("/static/backgrounds", config.GlobalConfig.Storage.Local.BackgroundPath)
 
 	h.GET("/ping", func(c context.Context, ctx *app.RequestContext) {
 		ctx.JSON(consts.StatusOK, utils.H{"message": "pong"})

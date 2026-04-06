@@ -12,6 +12,7 @@ type User struct {
 	FollowCount   int64   `gorm:"default:0"`
 	FollowerCount int64   `gorm:"default:0"`
 	Avatar        string  `gorm:"type:varchar(255)"`
+	BackgroundImage string  `gorm:"type:varchar(255)"`
 	Signature     string  `gorm:"type:varchar(255)"`
 	Videos        []Video `gorm:"foreignKey:AuthorID"`
 }

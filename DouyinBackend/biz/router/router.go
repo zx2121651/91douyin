@@ -19,6 +19,7 @@ func Register(h *server.Hertz) {
 	userGroup.POST("/register/", user.Register)
 	userGroup.POST("/login/", user.Login)
 	userGroup.GET("/", mw.AuthMiddleware(), user.Info)
+	userGroup.POST("/update/", mw.AuthMiddleware(), user.UpdateProfile)
 
 	// Feed
 	api.GET("/feed/", mw.SoftAuthMiddleware(), video.Feed)

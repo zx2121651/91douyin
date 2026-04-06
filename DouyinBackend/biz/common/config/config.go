@@ -36,9 +36,11 @@ type StorageConfig struct {
 }
 
 type LocalConfig struct {
-	VideoPath string `mapstructure:"video_path"`
-	CoverPath string `mapstructure:"cover_path"`
-	Domain    string `mapstructure:"domain"`
+	VideoPath      string `mapstructure:"video_path"`
+	CoverPath      string `mapstructure:"cover_path"`
+	AvatarPath     string `mapstructure:"avatar_path"`
+	BackgroundPath string `mapstructure:"background_path"`
+	Domain         string `mapstructure:"domain"`
 }
 
 type OSSConfig struct {

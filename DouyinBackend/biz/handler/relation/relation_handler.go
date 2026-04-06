@@ -104,6 +104,9 @@ func handleListRequest(c *app.RequestContext, getListFunc func(uint) ([]model.Us
 			FollowCount:   u.FollowCount,
 			FollowerCount: u.FollowerCount,
 			IsFollow:      relationService.IsFollow(currentUserID, u.ID),
+			Avatar:        u.Avatar,
+			BackgroundImage: u.BackgroundImage,
+			Signature:     u.Signature,
 		})
 	}
 
