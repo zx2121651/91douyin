@@ -48,4 +48,11 @@ interface DouyinApiService {
         @Part("title") title: RequestBody,
         @Part data: MultipartBody.Part
     ): PublishResponse
+
+    @FormUrlEncoded
+    @POST("douyin/favorite/action/")
+    suspend fun favoriteAction(
+        @Field("video_id") videoId: Long,
+        @Field("action_type") actionType: Int
+    ): AuthResponse
 }

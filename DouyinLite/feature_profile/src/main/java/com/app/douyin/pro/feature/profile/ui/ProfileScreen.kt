@@ -35,6 +35,8 @@ fun ProfileScreen(
     val followers = profileInfo?.followers ?: "0"
     val following = profileInfo?.following?.toString() ?: "0"
     val likes = profileInfo?.likes ?: "0"
+    val signature = profileInfo?.signature?.takeIf { it.isNotEmpty() } ?: "专注 Android 性能优化与 Jetpack Compose 动效开发。\n不写 Bug，只写诗。✨"
+    val avatar = profileInfo?.avatar?.takeIf { it.isNotEmpty() } ?: "https://lh3.googleusercontent.com/aida-public/AB6AXuAFRJnvPgLJTZNlp2beH3rKkgrIq79yAByHrNztp31d3S5Ql5HDcVsXOtOffLNhtuX4qaajnkwFgdAFL5OCuwdLzNBs9QDqqeiJejfbJPzXVeArU5eX10395R9he1IM-Eoy2kh6lmFA_v6n8auwbHfT6iBKAZdZODWoz0wWWJn57dDE7AybZhChYpQ6vVgt7ESF1A6VaNFSrjxMK6MuHftCkoxICASpEx6ooT2VDLv3mlsVbLQNXGa1uCeoOWCamXI699HkQHUvmOk"
 
     val darkBg = Color(0xFF161823)
     val grayText = Color(0xFF8E8E93)
@@ -80,7 +82,7 @@ fun ProfileScreen(
                                 .background(Color.Gray.copy(alpha = 0.2f))
                         )
                         AsyncImage(
-                            model = "https://lh3.googleusercontent.com/aida-public/AB6AXuAFRJnvPgLJTZNlp2beH3rKkgrIq79yAByHrNztp31d3S5Ql5HDcVsXOtOffLNhtuX4qaajnkwFgdAFL5OCuwdLzNBs9QDqqeiJejfbJPzXVeArU5eX10395R9he1IM-Eoy2kh6lmFA_v6n8auwbHfT6iBKAZdZODWoz0wWWJn57dDE7AybZhChYpQ6vVgt7ESF1A6VaNFSrjxMK6MuHftCkoxICASpEx6ooT2VDLv3mlsVbLQNXGa1uCeoOWCamXI699HkQHUvmOk",
+                            model = avatar,
                             contentDescription = "Avatar",
                             contentScale = ContentScale.Crop,
                             modifier = Modifier
@@ -132,7 +134,7 @@ fun ProfileScreen(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = "专注 Android 性能优化与 Jetpack Compose 动效开发。\n不写 Bug，只写诗。✨",
+                    text = signature,
                     color = Color.White,
                     fontSize = 13.sp
                 )
