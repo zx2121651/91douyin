@@ -10,10 +10,8 @@ import (
 	"github.com/douyin/backend/biz/service"
 )
 
-var favoriteService = service.NewFavoriteService()
-
-
 var videoService = service.NewVideoService()
+// favoriteService and relationService are defined in publish_handler.go within the same package
 
 func Feed(ctx context.Context, c *app.RequestContext) {
 	var currentUserID uint = 0
@@ -31,7 +29,6 @@ func Feed(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	// Default limit 30
 	videos, nextTime, err := videoService.GetFeed(req.LatestTime, 30)
 	if err != nil {
 		c.JSON(consts.StatusOK, video_model.FeedResponse{
@@ -52,7 +49,7 @@ func Feed(ctx context.Context, c *app.RequestContext) {
 				Name:          v.Author.Name,
 				FollowCount:   v.Author.FollowCount,
 				FollowerCount: v.Author.FollowerCount,
-				IsFollow:      false,
+				IsFollow:      relationService.IsFollow(currentUserID, v.Author.ID),
 			},
 			PlayURL:       v.PlayURL,
 			CoverURL:      v.CoverURL,

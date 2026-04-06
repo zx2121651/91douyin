@@ -11,6 +11,7 @@ import (
 )
 
 var favoriteService = service.NewFavoriteService()
+var relationService = service.NewRelationService()
 
 func FavoriteAction(ctx context.Context, c *app.RequestContext) {
 	var req favorite_model.FavoriteActionRequest
@@ -67,11 +68,8 @@ func FavoriteList(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	// Always use the user_id from the query param to fetch the list
-	// because users can view other users' favorite lists (depending on privacy settings, but we assume public here)
 	targetUserID := uint(req.UserID)
 
-	// Try to get current logged-in user id (for IsFavorite field)
 	var currentUserID uint = 0
 	if rawID, exists := c.Get("user_id"); exists {
 		currentUserID = rawID.(uint)
@@ -97,7 +95,7 @@ func FavoriteList(ctx context.Context, c *app.RequestContext) {
 				Name:          v.Author.Name,
 				FollowCount:   v.Author.FollowCount,
 				FollowerCount: v.Author.FollowerCount,
-				IsFollow:      false,
+				IsFollow:      relationService.IsFollow(currentUserID, v.Author.ID),
 			},
 			PlayURL:       v.PlayURL,
 			CoverURL:      v.CoverURL,

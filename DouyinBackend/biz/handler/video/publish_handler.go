@@ -11,8 +11,11 @@ import (
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
 	"github.com/douyin/backend/biz/model/common"
 	video_model "github.com/douyin/backend/biz/model/video"
+	"github.com/douyin/backend/biz/service"
 )
 
+var favoriteService = service.NewFavoriteService()
+var relationService = service.NewRelationService()
 
 func PublishAction(ctx context.Context, c *app.RequestContext) {
 	var req video_model.PublishActionRequest
@@ -38,10 +41,18 @@ func PublishAction(ctx context.Context, c *app.RequestContext) {
 	}
 	userID := userIDRaw.(uint)
 
-	// In a real application, you'd upload this to OSS/S3 and generate a thumbnail
-	// Here we just save it locally for mock purpose
 	filename := fmt.Sprintf("%d_%d_%s", userID, time.Now().Unix(), filepath.Base(req.Data.Filename))
 	savePath := filepath.Join("public/videos", filename)
+
+	if err := os.MkdirAll(filepath.Dir(savePath), 0755); err != nil {
+		c.JSON(consts.StatusInternalServerError, video_model.PublishActionResponse{
+			BaseResponse: common.BaseResponse{
+				StatusCode: 1,
+				StatusMsg:  "Failed to create directory: " + err.Error(),
+			},
+		})
+		return
+	}
 
 	if err := c.SaveUploadedFile(req.Data, savePath); err != nil {
 		c.JSON(consts.StatusInternalServerError, video_model.PublishActionResponse{
@@ -53,17 +64,16 @@ func PublishAction(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	// Mock URLs
 	serverAddr := string(c.URI().Host())
 	if serverAddr == "" {
 		serverAddr = "127.0.0.1:8080"
 	}
 
 	playURL := fmt.Sprintf("http://%s/static/videos/%s", serverAddr, filename)
-	coverURL := "https://images.unsplash.com/photo-1611162617474-5b21e879e113" // Mock cover
+	coverURL := "https://images.unsplash.com/photo-1611162617474-5b21e879e113"
 
 	if err := videoService.PublishVideo(userID, req.Title, playURL, coverURL); err != nil {
-		os.Remove(savePath) // Cleanup
+		os.Remove(savePath)
 		c.JSON(consts.StatusInternalServerError, video_model.PublishActionResponse{
 			BaseResponse: common.BaseResponse{
 				StatusCode: 1,
@@ -117,7 +127,7 @@ func PublishList(ctx context.Context, c *app.RequestContext) {
 				Name:          v.Author.Name,
 				FollowCount:   v.Author.FollowCount,
 				FollowerCount: v.Author.FollowerCount,
-				IsFollow:      false,
+				IsFollow:      relationService.IsFollow(currentUserID, v.Author.ID),
 			},
 			PlayURL:       v.PlayURL,
 			CoverURL:      v.CoverURL,

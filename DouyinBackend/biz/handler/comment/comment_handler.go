@@ -11,6 +11,7 @@ import (
 )
 
 var commentService = service.NewCommentService()
+var relationService = service.NewRelationService()
 
 func CommentAction(ctx context.Context, c *app.RequestContext) {
 	var req comment_model.CommentActionRequest
@@ -37,7 +38,6 @@ func CommentAction(ctx context.Context, c *app.RequestContext) {
 	userID := userIDRaw.(uint)
 
 	if req.ActionType == 1 {
-		// Post Comment
 		if req.CommentText == "" {
 			c.JSON(consts.StatusBadRequest, comment_model.CommentActionResponse{
 				BaseResponse: common.BaseResponse{
@@ -71,15 +71,14 @@ func CommentAction(ctx context.Context, c *app.RequestContext) {
 					Name:          comment.User.Name,
 					FollowCount:   comment.User.FollowCount,
 					FollowerCount: comment.User.FollowerCount,
-					IsFollow:      false,
+					IsFollow:      relationService.IsFollow(userID, comment.User.ID),
 				},
 				Content:    comment.Content,
-				CreateDate: comment.CreatedAt.Format("01-02"), // mm-dd format as required by Douyin API
+				CreateDate: comment.CreatedAt.Format("01-02"),
 			},
 		})
 
 	} else if req.ActionType == 2 {
-		// Delete Comment
 		if req.CommentID <= 0 {
 			c.JSON(consts.StatusBadRequest, comment_model.CommentActionResponse{
 				BaseResponse: common.BaseResponse{
@@ -111,6 +110,10 @@ func CommentAction(ctx context.Context, c *app.RequestContext) {
 }
 
 func CommentList(ctx context.Context, c *app.RequestContext) {
+	var currentUserID uint = 0
+	if rawID, exists := c.Get("user_id"); exists {
+		currentUserID = rawID.(uint)
+	}
 	var req comment_model.CommentListRequest
 	if err := c.BindAndValidate(&req); err != nil {
 		c.JSON(consts.StatusBadRequest, comment_model.CommentListResponse{
@@ -142,7 +145,7 @@ func CommentList(ctx context.Context, c *app.RequestContext) {
 				Name:          v.User.Name,
 				FollowCount:   v.User.FollowCount,
 				FollowerCount: v.User.FollowerCount,
-				IsFollow:      false,
+				IsFollow:      relationService.IsFollow(currentUserID, v.User.ID),
 			},
 			Content:    v.Content,
 			CreateDate: v.CreatedAt.Format("01-02"),

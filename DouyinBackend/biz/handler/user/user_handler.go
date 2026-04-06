@@ -12,6 +12,7 @@ import (
 )
 
 var userService = service.NewUserService()
+var relationService = service.NewRelationService()
 
 func Register(ctx context.Context, c *app.RequestContext) {
 	var req user_model.UserRegisterRequest
@@ -95,17 +96,17 @@ func Info(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	// Verify token (simplified)
-	uid, err := jwt.ParseToken(req.Token)
-	if err != nil || int64(uid) != req.UserID {
+	uidRaw, exists := c.Get("user_id")
+	if !exists {
 		c.JSON(consts.StatusUnauthorized, user_model.UserInfoResponse{
 			BaseResponse: common.BaseResponse{
 				StatusCode: 1,
-				StatusMsg:  "Invalid token",
+				StatusMsg:  "Unauthorized",
 			},
 		})
 		return
 	}
+	uid := uidRaw.(uint)
 
 	user, err := userService.GetUserByID(uint(req.UserID))
 	if err != nil {
@@ -128,7 +129,7 @@ func Info(ctx context.Context, c *app.RequestContext) {
 			Name:          user.Name,
 			FollowCount:   user.FollowCount,
 			FollowerCount: user.FollowerCount,
-			IsFollow:      false, // Needs Follow system implementation
+			IsFollow:      relationService.IsFollow(uid, user.ID),
 		},
 	})
 }
