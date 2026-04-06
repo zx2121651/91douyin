@@ -9,11 +9,14 @@ import (
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
+	"github.com/douyin/backend/biz/common/config"
 	"github.com/douyin/backend/biz/model/common"
 	video_model "github.com/douyin/backend/biz/model/video"
 	"github.com/douyin/backend/biz/service"
+	"github.com/douyin/backend/biz/service/storage"
 )
 
+var storageService = storage.NewStorageService()
 var favoriteService = service.NewFavoriteService()
 var relationService = service.NewRelationService()
 
@@ -42,7 +45,7 @@ func PublishAction(ctx context.Context, c *app.RequestContext) {
 	userID := userIDRaw.(uint)
 
 	filename := fmt.Sprintf("%d_%d_%s", userID, time.Now().Unix(), filepath.Base(req.Data.Filename))
-	savePath := filepath.Join("public/videos", filename)
+	savePath := filepath.Join(config.GlobalConfig.Storage.Local.VideoPath, filename)
 
 	if err := os.MkdirAll(filepath.Dir(savePath), 0755); err != nil {
 		c.JSON(consts.StatusInternalServerError, video_model.PublishActionResponse{
@@ -64,13 +67,13 @@ func PublishAction(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	serverAddr := string(c.URI().Host())
-	if serverAddr == "" {
-		serverAddr = "127.0.0.1:8080"
-	}
+	playURL := storageService.BuildVideoURL(filename)
 
-	playURL := fmt.Sprintf("http://%s/static/videos/%s", serverAddr, filename)
-	coverURL := "https://images.unsplash.com/photo-1611162617474-5b21e879e113"
+	coverFilename := fmt.Sprintf("%d_%d_cover.jpg", userID, time.Now().Unix())
+	coverURL, err := storageService.GenerateCover(savePath, coverFilename)
+	if err != nil {
+		coverURL = "https://images.unsplash.com/photo-1611162617474-5b21e879e113"
+	}
 
 	if err := videoService.PublishVideo(userID, req.Title, playURL, coverURL); err != nil {
 		os.Remove(savePath)

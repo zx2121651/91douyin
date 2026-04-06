@@ -7,6 +7,8 @@ import (
 	"github.com/douyin/backend/biz/dal/model"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"github.com/douyin/backend/biz/common/config"
+
 	"gorm.io/gorm/logger"
 )
 
@@ -15,7 +17,7 @@ var DB *gorm.DB
 func Init() {
 	var err error
 	// Use SQLite for local development
-	dbPath := "douyin.db"
+	dbPath := config.GlobalConfig.Database.DSN
 
 	newLogger := logger.New(
 		log.New(os.Stdout, "\r\n", log.LstdFlags),

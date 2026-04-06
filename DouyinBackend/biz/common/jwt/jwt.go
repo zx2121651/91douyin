@@ -3,12 +3,14 @@ package jwt
 import (
 	"errors"
 	"time"
+	"github.com/douyin/backend/biz/common/config"
+
 	"fmt"
 
 	"github.com/golang-jwt/jwt/v4"
 )
 
-var SecretKey = []byte("douyin_secret_key_change_me_in_prod")
+
 
 type Claims struct {
 	UserID   uint   `json:"user_id"`
@@ -22,12 +24,12 @@ func GenerateToken(userID uint, username string) (string, error) {
 		UserID:   userID,
 		Username: username,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * 7 * time.Hour)), // 7 days expiration
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(config.GlobalConfig.JWT.ExpireHours) * time.Hour)), // 7 days expiration
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(SecretKey)
+	return token.SignedString([]byte(config.GlobalConfig.JWT.Secret))
 }
 
 // ParseToken parses and validates the real JWT token
@@ -41,7 +43,7 @@ func ParseToken(tokenStr string) (uint, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return SecretKey, nil
+		return []byte(config.GlobalConfig.JWT.Secret), nil
 	})
 
 	if err != nil {
