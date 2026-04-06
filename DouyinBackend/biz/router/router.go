@@ -4,6 +4,7 @@ import (
 	"github.com/cloudwego/hertz/pkg/app/server"
 	"github.com/douyin/backend/biz/handler/comment"
 	"github.com/douyin/backend/biz/handler/favorite"
+	"github.com/douyin/backend/biz/handler/message"
 	"github.com/douyin/backend/biz/handler/relation"
 	"github.com/douyin/backend/biz/handler/user"
 	"github.com/douyin/backend/biz/handler/video"
@@ -43,4 +44,9 @@ func Register(h *server.Hertz) {
 	relationGroup.GET("/follow/list/", mw.SoftAuthMiddleware(), relation.FollowList)
 	relationGroup.GET("/follower/list/", mw.SoftAuthMiddleware(), relation.FollowerList)
 	relationGroup.GET("/friend/list/", mw.SoftAuthMiddleware(), relation.FriendList)
+
+	// Message
+	messageGroup := api.Group("/message")
+	messageGroup.POST("/action/", mw.AuthMiddleware(), message.MessageAction)
+	messageGroup.GET("/chat/", mw.AuthMiddleware(), message.MessageChat)
 }

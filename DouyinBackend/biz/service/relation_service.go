@@ -56,7 +56,7 @@ func (s *RelationService) RelationAction(userID uint, toUserID uint, actionType 
 			}
 
 		} else if actionType == 2 { // Unfollow
-			res := tx.Where("user_id = ? AND follow_id = ?", userID, toUserID).Delete(&model.Relation{})
+			res := tx.Unscoped().Where("user_id = ? AND follow_id = ?", userID, toUserID).Delete(&model.Relation{})
 			if res.Error != nil {
 				return res.Error
 			}

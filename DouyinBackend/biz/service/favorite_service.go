@@ -44,7 +44,7 @@ func (s *FavoriteService) FavoriteAction(userID uint, videoID uint, actionType i
 				return err
 			}
 		} else if actionType == 2 { // Unlike
-			res := tx.Where("user_id = ? AND video_id = ?", userID, videoID).Delete(&model.Favorite{})
+			res := tx.Unscoped().Where("user_id = ? AND video_id = ?", userID, videoID).Delete(&model.Favorite{})
 			if res.Error != nil {
 				return res.Error
 			}
