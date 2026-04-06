@@ -1,0 +1,24 @@
+server:
+  port: 8080
+  address: "0.0.0.0"
+  max_request_size: 104857600 # 100MB
+
+database:
+  driver: "sqlite"
+  dsn: "douyin.db"
+
+jwt:
+  secret: "douyin_secret_key_change_me_in_prod"
+  expire_hours: 168
+
+storage:
+  type: "local" # local or oss
+  local:
+    video_path: "public/videos"
+    cover_path: "public/covers"
+    domain: "127.0.0.1:8080"
+  oss:
+    endpoint: ""
+    access_key_id: ""
+    access_key_secret: ""
+    bucket_name: ""
