@@ -1,40 +1,56 @@
 package jwt
 
 import (
-	"strconv"
-	"strings"
+	"errors"
+	"time"
+	"fmt"
 
 	"github.com/golang-jwt/jwt/v4"
 )
 
-var SecretKey = []byte("douyin_secret_key")
+var SecretKey = []byte("douyin_secret_key_change_me_in_prod")
 
-// GenerateToken generates a mock token for user
+type Claims struct {
+	UserID   uint   `json:"user_id"`
+	Username string `json:"username"`
+	jwt.RegisteredClaims
+}
+
+// GenerateToken generates a real JWT token for user
 func GenerateToken(userID uint, username string) (string, error) {
-	// For simplicity in this demo, we'll return a deterministic string instead of a real JWT initially
-	// A real implementation would use:
-	/*
-	claims := jwt.MapClaims{
-		"user_id":  userID,
-		"username": username,
-		"exp":      time.Now().Add(time.Hour * 24 * 7).Unix(),
+	claims := Claims{
+		UserID:   userID,
+		Username: username,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * 7 * time.Hour)), // 7 days expiration
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(SecretKey)
-	*/
-	return strconv.FormatUint(uint64(userID), 10) + "_" + username + "_token", nil
 }
 
-// ParseToken parses the mock token
-func ParseToken(token string) (uint, error) {
-	// Mock parser for "id_username_token" format
-	parts := strings.Split(token, "_")
-	if len(parts) >= 3 && parts[len(parts)-1] == "token" {
-		idStr := parts[0]
-		id, err := strconv.ParseUint(idStr, 10, 32)
-		if err == nil {
-			return uint(id), nil
-		}
+// ParseToken parses and validates the real JWT token
+func ParseToken(tokenStr string) (uint, error) {
+	if tokenStr == "" {
+		return 0, errors.New("token is empty")
 	}
-	return 0, jwt.ErrSignatureInvalid
+
+	token, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(token *jwt.Token) (interface{}, error) {
+		// Verify the signing method is HMAC to prevent algorithm confusion attacks
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return SecretKey, nil
+	})
+
+	if err != nil {
+		return 0, err
+	}
+
+	if claims, ok := token.Claims.(*Claims); ok && token.Valid {
+		return claims.UserID, nil
+	}
+
+	return 0, errors.New("invalid token")
 }

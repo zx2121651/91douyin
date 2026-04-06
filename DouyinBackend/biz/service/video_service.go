@@ -35,3 +35,26 @@ func (s *VideoService) GetFeed(latestTime int64, limit int) ([]model.Video, int6
 
 	return videos, nextTime, nil
 }
+
+func (s *VideoService) PublishVideo(authorID uint, title string, playURL string, coverURL string) error {
+	video := model.Video{
+		AuthorID:      authorID,
+		PlayURL:       playURL,
+		CoverURL:      coverURL,
+		Title:         title,
+		FavoriteCount: 0,
+		CommentCount:  0,
+	}
+
+	return db.DB.Create(&video).Error
+}
+
+func (s *VideoService) GetPublishList(userID uint) ([]model.Video, error) {
+	var videos []model.Video
+
+	if err := db.DB.Preload("Author").Where("author_id = ?", userID).Order("created_at desc").Find(&videos).Error; err != nil {
+		return nil, err
+	}
+
+	return videos, nil
+}
