@@ -4,6 +4,7 @@ import com.app.douyin.pro.lib.media.network.model.FeedResponse
 import com.app.douyin.pro.lib.media.network.model.AuthResponse
 import com.app.douyin.pro.lib.media.network.model.UserInfoResponse
 import com.app.douyin.pro.lib.media.network.model.PublishResponse
+import com.app.douyin.pro.lib.media.network.model.MessageChatResponse
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Query
@@ -49,10 +50,15 @@ interface DouyinApiService {
         @Part data: MultipartBody.Part
     ): PublishResponse
 
-    @FormUrlEncoded
     @POST("douyin/favorite/action/")
     suspend fun favoriteAction(
-        @Field("video_id") videoId: Long,
-        @Field("action_type") actionType: Int
+        @Query("video_id") videoId: Long,
+        @Query("action_type") actionType: Int
     ): AuthResponse
+
+    @GET("douyin/message/chat/")
+    suspend fun getChatHistory(
+        @Query("to_user_id") toUserId: Long,
+        @Query("pre_msg_time") preMsgTime: Long? = null
+    ): MessageChatResponse
 }
