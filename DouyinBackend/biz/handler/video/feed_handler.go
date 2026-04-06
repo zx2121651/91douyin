@@ -2,15 +2,22 @@ package video
 
 import (
 	"context"
-	"time"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
 	"github.com/douyin/backend/biz/model/common"
 	video_model "github.com/douyin/backend/biz/model/video"
+	"github.com/douyin/backend/biz/service"
 )
 
+var videoService = service.NewVideoService()
+// favoriteService and relationService are defined in publish_handler.go within the same package
+
 func Feed(ctx context.Context, c *app.RequestContext) {
+	var currentUserID uint = 0
+	if rawID, exists := c.Get("user_id"); exists {
+		currentUserID = rawID.(uint)
+	}
 	var req video_model.FeedRequest
 	if err := c.BindAndValidate(&req); err != nil {
 		c.JSON(consts.StatusBadRequest, video_model.FeedResponse{
@@ -22,36 +29,35 @@ func Feed(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	// Mock implementation
-	mockAuthor := common.User{
-		ID:            1,
-		Name:          "MockAuthor",
-		FollowCount:   100,
-		FollowerCount: 1000,
-		IsFollow:      false,
+	videos, nextTime, err := videoService.GetFeed(req.LatestTime, 30)
+	if err != nil {
+		c.JSON(consts.StatusOK, video_model.FeedResponse{
+			BaseResponse: common.BaseResponse{
+				StatusCode: 1,
+				StatusMsg:  "Failed to get feed: " + err.Error(),
+			},
+		})
+		return
 	}
 
-	mockVideos := []common.Video{
-		{
-			ID:            1,
-			Author:        mockAuthor,
-			PlayURL:       "https://www.w3schools.com/html/mov_bbb.mp4",
-			CoverURL:      "https://images.unsplash.com/photo-1611162617474-5b21e879e113",
-			FavoriteCount: 120,
-			CommentCount:  30,
-			IsFavorite:    false,
-			Title:         "Awesome Video 1",
-		},
-		{
-			ID:            2,
-			Author:        mockAuthor,
-			PlayURL:       "https://www.w3schools.com/html/mov_bbb.mp4",
-			CoverURL:      "https://images.unsplash.com/photo-1611162616475-46b635cb6868",
-			FavoriteCount: 200,
-			CommentCount:  50,
-			IsFavorite:    true,
-			Title:         "Awesome Video 2",
-		},
+	var commonVideos []common.Video
+	for _, v := range videos {
+		commonVideos = append(commonVideos, common.Video{
+			ID: int64(v.ID),
+			Author: common.User{
+				ID:            int64(v.Author.ID),
+				Name:          v.Author.Name,
+				FollowCount:   v.Author.FollowCount,
+				FollowerCount: v.Author.FollowerCount,
+				IsFollow:      relationService.IsFollow(currentUserID, v.Author.ID),
+			},
+			PlayURL:       v.PlayURL,
+			CoverURL:      v.CoverURL,
+			FavoriteCount: v.FavoriteCount,
+			CommentCount:  v.CommentCount,
+			IsFavorite:    favoriteService.IsFavorite(currentUserID, v.ID),
+			Title:         v.Title,
+		})
 	}
 
 	c.JSON(consts.StatusOK, video_model.FeedResponse{
@@ -59,7 +65,7 @@ func Feed(ctx context.Context, c *app.RequestContext) {
 			StatusCode: 0,
 			StatusMsg:  "Success",
 		},
-		VideoList: mockVideos,
-		NextTime:  time.Now().UnixMilli(),
+		VideoList: commonVideos,
+		NextTime:  nextTime,
 	})
 }
