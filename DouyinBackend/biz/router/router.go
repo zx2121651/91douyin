@@ -2,6 +2,8 @@ package router
 
 import (
 	"github.com/cloudwego/hertz/pkg/app/server"
+	"github.com/douyin/backend/biz/handler/comment"
+	"github.com/douyin/backend/biz/handler/favorite"
 	"github.com/douyin/backend/biz/handler/user"
 	"github.com/douyin/backend/biz/handler/video"
 	"github.com/douyin/backend/biz/mw"
@@ -23,4 +25,14 @@ func Register(h *server.Hertz) {
 	publishGroup := api.Group("/publish")
 	publishGroup.POST("/action/", mw.AuthMiddleware(), video.PublishAction)
 	publishGroup.GET("/list/", mw.SoftAuthMiddleware(), video.PublishList)
+
+	// Favorite
+	favoriteGroup := api.Group("/favorite")
+	favoriteGroup.POST("/action/", mw.AuthMiddleware(), favorite.FavoriteAction)
+	favoriteGroup.GET("/list/", mw.SoftAuthMiddleware(), favorite.FavoriteList)
+
+	// Comment
+	commentGroup := api.Group("/comment")
+	commentGroup.POST("/action/", mw.AuthMiddleware(), comment.CommentAction)
+	commentGroup.GET("/list/", mw.SoftAuthMiddleware(), comment.CommentList)
 }

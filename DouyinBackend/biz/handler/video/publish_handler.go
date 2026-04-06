@@ -13,6 +13,7 @@ import (
 	video_model "github.com/douyin/backend/biz/model/video"
 )
 
+
 func PublishAction(ctx context.Context, c *app.RequestContext) {
 	var req video_model.PublishActionRequest
 	if err := c.BindAndValidate(&req); err != nil {
@@ -81,6 +82,10 @@ func PublishAction(ctx context.Context, c *app.RequestContext) {
 }
 
 func PublishList(ctx context.Context, c *app.RequestContext) {
+	var currentUserID uint = 0
+	if rawID, exists := c.Get("user_id"); exists {
+		currentUserID = rawID.(uint)
+	}
 	var req video_model.PublishListRequest
 	if err := c.BindAndValidate(&req); err != nil {
 		c.JSON(consts.StatusBadRequest, video_model.PublishListResponse{
@@ -118,7 +123,7 @@ func PublishList(ctx context.Context, c *app.RequestContext) {
 			CoverURL:      v.CoverURL,
 			FavoriteCount: v.FavoriteCount,
 			CommentCount:  v.CommentCount,
-			IsFavorite:    false,
+			IsFavorite:    favoriteService.IsFavorite(currentUserID, v.ID),
 			Title:         v.Title,
 		})
 	}

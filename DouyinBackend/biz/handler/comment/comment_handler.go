@@ -1,0 +1,159 @@
+package comment
+
+import (
+	"context"
+
+	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/cloudwego/hertz/pkg/protocol/consts"
+	comment_model "github.com/douyin/backend/biz/model/comment"
+	"github.com/douyin/backend/biz/model/common"
+	"github.com/douyin/backend/biz/service"
+)
+
+var commentService = service.NewCommentService()
+
+func CommentAction(ctx context.Context, c *app.RequestContext) {
+	var req comment_model.CommentActionRequest
+	if err := c.BindAndValidate(&req); err != nil {
+		c.JSON(consts.StatusBadRequest, comment_model.CommentActionResponse{
+			BaseResponse: common.BaseResponse{
+				StatusCode: 1,
+				StatusMsg:  err.Error(),
+			},
+		})
+		return
+	}
+
+	userIDRaw, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(consts.StatusUnauthorized, comment_model.CommentActionResponse{
+			BaseResponse: common.BaseResponse{
+				StatusCode: 1,
+				StatusMsg:  "Unauthorized",
+			},
+		})
+		return
+	}
+	userID := userIDRaw.(uint)
+
+	if req.ActionType == 1 {
+		// Post Comment
+		if req.CommentText == "" {
+			c.JSON(consts.StatusBadRequest, comment_model.CommentActionResponse{
+				BaseResponse: common.BaseResponse{
+					StatusCode: 1,
+					StatusMsg:  "Comment text is required",
+				},
+			})
+			return
+		}
+
+		comment, err := commentService.PostComment(userID, uint(req.VideoID), req.CommentText)
+		if err != nil {
+			c.JSON(consts.StatusInternalServerError, comment_model.CommentActionResponse{
+				BaseResponse: common.BaseResponse{
+					StatusCode: 1,
+					StatusMsg:  err.Error(),
+				},
+			})
+			return
+		}
+
+		c.JSON(consts.StatusOK, comment_model.CommentActionResponse{
+			BaseResponse: common.BaseResponse{
+				StatusCode: 0,
+				StatusMsg:  "Success",
+			},
+			Comment: &comment_model.Comment{
+				ID: int64(comment.ID),
+				User: common.User{
+					ID:            int64(comment.User.ID),
+					Name:          comment.User.Name,
+					FollowCount:   comment.User.FollowCount,
+					FollowerCount: comment.User.FollowerCount,
+					IsFollow:      false,
+				},
+				Content:    comment.Content,
+				CreateDate: comment.CreatedAt.Format("01-02"), // mm-dd format as required by Douyin API
+			},
+		})
+
+	} else if req.ActionType == 2 {
+		// Delete Comment
+		if req.CommentID <= 0 {
+			c.JSON(consts.StatusBadRequest, comment_model.CommentActionResponse{
+				BaseResponse: common.BaseResponse{
+					StatusCode: 1,
+					StatusMsg:  "Comment ID is required for deletion",
+				},
+			})
+			return
+		}
+
+		err := commentService.DeleteComment(userID, uint(req.CommentID), uint(req.VideoID))
+		if err != nil {
+			c.JSON(consts.StatusInternalServerError, comment_model.CommentActionResponse{
+				BaseResponse: common.BaseResponse{
+					StatusCode: 1,
+					StatusMsg:  err.Error(),
+				},
+			})
+			return
+		}
+
+		c.JSON(consts.StatusOK, comment_model.CommentActionResponse{
+			BaseResponse: common.BaseResponse{
+				StatusCode: 0,
+				StatusMsg:  "Success",
+			},
+		})
+	}
+}
+
+func CommentList(ctx context.Context, c *app.RequestContext) {
+	var req comment_model.CommentListRequest
+	if err := c.BindAndValidate(&req); err != nil {
+		c.JSON(consts.StatusBadRequest, comment_model.CommentListResponse{
+			BaseResponse: common.BaseResponse{
+				StatusCode: 1,
+				StatusMsg:  err.Error(),
+			},
+		})
+		return
+	}
+
+	comments, err := commentService.GetCommentList(uint(req.VideoID))
+	if err != nil {
+		c.JSON(consts.StatusInternalServerError, comment_model.CommentListResponse{
+			BaseResponse: common.BaseResponse{
+				StatusCode: 1,
+				StatusMsg:  err.Error(),
+			},
+		})
+		return
+	}
+
+	var commonComments []comment_model.Comment
+	for _, v := range comments {
+		commonComments = append(commonComments, comment_model.Comment{
+			ID: int64(v.ID),
+			User: common.User{
+				ID:            int64(v.User.ID),
+				Name:          v.User.Name,
+				FollowCount:   v.User.FollowCount,
+				FollowerCount: v.User.FollowerCount,
+				IsFollow:      false,
+			},
+			Content:    v.Content,
+			CreateDate: v.CreatedAt.Format("01-02"),
+		})
+	}
+
+	c.JSON(consts.StatusOK, comment_model.CommentListResponse{
+		BaseResponse: common.BaseResponse{
+			StatusCode: 0,
+			StatusMsg:  "Success",
+		},
+		CommentList: commonComments,
+	})
+}

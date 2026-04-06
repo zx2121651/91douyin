@@ -10,9 +10,16 @@ import (
 	"github.com/douyin/backend/biz/service"
 )
 
+var favoriteService = service.NewFavoriteService()
+
+
 var videoService = service.NewVideoService()
 
 func Feed(ctx context.Context, c *app.RequestContext) {
+	var currentUserID uint = 0
+	if rawID, exists := c.Get("user_id"); exists {
+		currentUserID = rawID.(uint)
+	}
 	var req video_model.FeedRequest
 	if err := c.BindAndValidate(&req); err != nil {
 		c.JSON(consts.StatusBadRequest, video_model.FeedResponse{
@@ -51,7 +58,7 @@ func Feed(ctx context.Context, c *app.RequestContext) {
 			CoverURL:      v.CoverURL,
 			FavoriteCount: v.FavoriteCount,
 			CommentCount:  v.CommentCount,
-			IsFavorite:    false,
+			IsFavorite:    favoriteService.IsFavorite(currentUserID, v.ID),
 			Title:         v.Title,
 		})
 	}
