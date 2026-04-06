@@ -11,6 +11,8 @@ import com.app.douyin.pro.lib.media.model.EditingTimeline
 import com.app.douyin.pro.lib.media.model.VideoClip
 import com.app.douyin.pro.lib.media.util.MediaMetadataUtils
 import kotlinx.coroutines.CompletableDeferred
+import com.google.gson.Gson
+import com.app.douyin.pro.lib.media.model.EditingTimelineDto
 
 class VideoExportWorker(
     context: Context,
@@ -19,18 +21,22 @@ class VideoExportWorker(
 
     override suspend fun doWork(): Result {
         val outputPath = inputData.getString("output_path") ?: return Result.failure()
-        val videoUri = inputData.getString("video_uri") ?: return Result.failure()
+        val timelineJson = inputData.getString("timeline_json") ?: return Result.failure()
 
-        val uri = Uri.parse(videoUri)
-        val duration = MediaMetadataUtils.getVideoDurationMs(applicationContext, uri)
+        val timelineDto = Gson().fromJson(timelineJson, EditingTimelineDto::class.java)
+
         val timeline = EditingTimeline().apply {
-            videoMainTrack.add(VideoClip(
-                id = "main_export",
-                uri = uri,
-                startMs = 0L,
-                endMs = if (duration > 0) duration else 5000L,
-                durationMs = if (duration > 0) duration else 5000L
-            ))
+            timelineDto.videoMainTrack.forEach { clipDto ->
+                videoMainTrack.add(VideoClip(
+                    id = clipDto.id,
+                    uri = Uri.parse(clipDto.uriString),
+                    startMs = clipDto.startMs,
+                    endMs = clipDto.endMs,
+                    durationMs = clipDto.durationMs,
+                    speed = clipDto.speed,
+                    volume = clipDto.volume
+                ))
+            }
         }
 
         val deferred = CompletableDeferred<Result>()

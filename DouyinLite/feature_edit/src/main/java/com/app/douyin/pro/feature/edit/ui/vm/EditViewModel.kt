@@ -27,6 +27,9 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.util.*
 import javax.inject.Inject
+import com.google.gson.Gson
+import com.app.douyin.pro.lib.media.model.EditingTimelineDto
+import com.app.douyin.pro.lib.media.model.VideoClipDto
 
 @HiltViewModel
 class EditViewModel @Inject constructor(
@@ -101,13 +104,25 @@ class EditViewModel @Inject constructor(
 
     fun exportProject(onSuccess: (Uri) -> Unit) {
         val videoTrack = _uiState.value.tracks.find { it.type == TrackType.VIDEO }
-        val firstClip = videoTrack?.clips?.firstOrNull() ?: return
+        if (videoTrack == null || videoTrack.clips.isEmpty()) return
+
+        val clipDtos = videoTrack.clips.map { clip ->
+            VideoClipDto(
+                id = clip.id,
+                uriString = clip.sourceUri.toString(),
+                startMs = clip.startInSourceMs,
+                endMs = clip.endInSourceMs,
+                durationMs = clip.endInSourceMs - clip.startInSourceMs
+            )
+        }
+        val timelineDto = EditingTimelineDto(videoMainTrack = clipDtos)
+        val timelineJson = Gson().toJson(timelineDto)
 
         val outPath = File(context.cacheDir, "exported_v24_${System.currentTimeMillis()}.mp4").absolutePath
 
         val exportRequest = OneTimeWorkRequestBuilder<VideoExportWorker>()
             .setInputData(workDataOf(
-                "video_uri" to firstClip.sourceUri.toString(),
+                "timeline_json" to timelineJson,
                 "output_path" to outPath
             ))
             .build()
