@@ -30,7 +30,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.app.douyin.pro.feature.home.ui.components.*
+import androidx.compose.ui.geometry.Offset
+import kotlin.random.Random
 import com.app.douyin.pro.feature.home.viewmodel.HomeViewModel
+import com.app.douyin.pro.lib.media.network.VideoDto
 import kotlinx.coroutines.launch
 import java.util.*
 
@@ -71,8 +74,8 @@ fun HomeScreen(
                 when (page) {
                     0 -> LiveScreen()
                     1 -> { /* Place for Local Screen */ }
-                    2 -> VideoFeed(videos = videos.reversed(), isVisible = horizontalPagerState.currentPage == 2, onNavigateToProfile = onNavigateToProfile)
-                    3 -> VideoFeed(videos = videos, isVisible = horizontalPagerState.currentPage == 3, onNavigateToProfile = onNavigateToProfile)
+                    2 -> VideoFeed(videos = videos.reversed(), isVisible = horizontalPagerState.currentPage == 2, onNavigateToProfile = onNavigateToProfile, onToggleFavorite = { viewModel.toggleFavorite(it) })
+                    3 -> VideoFeed(videos = videos, isVisible = horizontalPagerState.currentPage == 3, onNavigateToProfile = onNavigateToProfile, onToggleFavorite = { viewModel.toggleFavorite(it) })
                 }
             }
 
@@ -96,12 +99,16 @@ fun HomeScreen(
     }
 }
 
+
 @Composable
-fun VideoPage(url: String, isVisible: Boolean) {
+fun VideoPage(video: VideoDto, isVisible: Boolean, onToggleFavorite: (Long) -> Unit) {
     var showCommentsSheet by remember { mutableStateOf(false) }
     var showShareSheet by remember { mutableStateOf(false) }
     var showLongPressMenu by remember { mutableStateOf(false) }
     var isPaused by remember { mutableStateOf(false) }
+
+    // 存储当前正在显示的红心列表
+    val heartStates = remember { mutableStateListOf<HeartAnimationState>() }
 
     Box(
         modifier = Modifier
@@ -110,27 +117,46 @@ fun VideoPage(url: String, isVisible: Boolean) {
             .pointerInput(Unit) {
                 detectTapGestures(
                     onTap = { isPaused = !isPaused },
-                    onDoubleTap = { /* Double tap for heart animation could be added here */ },
+                    onDoubleTap = { offset ->
+                        // 添加一个新的红心状态
+                        val rotation = Random.nextInt(-30, 30).toFloat()
+                        heartStates.add(HeartAnimationState(id = System.currentTimeMillis(), offset = offset, rotation = rotation))
+
+                        // 触发点赞业务逻辑 (如果当前未点赞，则点赞；如果已点赞，在抖音里双击通常不再取消点赞，我们这里简化为强制触发或仅当未点赞时触发)
+                        if (!video.is_favorite) {
+                            onToggleFavorite(video.id)
+                        }
+                    },
                     onLongPress = { showLongPressMenu = true }
                 )
             }
     ) {
-        VideoPlayerComponent(url = url, isVisible = isVisible, isDucked = showCommentsSheet, isPaused = isPaused)
+        VideoPlayerComponent(url = video.play_url, isVisible = isVisible, isDucked = showCommentsSheet, isPaused = isPaused)
+
+        // 渲染双击产生的飘心动画
+        DoubleTapHeartAnimation(
+            heartStates = heartStates,
+            onAnimationEnd = { id ->
+                // 动画结束后移除
+                heartStates.removeAll { it.id == id }
+            }
+        )
 
         ActionPanel(
-            isLiked = false,
-            likeCount = "12.5w",
-            commentCount = "856",
+            isLiked = video.is_favorite,
+            likeCount = formatCount(video.favorite_count),
+            commentCount = formatCount(video.comment_count),
             shareCount = "1.2k",
-            onLikeClick = { },
+            onLikeClick = { onToggleFavorite(video.id) },
             onCommentClick = { showCommentsSheet = true },
             onShareClick = { showShareSheet = true },
-            modifier = Modifier.align(Alignment.BottomEnd)
+            modifier = Modifier.align(Alignment.BottomEnd),
+            avatarUrl = video.author.avatar
         )
 
         VideoOverlay(
-            author = "潮流先锋",
-            description = "这是一段非常精彩的视频描述 #抖音 #Compose",
+            author = video.author.name,
+            description = video.title,
             musicTitle = "原声 - 潮流音乐库"
         )
 
@@ -139,6 +165,7 @@ fun VideoPage(url: String, isVisible: Boolean) {
         if (showLongPressMenu) LongPressMenu(onDismiss = { showLongPressMenu = false })
     }
 }
+
 
 @Composable
 fun TopNavigationBar(
@@ -218,5 +245,12 @@ fun LongPressMenu(onDismiss: () -> Unit) {
                 Text(it, color = Color.White, modifier = Modifier.fillMaxWidth().clickable { onDismiss() }.padding(16.dp), textAlign = TextAlign.Center)
             }
         }
+    }
+}
+fun formatCount(count: Long): String {
+    return if (count >= 10000) {
+        String.format("%.1fw", count / 10000.0)
+    } else {
+        count.toString()
     }
 }

@@ -114,10 +114,23 @@ fun FriendsScreen() {
             } else {
                 val videoIndex = page - 1
                 val isVisible = pagerState.currentPage == page
-                VideoPage(
-                    url = videos[videoIndex],
-                    isVisible = isVisible
+
+                val tempVideo = com.app.douyin.pro.lib.media.network.VideoDto(
+                    id = 0,
+                    play_url = videos[videoIndex],
+                    cover_url = "",
+                    favorite_count = 0,
+                    comment_count = 0,
+                    is_favorite = false,
+                    title = "朋友的视频",
+                    author = com.app.douyin.pro.lib.media.network.UserDto(0, "好友", "", false)
                 )
+                VideoPage(
+                    video = tempVideo,
+                    isVisible = isVisible,
+                    onToggleFavorite = { /* 朋友页暂时不处理点赞 */ }
+                )
+
             }
         }
 

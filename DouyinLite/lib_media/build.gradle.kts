@@ -44,6 +44,13 @@ dependencies {
     implementation(libs.hilt.navigation.compose)
 
     implementation(libs.androidx.core.ktx)
+
+    api(libs.retrofit)
+    api(libs.retrofit.gson)
+    api(libs.okhttp)
+    api(libs.okhttp.logging)
+    api(libs.gson)
+
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.ui)
     implementation(libs.androidx.media3.datasource)

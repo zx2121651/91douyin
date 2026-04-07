@@ -9,13 +9,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import com.app.douyin.pro.feature.home.ui.VideoPage
+import com.app.douyin.pro.lib.media.network.VideoDto
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun VideoFeed(
-    videos: List<String>,
+    videos: List<VideoDto>,
     isVisible: Boolean,
-    onNavigateToProfile: () -> Unit
+    onNavigateToProfile: () -> Unit,
+    onToggleFavorite: (Long) -> Unit
 ) {
     val pagerState = rememberPagerState(pageCount = { videos.size })
 
@@ -33,8 +35,9 @@ fun VideoFeed(
             }
     ) { vPage ->
         VideoPage(
-            url = videos[vPage],
-            isVisible = isVisible && pagerState.currentPage == vPage
+            video = videos[vPage],
+            isVisible = isVisible && pagerState.currentPage == vPage,
+            onToggleFavorite = onToggleFavorite
         )
     }
 }
