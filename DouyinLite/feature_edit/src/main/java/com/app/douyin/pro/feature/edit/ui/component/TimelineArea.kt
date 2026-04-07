@@ -3,19 +3,22 @@ package com.app.douyin.pro.feature.edit.ui.component
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.ui.input.pointer.pointerInput
 import com.app.douyin.pro.feature.edit.domain.model.EditTrack
 import com.app.douyin.pro.feature.edit.domain.model.TrackType
 
@@ -28,15 +31,40 @@ fun TimelineArea(
     onSelectClip: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // scale factor: pixels per millisecond
+    var scale by remember { mutableFloatStateOf(0.05f) }
+    var viewWidth by remember { mutableIntStateOf(0) }
+
+    // Scroll state for the tracks
+    val scrollState = rememberScrollState()
+
+    // Sync seeker visually using scroll offset + center
+    LaunchedEffect(scrollState.value, scale, viewWidth) {
+        if (viewWidth > 0 && scrollState.isScrollInProgress) {
+            val centerPixel = scrollState.value + viewWidth / 2f
+            val timeMs = (centerPixel / scale).toLong()
+            onSeek(timeMs.coerceIn(0L, totalDurationMs))
+        }
+    }
+
+    // Sync scroll position when time changes externally (e.g. playing)
+    LaunchedEffect(currentTimeMs, scale, viewWidth) {
+        if (viewWidth > 0 && !scrollState.isScrollInProgress) {
+            val targetPixel = (currentTimeMs * scale) - viewWidth / 2f
+            scrollState.scrollTo(targetPixel.toInt().coerceAtLeast(0))
+        }
+    }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
             .height(200.dp)
             .background(Color(0xFF1E202B))
             .padding(top = 16.dp, bottom = 12.dp)
+            .onSizeChanged { viewWidth = it.width }
     ) {
         Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-             Text(
+            Text(
                 "${formatTime(currentTimeMs)} / ${formatTime(totalDurationMs)}",
                 color = Color.White.copy(alpha = 0.5f),
                 fontSize = 10.sp
@@ -49,27 +77,38 @@ fun TimelineArea(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .pointerInput(totalDurationMs) {
-                    detectDragGestures { _, dragAmount ->
-                        val ratio = dragAmount.x / size.width
-                        val seekDelta = (ratio * totalDurationMs).toLong()
-                        onSeek((currentTimeMs + seekDelta).coerceIn(0, totalDurationMs))
+                .pointerInput(Unit) {
+                    detectTransformGestures { centroid, pan, zoom, rotation ->
+                        // Constrain zoom to prevent extreme scaling
+                        scale = (scale * zoom).coerceIn(0.01f, 1f)
+
+                        // We do not handle pan here since horizontalScroll handles it natively,
+                        // but you could add manual panning if desired.
                     }
                 }
         ) {
-            Column(modifier = Modifier.fillMaxSize()) {
+            // Tracks area
+            // We use padding on start and end so the timeline starts/ends at the center seeker
+            val halfViewWidthDp = with(LocalDensity.current) { (viewWidth / 2f).toDp() }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .horizontalScroll(scrollState)
+                    .padding(horizontal = if (viewWidth > 0) halfViewWidthDp else 0.dp)
+            ) {
                 tracks.forEach { track ->
-                    TrackRow(track, onSelectClip)
+                    TrackRow(track, scale, onSelectClip)
                     Spacer(modifier = Modifier.height(8.dp))
                 }
             }
 
-            val progress = if (totalDurationMs > 0) currentTimeMs.toFloat() / totalDurationMs else 0f
+            // Central White Seeker
             Box(
                 modifier = Modifier
                     .fillMaxHeight()
                     .width(2.dp)
-                    .offset(x = (16.dp + (320.dp * progress))) // Approximate track width
+                    .align(Alignment.Center)
                     .background(Color.White)
             )
         }
@@ -77,7 +116,7 @@ fun TimelineArea(
 }
 
 @Composable
-fun TrackRow(track: EditTrack, onSelectClip: (String) -> Unit) {
+fun TrackRow(track: EditTrack, scale: Float, onSelectClip: (String) -> Unit) {
     val bgColor = when(track.type) {
         TrackType.VIDEO -> Color(0xFF2E303C)
         TrackType.AUDIO -> Color(0xFF00B3FF).copy(alpha = 0.15f)
@@ -86,24 +125,26 @@ fun TrackRow(track: EditTrack, onSelectClip: (String) -> Unit) {
 
     Row(
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
             .height(if (track.type == TrackType.VIDEO) 64.dp else 36.dp)
             .clip(RoundedCornerShape(6.dp))
             .background(bgColor)
             .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(6.dp))
     ) {
         track.clips.forEach { clip ->
+            val durationMs = clip.getTimelineDurationMs().coerceAtLeast(1L)
+            val pixelWidth = durationMs * scale
+            val dpWidth = with(LocalDensity.current) { pixelWidth.toDp() }
+
             Box(
                 modifier = Modifier
                     .fillMaxHeight()
-                    .weight(clip.getTimelineDurationMs().coerceAtLeast(1L).toFloat())
+                    .width(dpWidth)
                     .background(Color.Gray.copy(alpha = 0.3f))
                     .border(0.5.dp, Color.Black.copy(alpha = 0.3f))
                     .clickable { onSelectClip(clip.id) },
                 contentAlignment = Alignment.Center
             ) {
-                if (track.type == TrackType.VIDEO) {
+                if (track.type == TrackType.VIDEO && dpWidth > 40.dp) {
                     Text("Clip", color = Color.White.copy(alpha = 0.5f), fontSize = 10.sp)
                 }
             }
