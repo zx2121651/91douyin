@@ -1,7 +1,9 @@
 package com.app.douyin.pro.feature.inbox.di
 
 import com.app.douyin.pro.feature.inbox.data.source.InboxDataSource
-import com.app.douyin.pro.feature.inbox.data.source.MockInboxDataSource
+import com.app.douyin.pro.feature.inbox.data.source.RemoteInboxDataSource
+import com.app.douyin.pro.lib.media.network.DouyinApiService
+import com.app.douyin.pro.lib.media.auth.AuthManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -13,5 +15,7 @@ import javax.inject.Singleton
 object InboxModule {
     @Provides
     @Singleton
-    fun provideInboxDataSource(): InboxDataSource = MockInboxDataSource()
+    fun provideInboxDataSource(apiService: DouyinApiService, authManager: AuthManager): InboxDataSource {
+        return RemoteInboxDataSource(apiService, authManager)
+    }
 }

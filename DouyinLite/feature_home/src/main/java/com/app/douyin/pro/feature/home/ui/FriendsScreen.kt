@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import com.app.douyin.pro.feature.home.domain.model.VideoModel
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.VerticalPager
@@ -115,7 +116,19 @@ fun FriendsScreen() {
                 val videoIndex = page - 1
                 val isVisible = pagerState.currentPage == page
                 VideoPage(
-                    url = videos[videoIndex],
+                    video = VideoModel(
+                        id = videoIndex.toLong(),
+                        playUrl = videos[videoIndex],
+                        title = "好友发布的视频",
+                        authorId = 2,
+                        authorName = "你的好友",
+                        authorAvatar = null,
+                        likeCount = "88",
+                        commentCount = "12",
+                        shareCount = "分享",
+                        isLiked = false,
+                        isFollowed = true
+                    ),
                     isVisible = isVisible
                 )
             }

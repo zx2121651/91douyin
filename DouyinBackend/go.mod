@@ -7,6 +7,7 @@ toolchain go1.24.3
 require (
 	github.com/cloudwego/hertz v0.10.4
 	github.com/golang-jwt/jwt/v4 v4.5.2
+	github.com/joho/godotenv v1.5.1
 	github.com/spf13/viper v1.21.0
 	golang.org/x/crypto v0.22.0
 	gorm.io/driver/sqlite v1.6.0

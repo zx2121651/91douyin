@@ -6,6 +6,7 @@ import (
 	"github.com/douyin/backend/biz/handler/favorite"
 	"github.com/douyin/backend/biz/handler/message"
 	"github.com/douyin/backend/biz/handler/relation"
+	"github.com/douyin/backend/biz/handler/search"
 	"github.com/douyin/backend/biz/handler/user"
 	"github.com/douyin/backend/biz/handler/video"
 	"github.com/douyin/backend/biz/mw"
@@ -19,6 +20,7 @@ func Register(h *server.Hertz) {
 	userGroup.POST("/register/", user.Register)
 	userGroup.POST("/login/", user.Login)
 	userGroup.GET("/", mw.AuthMiddleware(), user.Info)
+	userGroup.POST("/update/", mw.AuthMiddleware(), user.UpdateProfile)
 
 	// Feed
 	api.GET("/feed/", mw.SoftAuthMiddleware(), video.Feed)
@@ -49,4 +51,9 @@ func Register(h *server.Hertz) {
 	messageGroup := api.Group("/message")
 	messageGroup.POST("/action/", mw.AuthMiddleware(), message.MessageAction)
 	messageGroup.GET("/chat/", mw.AuthMiddleware(), message.MessageChat)
+
+	// Search
+	searchGroup := api.Group("/search")
+	searchGroup.GET("/video/", mw.SoftAuthMiddleware(), search.SearchVideo)
+	searchGroup.GET("/user/", mw.SoftAuthMiddleware(), search.SearchUser)
 }

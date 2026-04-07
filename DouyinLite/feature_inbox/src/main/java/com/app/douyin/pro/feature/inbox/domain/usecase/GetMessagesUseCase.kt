@@ -8,5 +8,5 @@ import javax.inject.Inject
 class GetMessagesUseCase @Inject constructor(
     private val repository: InboxRepository
 ) {
-    operator fun invoke(): Resource<List<Message>> = repository.getMessages()
+    suspend operator fun invoke(): Resource<List<Message>> = repository.getMessages()
 }

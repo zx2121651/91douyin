@@ -62,3 +62,10 @@ func (s *UserService) GetUserByID(userID uint) (*model.User, error) {
 	}
 	return &user, nil
 }
+
+func (s *UserService) UpdateProfile(userID uint, updates map[string]interface{}) error {
+	if len(updates) == 0 {
+		return nil
+	}
+	return db.DB.Model(&model.User{}).Where("id = ?", userID).Updates(updates).Error
+}

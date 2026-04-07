@@ -4,11 +4,16 @@ import android.content.Context
 import android.net.Uri
 import androidx.annotation.OptIn
 import androidx.media3.common.MediaItem
+import androidx.media3.common.audio.AudioProcessor
+import androidx.media3.common.audio.SonicAudioProcessor
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.effect.SpeedChangeEffect
+import androidx.media3.effect.GlEffect
 import androidx.media3.transformer.*
 import com.app.douyin.pro.lib.media.api.IVideoEditor
 import com.app.douyin.pro.lib.media.model.EditingTimeline
 import com.app.douyin.pro.lib.media.model.VideoClip
+import com.app.douyin.pro.lib.media.effect.CustomTransitionEffect
 import java.io.File
 import kotlinx.coroutines.*
 
@@ -36,7 +41,7 @@ class VideoEditorHelper(private val context: Context) : IVideoEditor {
         val transformer = transformerBuilder.build()
         this.transformer = transformer
 
-        val editedMediaItems = timeline.videoMainTrack.map { clip ->
+        val editedMediaItems = timeline.videoMainTrack.mapIndexed { index, clip ->
             val mediaItem = MediaItem.Builder()
                 .setUri(clip.uri)
                 .setClippingConfiguration(
@@ -47,8 +52,38 @@ class VideoEditorHelper(private val context: Context) : IVideoEditor {
                 )
                 .build()
 
+            val audioProcessors = mutableListOf<AudioProcessor>()
+            if (clip.speed != 1.0f) {
+                audioProcessors.add(SonicAudioProcessor().apply {
+                    setSpeed(clip.speed)
+                    setPitch(1.0f)
+                })
+            }
+
+            val videoEffects = mutableListOf<androidx.media3.common.Effect>()
+            if (clip.speed != 1.0f) {
+                videoEffects.add(SpeedChangeEffect(clip.speed))
+            }
+
+            // Apply transitions if there are multiple clips
+            // For example, if it's not the last clip, add a fade out at the end.
+            // If it's not the first clip, add a fade in at the beginning.
+            // This is a simplified sequential transition application.
+            val transitionDuration = 500L
+            if (timeline.videoMainTrack.size > 1) {
+                if (index > 0) {
+                    videoEffects.add(CustomTransitionEffect(transitionDuration, isFadeOut = false))
+                }
+                if (index < timeline.videoMainTrack.size - 1) {
+                    videoEffects.add(CustomTransitionEffect(transitionDuration, isFadeOut = true))
+                }
+            }
+
+            val effects = Effects(audioProcessors, videoEffects)
+
             EditedMediaItem.Builder(mediaItem)
                 .setRemoveAudio(clip.volume == 0f)
+                .setEffects(effects)
                 .build()
         }
 

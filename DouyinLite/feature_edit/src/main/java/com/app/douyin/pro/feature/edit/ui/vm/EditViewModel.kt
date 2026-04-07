@@ -10,6 +10,8 @@ import androidx.work.workDataOf
 import com.app.douyin.pro.feature.edit.domain.command.DeleteClipCommand
 import com.app.douyin.pro.feature.edit.domain.command.EditCommand
 import com.app.douyin.pro.feature.edit.domain.command.SplitClipCommand
+import com.app.douyin.pro.feature.edit.domain.command.ChangeSpeedCommand
+import com.app.douyin.pro.feature.edit.domain.command.ChangeVolumeCommand
 import com.app.douyin.pro.feature.edit.domain.model.ClipItem
 import com.app.douyin.pro.feature.edit.domain.model.EditTrack
 import com.app.douyin.pro.feature.edit.domain.model.TrackType
@@ -27,6 +29,9 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.util.*
 import javax.inject.Inject
+import com.google.gson.Gson
+import com.app.douyin.pro.lib.media.model.EditingTimelineDto
+import com.app.douyin.pro.lib.media.model.VideoClipDto
 
 @HiltViewModel
 class EditViewModel @Inject constructor(
@@ -95,19 +100,43 @@ class EditViewModel @Inject constructor(
         _uiState.update { it.copy(selectedClipId = null) }
     }
 
+    fun changeSelectedClipSpeed(speed: Float) {
+        val sid = _uiState.value.selectedClipId ?: return
+        executeCommand(ChangeSpeedCommand(sid, speed))
+    }
+
+    fun changeSelectedClipVolume(volume: Float) {
+        val sid = _uiState.value.selectedClipId ?: return
+        executeCommand(ChangeVolumeCommand(sid, volume))
+    }
+
     fun selectClip(id: String) { _uiState.update { it.copy(selectedClipId = id) } }
     fun updateCurrentTime(t: Long) { _uiState.update { it.copy(currentTimeMs = t) } }
     fun togglePlay() { _uiState.update { it.copy(isPlaying = !it.isPlaying) } }
 
     fun exportProject(onSuccess: (Uri) -> Unit) {
         val videoTrack = _uiState.value.tracks.find { it.type == TrackType.VIDEO }
-        val firstClip = videoTrack?.clips?.firstOrNull() ?: return
+        if (videoTrack == null || videoTrack.clips.isEmpty()) return
+
+        val clipDtos = videoTrack.clips.map { clip ->
+            VideoClipDto(
+                id = clip.id,
+                uriString = clip.sourceUri.toString(),
+                startMs = clip.startInSourceMs,
+                endMs = clip.endInSourceMs,
+                durationMs = clip.endInSourceMs - clip.startInSourceMs,
+                speed = clip.speed,
+                volume = clip.volume
+            )
+        }
+        val timelineDto = EditingTimelineDto(videoMainTrack = clipDtos)
+        val timelineJson = Gson().toJson(timelineDto)
 
         val outPath = File(context.cacheDir, "exported_v24_${System.currentTimeMillis()}.mp4").absolutePath
 
         val exportRequest = OneTimeWorkRequestBuilder<VideoExportWorker>()
             .setInputData(workDataOf(
-                "video_uri" to firstClip.sourceUri.toString(),
+                "timeline_json" to timelineJson,
                 "output_path" to outPath
             ))
             .build()

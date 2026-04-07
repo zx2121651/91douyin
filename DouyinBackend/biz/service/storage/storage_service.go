@@ -49,3 +49,17 @@ func (s *StorageService) BuildVideoURL(filename string) string {
 	// TODO: Implement OSS URL building
 	return ""
 }
+
+func (s *StorageService) BuildAvatarURL(filename string) string {
+	if config.GlobalConfig.Storage.Type == "local" {
+		return fmt.Sprintf("http://%s/static/avatars/%s", config.GlobalConfig.Storage.Local.Domain, filename)
+	}
+	return ""
+}
+
+func (s *StorageService) BuildBackgroundURL(filename string) string {
+	if config.GlobalConfig.Storage.Type == "local" {
+		return fmt.Sprintf("http://%s/static/backgrounds/%s", config.GlobalConfig.Storage.Local.Domain, filename)
+	}
+	return ""
+}

@@ -1,4 +1,7 @@
 [versions]
+retrofit = "2.9.0"
+okhttp = "4.12.0"
+gson = "2.10.1"
 coil-compose = "2.4.0"
 guava = "31.1-android"
 agp = "8.4.0"
@@ -16,6 +19,11 @@ camerax = "1.3.3"
 hilt = "2.51.1"
 
 [libraries]
+retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
+retrofit-gson = { group = "com.squareup.retrofit2", name = "converter-gson", version.ref = "retrofit" }
+okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
+okhttp-logging = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp" }
+gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
 androidx-compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended", version = "1.6.7" }
 
 coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coil-compose" }

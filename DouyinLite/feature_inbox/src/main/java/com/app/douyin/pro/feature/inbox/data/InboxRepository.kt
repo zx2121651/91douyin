@@ -10,6 +10,10 @@ import javax.inject.Singleton
 class InboxRepository @Inject constructor(
     private val dataSource: InboxDataSource
 ) {
-    fun getMessages(): Resource<List<com.app.douyin.pro.feature.inbox.domain.model.Message>> = Resource.Success(dataSource.getMessages())
+    suspend fun getMessages(): Resource<List<com.app.douyin.pro.feature.inbox.domain.model.Message>> = try {
+        Resource.Success(dataSource.getMessages())
+    } catch (e: Exception) {
+        Resource.Error(e.message ?: "Unknown Error", AppError.NetworkError)
+    }
     fun getCategories(): Resource<List<com.app.douyin.pro.feature.inbox.domain.model.NotificationCategory>> = Resource.Success(dataSource.getCategories())
 }

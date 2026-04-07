@@ -1,7 +1,8 @@
 package com.app.douyin.pro.feature.home.di
 
 import com.app.douyin.pro.feature.home.data.source.HomeDataSource
-import com.app.douyin.pro.feature.home.data.source.MockHomeDataSource
+import com.app.douyin.pro.feature.home.data.source.RemoteHomeDataSource
+import com.app.douyin.pro.lib.media.network.DouyinApiService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -13,5 +14,7 @@ import javax.inject.Singleton
 object HomeModule {
     @Provides
     @Singleton
-    fun provideHomeDataSource(): HomeDataSource = MockHomeDataSource()
+    fun provideHomeDataSource(apiService: DouyinApiService): HomeDataSource {
+        return RemoteHomeDataSource(apiService)
+    }
 }

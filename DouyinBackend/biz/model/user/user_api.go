@@ -1,6 +1,10 @@
 package user
 
-import "github.com/douyin/backend/biz/model/common"
+import (
+	"mime/multipart"
+
+	"github.com/douyin/backend/biz/model/common"
+)
 
 type UserRegisterRequest struct {
 	Username string `query:"username" form:"username" vd:"$!='';msg:'username is required'"`
@@ -32,4 +36,16 @@ type UserInfoRequest struct {
 type UserInfoResponse struct {
 	common.BaseResponse
 	User common.User `json:"user"`
+}
+
+type UserProfileUpdateRequest struct {
+	Token          string                `form:"token"`
+	Name           string                `form:"name"`
+	Signature      string                `form:"signature"`
+	AvatarData     *multipart.FileHeader `form:"avatar"`
+	BackgroundData *multipart.FileHeader `form:"background"`
+}
+
+type UserProfileUpdateResponse struct {
+	common.BaseResponse
 }

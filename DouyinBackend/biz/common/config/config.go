@@ -2,8 +2,10 @@ package config
 
 import (
 	"log"
+	"os"
 
 	"github.com/spf13/viper"
+	"github.com/joho/godotenv"
 )
 
 type Config struct {
@@ -36,9 +38,11 @@ type StorageConfig struct {
 }
 
 type LocalConfig struct {
-	VideoPath string `mapstructure:"video_path"`
-	CoverPath string `mapstructure:"cover_path"`
-	Domain    string `mapstructure:"domain"`
+	VideoPath      string `mapstructure:"video_path"`
+	CoverPath      string `mapstructure:"cover_path"`
+	AvatarPath     string `mapstructure:"avatar_path"`
+	BackgroundPath string `mapstructure:"background_path"`
+	Domain         string `mapstructure:"domain"`
 }
 
 type OSSConfig struct {
@@ -51,6 +55,9 @@ type OSSConfig struct {
 var GlobalConfig *Config
 
 func Init() {
+	// Load .env if exists (ignore error if not found in production)
+	_ = godotenv.Load()
+
 	viper.SetConfigFile("config/config.yaml")
 	viper.SetConfigType("yaml")
 
@@ -62,5 +69,11 @@ func Init() {
 	if err := viper.Unmarshal(GlobalConfig); err != nil {
 		log.Fatalf("Unable to decode into struct, %v", err)
 	}
+
+	// Override JWT Secret with environment variable if present
+	if envSecret := os.Getenv("DOUYIN_JWT_SECRET"); envSecret != "" {
+		GlobalConfig.JWT.Secret = envSecret
+	}
+
 	log.Println("Configuration loaded successfully")
 }

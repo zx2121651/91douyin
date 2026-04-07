@@ -11,9 +11,9 @@ import javax.inject.Singleton
 class ProfileRepository @Inject constructor(
     private val dataSource: ProfileDataSource
 ) {
-    fun getProfileInfo(): Resource<ProfileInfo> = try {
+    suspend fun getProfileInfo(): Resource<ProfileInfo> = try {
         Resource.Success(dataSource.getUserInfo())
     } catch (e: Exception) {
-        Resource.Error(e.message ?: "Unknown Error", AppError.UnknownError)
+        Resource.Error(e.message ?: "Unknown Error", AppError.NetworkError)
     }
 }

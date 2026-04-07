@@ -35,6 +35,11 @@ android {
 }
 
 dependencies {
+    api(libs.retrofit)
+    api(libs.retrofit.gson)
+    api(libs.okhttp)
+    api(libs.okhttp.logging)
+    api(libs.gson)
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.media3.effect)
     implementation(libs.androidx.media3.transformer)
@@ -54,6 +59,11 @@ dependencies {
 }
 
 dependencies {
+    api(libs.retrofit)
+    api(libs.retrofit.gson)
+    api(libs.okhttp)
+    api(libs.okhttp.logging)
+    api(libs.gson)
     testImplementation(libs.junit)
     testImplementation("org.mockito:mockito-core:5.11.0")
 }
