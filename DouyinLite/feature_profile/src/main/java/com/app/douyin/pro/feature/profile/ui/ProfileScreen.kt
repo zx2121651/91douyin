@@ -1,28 +1,46 @@
 package com.app.douyin.pro.feature.profile.ui
 
-import androidx.compose.foundation.*
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.*
-import androidx.compose.foundation.shape.*
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
-import kotlin.random.Random
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
 import com.app.douyin.pro.feature.profile.viewmodel.ProfileViewModel
+import kotlin.random.Random
+import kotlin.math.roundToInt
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ProfileScreen(
     viewModel: ProfileViewModel = hiltViewModel()
@@ -45,29 +63,55 @@ fun ProfileScreen(
         Box(modifier = Modifier.fillMaxSize().background(darkBg), contentAlignment = Alignment.Center) {
             CircularProgressIndicator(color = Color(0xFFFFD444))
         }
-    } else {
+        return
+    }
+
+    val topBarHeight = 56.dp
+    val topBarHeightPx = with(LocalDensity.current) { topBarHeight.toPx() }
+
+    var headerHeightPx by remember { mutableFloatStateOf(0f) }
+    var scrollOffset by remember { mutableFloatStateOf(0f) }
+
+    val nestedScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                val delta = available.y
+                val newOffset = scrollOffset + delta
+
+                // Allow scrolling the header up to max its height minus the top bar
+                val minOffset = -(headerHeightPx - topBarHeightPx)
+                val maxOffset = 0f
+
+                val clampedOffset = newOffset.coerceIn(minOffset, maxOffset)
+                val consumed = clampedOffset - scrollOffset
+                scrollOffset = clampedOffset
+
+                return if (consumed != 0f) Offset(0f, consumed) else Offset.Zero
+            }
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(darkBg)
+            .nestedScroll(nestedScrollConnection)
+    ) {
+        // Sticky Header / Collapsing logic
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .background(darkBg)
-        ) {
-            // Top Toolbar
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Filled.Add, contentDescription = null, tint = Color.White)
-                Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                    Icon(Icons.Filled.Search, contentDescription = null, tint = Color.White)
-                    Icon(Icons.Filled.Menu, contentDescription = null, tint = Color.White)
+                .fillMaxWidth()
+                .offset { IntOffset(0, scrollOffset.roundToInt()) }
+                .onGloballyPositioned { coordinates ->
+                    if (headerHeightPx == 0f) {
+                        headerHeightPx = coordinates.size.height.toFloat()
+                    }
                 }
-            }
+        ) {
+            // Invisible spacer for top bar placeholder within the scrolling header
+            Spacer(modifier = Modifier.height(topBarHeight).statusBarsPadding())
 
-            // Profile Header
+            // Profile Header Content
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -175,14 +219,23 @@ fun ProfileScreen(
             }
 
             Spacer(modifier = Modifier.height(24.dp))
+        }
 
+        // The Scrollable content (Tabs + Grid)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    translationY = headerHeightPx + scrollOffset
+                }
+        ) {
             // Tab Row
             var selectedTab by remember { mutableIntStateOf(0) }
             val tabs = listOf("作品 32", "私密", "推荐", "收藏")
 
             ScrollableTabRow(
                 selectedTabIndex = selectedTab,
-                containerColor = Color.Transparent,
+                containerColor = darkBg, // Ensure it covers the background when sticky
                 contentColor = Color.White,
                 edgePadding = 16.dp,
                 divider = {},
@@ -213,12 +266,12 @@ fun ProfileScreen(
             // Waterfall Grid
             LazyVerticalGrid(
                 columns = GridCells.Fixed(3),
-                contentPadding = PaddingValues(1.dp),
+                contentPadding = PaddingValues(bottom = 120.dp, start = 1.dp, end = 1.dp, top = 1.dp), // Extra padding for bottom navigation
                 verticalArrangement = Arrangement.spacedBy(1.dp),
                 horizontalArrangement = Arrangement.spacedBy(1.dp),
                 modifier = Modifier.fillMaxSize()
             ) {
-                items(30) { index ->
+                items(30) { _ ->
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -246,6 +299,41 @@ fun ProfileScreen(
                         }
                     }
                 }
+            }
+        }
+
+        // Top Toolbar (Always on top)
+        // Background fades in as we scroll up
+        val topBarAlpha = if (headerHeightPx > 0) {
+            val minOffset = -(headerHeightPx - topBarHeightPx)
+            (scrollOffset / minOffset).coerceIn(0f, 1f)
+        } else {
+            0f
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(darkBg.copy(alpha = topBarAlpha))
+                .statusBarsPadding()
+                .height(topBarHeight)
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Filled.Add, contentDescription = null, tint = Color.White)
+
+            // Name fades in when toolbar collapses
+            Text(
+                text = username,
+                color = Color.White.copy(alpha = topBarAlpha),
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                Icon(Icons.Filled.Search, contentDescription = null, tint = Color.White)
+                Icon(Icons.Filled.Menu, contentDescription = null, tint = Color.White)
             }
         }
     }

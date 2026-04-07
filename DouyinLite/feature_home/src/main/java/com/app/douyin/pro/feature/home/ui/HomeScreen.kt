@@ -119,7 +119,7 @@ fun VideoPage(video: VideoModel, isVisible: Boolean) {
                 )
             }
     ) {
-        VideoPlayerComponent(url = video.playUrl, isVisible = isVisible, isDucked = showCommentsSheet, isPaused = isPaused)
+        VideoPlayerComponent(url = video.playUrl, coverUrl = video.coverUrl, isVisible = isVisible, isDucked = showCommentsSheet, isPaused = isPaused)
 
         ActionPanel(
             isLiked = video.isLiked,

@@ -119,6 +119,7 @@ fun FriendsScreen() {
                     video = VideoModel(
                         id = videoIndex.toLong(),
                         playUrl = videos[videoIndex],
+                        coverUrl = "",
                         title = "好友发布的视频",
                         authorId = 2,
                         authorName = "你的好友",
