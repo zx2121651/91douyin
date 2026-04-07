@@ -4,7 +4,10 @@ import android.content.Context
 import android.net.Uri
 import androidx.annotation.OptIn
 import androidx.media3.common.MediaItem
+import androidx.media3.common.audio.AudioProcessor
+import androidx.media3.common.audio.SonicAudioProcessor
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.effect.SpeedChangeEffect
 import androidx.media3.transformer.*
 import com.app.douyin.pro.lib.media.api.IVideoEditor
 import com.app.douyin.pro.lib.media.model.EditingTimeline
@@ -47,8 +50,17 @@ class VideoEditorHelper(private val context: Context) : IVideoEditor {
                 )
                 .build()
 
+            val effects = Effects(
+                if (clip.speed != 1.0f) listOf(SonicAudioProcessor().apply {
+                    setSpeed(clip.speed)
+                    setPitch(1.0f)
+                }) else listOf(),
+                if (clip.speed != 1.0f) listOf(SpeedChangeEffect(clip.speed)) else listOf()
+            )
+
             EditedMediaItem.Builder(mediaItem)
                 .setRemoveAudio(clip.volume == 0f)
+                .setEffects(effects)
                 .build()
         }
 

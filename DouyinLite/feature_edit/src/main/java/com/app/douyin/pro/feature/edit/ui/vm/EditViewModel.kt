@@ -10,6 +10,8 @@ import androidx.work.workDataOf
 import com.app.douyin.pro.feature.edit.domain.command.DeleteClipCommand
 import com.app.douyin.pro.feature.edit.domain.command.EditCommand
 import com.app.douyin.pro.feature.edit.domain.command.SplitClipCommand
+import com.app.douyin.pro.feature.edit.domain.command.ChangeSpeedCommand
+import com.app.douyin.pro.feature.edit.domain.command.ChangeVolumeCommand
 import com.app.douyin.pro.feature.edit.domain.model.ClipItem
 import com.app.douyin.pro.feature.edit.domain.model.EditTrack
 import com.app.douyin.pro.feature.edit.domain.model.TrackType
@@ -98,6 +100,16 @@ class EditViewModel @Inject constructor(
         _uiState.update { it.copy(selectedClipId = null) }
     }
 
+    fun changeSelectedClipSpeed(speed: Float) {
+        val sid = _uiState.value.selectedClipId ?: return
+        executeCommand(ChangeSpeedCommand(sid, speed))
+    }
+
+    fun changeSelectedClipVolume(volume: Float) {
+        val sid = _uiState.value.selectedClipId ?: return
+        executeCommand(ChangeVolumeCommand(sid, volume))
+    }
+
     fun selectClip(id: String) { _uiState.update { it.copy(selectedClipId = id) } }
     fun updateCurrentTime(t: Long) { _uiState.update { it.copy(currentTimeMs = t) } }
     fun togglePlay() { _uiState.update { it.copy(isPlaying = !it.isPlaying) } }
@@ -112,7 +124,9 @@ class EditViewModel @Inject constructor(
                 uriString = clip.sourceUri.toString(),
                 startMs = clip.startInSourceMs,
                 endMs = clip.endInSourceMs,
-                durationMs = clip.endInSourceMs - clip.startInSourceMs
+                durationMs = clip.endInSourceMs - clip.startInSourceMs,
+                speed = clip.speed,
+                volume = clip.volume
             )
         }
         val timelineDto = EditingTimelineDto(videoMainTrack = clipDtos)
