@@ -18,7 +18,7 @@ class RemoteRecordDataSource @Inject constructor(
     private val apiService: DouyinApiService,
     private val authManager: AuthManager
 ) : RecordDataSource {
-    override fun getFilters(): List<String> = listOf("原片", "冷白", "柔光", "复古", "黑白", "清新", "夏日")
+    override fun getFilters(): List<String> = listOf("原片", "黑白", "RGB色散", "二分屏")
 
     override suspend fun publishVideo(videoFile: File, title: String) {
         val token = authManager.getToken() ?: throw Exception("Not logged in")

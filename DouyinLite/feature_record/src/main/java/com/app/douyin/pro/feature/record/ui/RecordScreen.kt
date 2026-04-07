@@ -82,6 +82,13 @@ fun RecordScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+
+        var glSurfaceView by remember { mutableStateOf<CameraGLSurfaceView?>(null) }
+
+        LaunchedEffect(uiState.selectedFilter) {
+            glSurfaceView?.setFilter(uiState.selectedFilter)
+        }
+
         AndroidView(
             factory = { ctx ->
                 CameraGLSurfaceView(ctx).apply {
@@ -90,8 +97,10 @@ fun RecordScreen(
                         bindCamera(st)
                     }
                     initRenderer()
+                    glSurfaceView = this
                 }
             },
+
             modifier = Modifier.fillMaxSize()
         )
 

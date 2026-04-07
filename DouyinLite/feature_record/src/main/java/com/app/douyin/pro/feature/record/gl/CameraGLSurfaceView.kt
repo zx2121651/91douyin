@@ -27,4 +27,13 @@ class CameraGLSurfaceView @JvmOverloads constructor(
         setRenderer(renderer)
         renderMode = RENDERMODE_WHEN_DIRTY
     }
+
+    fun setFilter(filterName: String) {
+        queueEvent {
+            if (this::renderer.isInitialized) {
+                renderer.setFilter(filterName)
+                requestRender()
+            }
+        }
+    }
 }
