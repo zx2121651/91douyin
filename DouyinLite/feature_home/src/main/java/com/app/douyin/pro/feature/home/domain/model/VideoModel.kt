@@ -3,6 +3,7 @@ package com.app.douyin.pro.feature.home.domain.model
 data class VideoModel(
     val id: Long,
     val playUrl: String,
+    val coverUrl: String,
     val title: String,
     val authorId: Long,
     val authorName: String,

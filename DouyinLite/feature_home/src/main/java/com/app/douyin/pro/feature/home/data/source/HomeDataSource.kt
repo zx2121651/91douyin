@@ -27,6 +27,7 @@ class RemoteHomeDataSource @Inject constructor(
                     VideoModel(
                         id = dto.id,
                         playUrl = dto.playUrl,
+                        coverUrl = dto.coverUrl,
                         title = dto.title,
                     authorId = dto.author.id,
                         authorName = dto.author.name,
@@ -66,6 +67,7 @@ class MockHomeDataSource : HomeDataSource {
             VideoModel(
                 id = index.toLong(),
                 playUrl = url,
+                coverUrl = "",
                 title = "这是一个 Mock 视频",
                 authorId = 1,
                 authorName = "Mock User",
