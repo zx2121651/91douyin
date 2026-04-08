@@ -33,6 +33,14 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.app.douyin.pro.feature.record.gl.CameraGLSurfaceView
 import com.app.douyin.pro.feature.record.ui.vm.RecordViewModel
+
+import androidx.camera.core.ImageAnalysis
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.geometry.Offset
+import java.util.concurrent.Executors
+import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarkerResult
+import androidx.compose.ui.graphics.drawscope.Stroke
+
 import java.io.File
 
 @SuppressLint("RestrictedApi")
@@ -51,7 +59,14 @@ fun RecordScreen(
     var activeRecording by remember { mutableStateOf<Recording?>(null) }
     var previewTexture by remember { mutableStateOf<SurfaceTexture?>(null) }
 
+    // Initialize FaceTracker (it will fail silently if the model asset isn't bundled,
+    // but provides the architecture for MediaPipe AI processing on camera frames)
+    val faceTracker = remember { FaceTracker(context) }
+    val analyzerExecutor = remember { Executors.newSingleThreadExecutor() }
+    val nosePosition by faceTracker.nosePosition.collectAsState()
+
     fun bindCamera(surfaceTexture: SurfaceTexture) {
+
         cameraProviderFuture.addListener({
             val cameraProvider = cameraProviderFuture.get()
             val preview = Preview.Builder().build()
@@ -69,10 +84,17 @@ fun RecordScreen(
                 .build()
             videoCapture = VideoCapture.withOutput(recorder)
 
+            val imageAnalyzer = ImageAnalysis.Builder()
+                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                .build()
+                .also {
+                    it.setAnalyzer(analyzerExecutor, faceTracker)
+                }
+
             val cameraSelector = CameraSelector.Builder().requireLensFacing(uiState.lensFacing).build()
             try {
                 cameraProvider.unbindAll()
-                cameraProvider.bindToLifecycle(lifecycleOwner, cameraSelector, preview, videoCapture)
+                cameraProvider.bindToLifecycle(lifecycleOwner, cameraSelector, preview, videoCapture, imageAnalyzer)
             } catch (e: Exception) { e.printStackTrace() }
         }, ContextCompat.getMainExecutor(context))
     }
