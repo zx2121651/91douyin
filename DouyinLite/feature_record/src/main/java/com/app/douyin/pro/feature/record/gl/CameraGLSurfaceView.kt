@@ -36,4 +36,13 @@ class CameraGLSurfaceView @JvmOverloads constructor(
             }
         }
     }
+
+    fun setDynamicFilter(glsl: String) {
+        queueEvent {
+            if (this::renderer.isInitialized) {
+                renderer.setDynamicFilter(glsl)
+                requestRender()
+            }
+        }
+    }
 }

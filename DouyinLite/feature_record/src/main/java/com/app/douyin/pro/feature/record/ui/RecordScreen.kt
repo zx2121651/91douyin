@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -108,7 +109,15 @@ fun RecordScreen(
         var glSurfaceView by remember { mutableStateOf<CameraGLSurfaceView?>(null) }
 
         LaunchedEffect(uiState.selectedFilter) {
-            glSurfaceView?.setFilter(uiState.selectedFilter)
+            uiState.selectedFilter?.let { filter ->
+                if (filter.isDynamic && filter.glslSource != null) {
+                    glSurfaceView?.setDynamicFilter(filter.glslSource)
+                } else {
+                    glSurfaceView?.setFilter(filter.name)
+                }
+            } ?: run {
+                glSurfaceView?.setFilter("原片")
+            }
         }
 
         AndroidView(
@@ -207,7 +216,7 @@ fun ControlItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label: St
 }
 
 @Composable
-fun FilterPanel(filters: List<String>, selectedFilter: String, onSelectFilter: (String) -> Unit, onDismiss: () -> Unit) {
+fun FilterPanel(filters: List<com.app.douyin.pro.feature.record.domain.model.FilterEffect>, selectedFilter: com.app.douyin.pro.feature.record.domain.model.FilterEffect?, onSelectFilter: (com.app.douyin.pro.feature.record.domain.model.FilterEffect) -> Unit, onDismiss: () -> Unit) {
     Box(modifier = Modifier.fillMaxSize().clickable { onDismiss() }) {
         Column(
             modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter).background(Color.Black.copy(alpha = 0.8f)).padding(16.dp)
@@ -222,9 +231,17 @@ fun FilterPanel(filters: List<String>, selectedFilter: String, onSelectFilter: (
             } else {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     items(filters) { filter ->
+                        val isSelected = selectedFilter?.name == filter.name
                         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { onSelectFilter(filter) }) {
-                            Box(modifier = Modifier.size(64.dp).clip(RoundedCornerShape(8.dp)).background(if (filter == selectedFilter) Color(0xFFFF2C55) else Color.DarkGray))
-                            Text(filter, color = Color.White, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+                            Box(
+                                modifier = Modifier.size(64.dp).clip(RoundedCornerShape(8.dp)).background(if (isSelected) Color(0xFFFF2C55) else Color.DarkGray),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (filter.isDynamic) {
+                                    Icon(Icons.Filled.CloudDownload, "Cloud", tint = Color.White.copy(alpha = 0.5f), modifier = Modifier.size(24.dp))
+                                }
+                            }
+                            Text(filter.name, color = Color.White, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
                         }
                     }
                 }

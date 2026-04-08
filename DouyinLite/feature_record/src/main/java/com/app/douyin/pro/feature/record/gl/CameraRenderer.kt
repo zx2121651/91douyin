@@ -31,11 +31,19 @@ class CameraRenderer(
     @Volatile
     private var updateSurface = false
 
+
     @Volatile
     private var currentFilterName: String = "原片"
 
     @Volatile
     private var pendingFilterChange = false
+
+    @Volatile
+    private var isDynamicFilter = false
+
+    @Volatile
+    private var dynamicFragmentGlsl: String = ""
+
 
     private val vertexData = floatArrayOf(
         -1.0f, -1.0f, // Bottom Left
@@ -57,8 +65,16 @@ class CameraRenderer(
     private val textureBuffer: FloatBuffer = ByteBuffer.allocateDirect(textureData.size * 4)
         .order(ByteOrder.nativeOrder()).asFloatBuffer().put(textureData).apply { position(0) }
 
+
     fun setFilter(filterName: String) {
         currentFilterName = filterName
+        isDynamicFilter = false
+        pendingFilterChange = true
+    }
+
+    fun setDynamicFilter(glsl: String) {
+        dynamicFragmentGlsl = glsl
+        isDynamicFilter = true
         pendingFilterChange = true
     }
 
@@ -68,18 +84,23 @@ class CameraRenderer(
         }
 
         val vertexShaderSource = OpenGLUtils.readShaderFromAssets(context, "shaders/vertex_shader.glsl")
-        val fragmentShaderFile = when (currentFilterName) {
-            "黑白" -> "shaders/fragment_shader.glsl"
-            "RGB色散" -> "shaders/glitch_shader.glsl"
-            "二分屏" -> "shaders/split_screen_shader.glsl"
-            else -> "shaders/default_shader.glsl"
+        val fragmentShaderSource = if (isDynamicFilter) {
+            dynamicFragmentGlsl
+        } else {
+            val fragmentShaderFile = when (currentFilterName) {
+                "黑白" -> "shaders/fragment_shader.glsl"
+                "RGB色散" -> "shaders/glitch_shader.glsl"
+                "二分屏" -> "shaders/split_screen_shader.glsl"
+                else -> "shaders/default_shader.glsl"
+            }
+            OpenGLUtils.readShaderFromAssets(context, fragmentShaderFile)
         }
-        val fragmentShaderSource = OpenGLUtils.readShaderFromAssets(context, fragmentShaderFile)
 
         programId = OpenGLUtils.createProgram(vertexShaderSource, fragmentShaderSource)
         uMVPMatrixHandle = GLES30.glGetUniformLocation(programId, "uMVPMatrix")
         uSTMatrixHandle = GLES30.glGetUniformLocation(programId, "uSTMatrix")
     }
+
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         loadShaderProgram()
