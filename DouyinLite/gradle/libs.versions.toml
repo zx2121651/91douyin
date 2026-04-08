@@ -19,6 +19,7 @@ camerax = "1.3.3"
 hilt = "2.51.1"
 
 [libraries]
+mediapipe-tasks-vision = { group = "com.google.mediapipe", name = "tasks-vision", version = "0.10.14" }
 retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
 retrofit-gson = { group = "com.squareup.retrofit2", name = "converter-gson", version.ref = "retrofit" }
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }

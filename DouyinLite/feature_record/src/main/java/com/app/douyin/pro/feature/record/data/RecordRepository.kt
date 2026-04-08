@@ -11,7 +11,7 @@ import java.io.File
 class RecordRepository @Inject constructor(
     private val dataSource: RecordDataSource
 ) {
-    fun getAvailableFilters(): Resource<List<String>> = try {
+    fun getAvailableFilters(): Resource<List<com.app.douyin.pro.feature.record.domain.model.FilterEffect>> = try {
         Resource.Success(dataSource.getFilters())
     } catch (e: Exception) {
         Resource.Error(e.message ?: "Unknown Error", AppError.UnknownError)

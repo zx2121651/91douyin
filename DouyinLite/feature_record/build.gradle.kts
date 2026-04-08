@@ -66,5 +66,6 @@ dependencies {
     implementation(libs.androidx.camera.view)
     implementation(libs.androidx.camera.extensions)
     implementation(libs.guava)
+    implementation(libs.mediapipe.tasks.vision)
     testImplementation(libs.junit)
 }

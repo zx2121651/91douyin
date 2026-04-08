@@ -21,8 +21,8 @@ class RecordViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(RecordUiState())
     val uiState: StateFlow<RecordUiState> = _uiState.asStateFlow()
 
-    private val _availableFilters = MutableStateFlow<List<String>>(emptyList())
-    val availableFilters: StateFlow<List<String>> = _availableFilters.asStateFlow()
+    private val _availableFilters = MutableStateFlow<List<com.app.douyin.pro.feature.record.domain.model.FilterEffect>>(emptyList())
+    val availableFilters: StateFlow<List<com.app.douyin.pro.feature.record.domain.model.FilterEffect>> = _availableFilters.asStateFlow()
 
     init {
         loadFilters()
@@ -58,7 +58,7 @@ class RecordViewModel @Inject constructor(
         _uiState.update { it.copy(showFilters = show) }
     }
 
-    fun selectFilter(filter: String) {
+    fun selectFilter(filter: com.app.douyin.pro.feature.record.domain.model.FilterEffect) {
         _uiState.update { it.copy(selectedFilter = filter) }
     }
 }
