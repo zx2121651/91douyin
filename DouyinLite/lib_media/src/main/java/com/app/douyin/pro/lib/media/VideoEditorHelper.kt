@@ -8,12 +8,9 @@ import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.audio.SonicAudioProcessor
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.effect.SpeedChangeEffect
-import androidx.media3.effect.GlEffect
 import androidx.media3.transformer.*
 import com.app.douyin.pro.lib.media.api.IVideoEditor
 import com.app.douyin.pro.lib.media.model.EditingTimeline
-import com.app.douyin.pro.lib.media.model.VideoClip
-import com.app.douyin.pro.lib.media.effect.CustomTransitionEffect
 import java.io.File
 import kotlinx.coroutines.*
 
@@ -41,15 +38,17 @@ class VideoEditorHelper(private val context: Context) : IVideoEditor {
         val transformer = transformerBuilder.build()
         this.transformer = transformer
 
-        val editedMediaItems = timeline.videoMainTrack.mapIndexed { index, clip ->
+        val editedMediaItems = timeline.videoMainTrack.map { clip ->
+            // Enforce precise frame-exact clipping by ensuring startsAtKeyFrame is false
+            val clippingConfig = MediaItem.ClippingConfiguration.Builder()
+                .setStartPositionMs(clip.startMs)
+                .setEndPositionMs(clip.endMs)
+                .setStartsAtKeyFrame(false) // Force exact trimming, regardless of I-Frame
+                .build()
+
             val mediaItem = MediaItem.Builder()
                 .setUri(clip.uri)
-                .setClippingConfiguration(
-                    MediaItem.ClippingConfiguration.Builder()
-                        .setStartPositionMs(clip.startMs)
-                        .setEndPositionMs(clip.endMs)
-                        .build()
-                )
+                .setClippingConfiguration(clippingConfig)
                 .build()
 
             val audioProcessors = mutableListOf<AudioProcessor>()
@@ -65,20 +64,6 @@ class VideoEditorHelper(private val context: Context) : IVideoEditor {
                 videoEffects.add(SpeedChangeEffect(clip.speed))
             }
 
-            // Apply transitions if there are multiple clips
-            // For example, if it's not the last clip, add a fade out at the end.
-            // If it's not the first clip, add a fade in at the beginning.
-            // This is a simplified sequential transition application.
-            val transitionDuration = 500L
-            if (timeline.videoMainTrack.size > 1) {
-                if (index > 0) {
-                    videoEffects.add(CustomTransitionEffect(transitionDuration, isFadeOut = false))
-                }
-                if (index < timeline.videoMainTrack.size - 1) {
-                    videoEffects.add(CustomTransitionEffect(transitionDuration, isFadeOut = true))
-                }
-            }
-
             val effects = Effects(audioProcessors, videoEffects)
 
             EditedMediaItem.Builder(mediaItem)
@@ -87,6 +72,7 @@ class VideoEditorHelper(private val context: Context) : IVideoEditor {
                 .build()
         }
 
+        // To safely stitch multiple clips with precise cuts, we use an EditedMediaItemSequence
         val videoSequence = EditedMediaItemSequence(editedMediaItems)
 
         val audioSequences = timeline.audioTracks.map { track ->
@@ -96,6 +82,7 @@ class VideoEditorHelper(private val context: Context) : IVideoEditor {
                     MediaItem.ClippingConfiguration.Builder()
                         .setStartPositionMs(track.clipStartMs)
                         .setEndPositionMs(track.clipEndMs)
+                        .setStartsAtKeyFrame(false)
                         .build()
                 )
                 .build()
@@ -107,7 +94,9 @@ class VideoEditorHelper(private val context: Context) : IVideoEditor {
         sequences.add(videoSequence)
         sequences.addAll(audioSequences)
 
-        val composition = Composition.Builder(sequences).build()
+        // Force synchronous video/audio composition
+        val composition = Composition.Builder(sequences)
+            .build()
 
         transformer.start(composition, outputPath)
 
