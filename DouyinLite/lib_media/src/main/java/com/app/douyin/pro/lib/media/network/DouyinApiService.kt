@@ -4,6 +4,7 @@ import com.app.douyin.pro.lib.media.network.model.FeedResponse
 import com.app.douyin.pro.lib.media.network.model.AuthResponse
 import com.app.douyin.pro.lib.media.network.model.UserInfoResponse
 import com.app.douyin.pro.lib.media.network.model.PublishResponse
+import com.app.douyin.pro.lib.media.network.model.EffectResponse
 import com.app.douyin.pro.lib.media.network.model.MessageChatResponse
 import retrofit2.http.GET
 import retrofit2.http.POST
@@ -16,6 +17,10 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody
 
 interface DouyinApiService {
+    @GET("douyin/effect/list/")
+    suspend fun getEffectList(): EffectResponse
+
+
     @GET("douyin/feed/")
     suspend fun getFeed(
         @Query("latest_time") latestTime: Long? = null,

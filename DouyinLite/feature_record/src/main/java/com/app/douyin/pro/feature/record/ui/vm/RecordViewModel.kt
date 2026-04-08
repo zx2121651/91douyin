@@ -29,9 +29,11 @@ class RecordViewModel @Inject constructor(
     }
 
     private fun loadFilters() {
-        val result = getAvailableFiltersUseCase()
-        if (result is Resource.Success) {
-            _availableFilters.value = result.data
+        viewModelScope.launch {
+            val result = getAvailableFiltersUseCase()
+            if (result is Resource.Success) {
+                _availableFilters.value = result.data
+            }
         }
     }
 
