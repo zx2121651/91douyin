@@ -7,6 +7,8 @@ type Comment struct {
 	User       common.User `json:"user"`
 	Content    string      `json:"content"`
 	CreateDate string      `json:"create_date"`
+	ReplyCount int64       `json:"reply_count"`
+	Replies    []Comment   `json:"replies,omitempty"` // Nested replies
 }
 
 type CommentActionRequest struct {
@@ -16,6 +18,7 @@ type CommentActionRequest struct {
 	ActionType  int32  `query:"action_type" vd:"$==1||$==2;msg:'action_type must be 1 (post) or 2 (delete)'"`
 	CommentText string `query:"comment_text"`
 	CommentID   int64  `query:"comment_id"`
+	ParentID    *int64 `query:"parent_id"` // Optional: id of the comment being replied to
 }
 
 type CommentActionResponse struct {

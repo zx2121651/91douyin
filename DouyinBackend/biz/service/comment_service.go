@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/douyin/backend/biz/dal/db"
 	"github.com/douyin/backend/biz/dal/model"
@@ -14,7 +15,9 @@ func NewCommentService() *CommentService {
 	return &CommentService{}
 }
 
-func (s *CommentService) PostComment(userID uint, videoID uint, content string) (*model.Comment, error) {
+// PostComment supports creating both top-level comments and nested replies
+func (s *CommentService) PostComment(userID uint, videoID uint, content string, parentID *uint) (*model.Comment, error) {
+	content = strings.TrimSpace(content)
 	if content == "" {
 		return nil, errors.New("comment content cannot be empty")
 	}
@@ -32,16 +35,31 @@ func (s *CommentService) PostComment(userID uint, videoID uint, content string) 
 			Content: content,
 		}
 
+		// Handle hierarchical validation and reply count
+		if parentID != nil && *parentID > 0 {
+			var parentComment model.Comment
+			// Ensure the parent exists and belongs to the same video
+			if err := tx.Where("id = ? AND video_id = ?", *parentID, videoID).First(&parentComment).Error; err != nil {
+				return errors.New("parent comment not found or invalid")
+			}
+			comment.ParentID = parentID
+
+			// Increment reply count of parent comment
+			if err := tx.Model(&model.Comment{}).Where("id = ?", *parentID).Update("reply_count", gorm.Expr("reply_count + ?", 1)).Error; err != nil {
+				return err
+			}
+		}
+
 		if err := tx.Create(&comment).Error; err != nil {
 			return err
 		}
 
-		// Update comment count
+		// Update total video comment count
 		if err := tx.Model(&video).Update("comment_count", gorm.Expr("comment_count + ?", 1)).Error; err != nil {
 			return err
 		}
 
-		// Load user info for response
+		// Load user info for the API response
 		if err := tx.Preload("User").First(&comment, comment.ID).Error; err != nil {
 			return err
 		}
@@ -63,16 +81,23 @@ func (s *CommentService) DeleteComment(userID uint, commentID uint, videoID uint
 			return errors.New("comment not found")
 		}
 
-		// Check permission (only comment author can delete, optionally video author too but keep it simple here)
+		// Check permission (only comment author can delete)
 		if comment.UserID != userID {
 			return errors.New("no permission to delete this comment")
 		}
 
+		// Delete the comment itself and optionally cascade delete replies (if implemented via DB foreign key cascading)
+		// For simplicity, we just delete the current comment.
 		if err := tx.Delete(&comment).Error; err != nil {
 			return err
 		}
 
-		// Update comment count
+		// If this was a reply to another comment, decrement the parent's reply_count
+		if comment.ParentID != nil && *comment.ParentID > 0 {
+			tx.Model(&model.Comment{}).Where("id = ?", *comment.ParentID).Update("reply_count", gorm.Expr("reply_count - ?", 1))
+		}
+
+		// Decrement video comment count safely (avoid negative counts)
 		var video model.Video
 		if err := tx.First(&video, videoID).Error; err == nil && video.CommentCount > 0 {
 			tx.Model(&video).Update("comment_count", gorm.Expr("comment_count - ?", 1))
@@ -82,10 +107,25 @@ func (s *CommentService) DeleteComment(userID uint, commentID uint, videoID uint
 	})
 }
 
+// GetCommentList retrieves top-level comments along with their latest replies eagerly loaded
 func (s *CommentService) GetCommentList(videoID uint) ([]model.Comment, error) {
-	var comments []model.Comment
-	if err := db.DB.Preload("User").Where("video_id = ?", videoID).Order("created_at desc").Find(&comments).Error; err != nil {
+	var topLevelComments []model.Comment
+
+	// Fetch only top-level comments (ParentID is null), preloading their User and Replies
+	// In GORM, Preload("Replies") handles the 1-to-many relationship.
+	// We also Preload("Replies.User") to get the author of the replies.
+	err := db.DB.
+		Preload("User").
+		Preload("Replies", func(db *gorm.DB) *gorm.DB {
+			return db.Order("created_at asc").Limit(3) // Only fetch top 3 replies per comment for the feed view
+		}).
+		Preload("Replies.User").
+		Where("video_id = ? AND parent_id IS NULL", videoID).
+		Order("created_at desc").
+		Find(&topLevelComments).Error
+
+	if err != nil {
 		return nil, err
 	}
-	return comments, nil
+	return topLevelComments, nil
 }

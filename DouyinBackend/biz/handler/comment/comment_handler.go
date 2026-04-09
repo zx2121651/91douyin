@@ -48,7 +48,12 @@ func CommentAction(ctx context.Context, c *app.RequestContext) {
 			return
 		}
 
-		comment, err := commentService.PostComment(userID, uint(req.VideoID), req.CommentText)
+		var parentIDPtr *uint
+		if req.ParentID != nil && *req.ParentID > 0 {
+			val := uint(*req.ParentID)
+			parentIDPtr = &val
+		}
+		comment, err := commentService.PostComment(userID, uint(req.VideoID), req.CommentText, parentIDPtr)
 		if err != nil {
 			c.JSON(consts.StatusInternalServerError, comment_model.CommentActionResponse{
 				BaseResponse: common.BaseResponse{
@@ -78,6 +83,7 @@ func CommentAction(ctx context.Context, c *app.RequestContext) {
 				},
 				Content:    comment.Content,
 				CreateDate: comment.CreatedAt.Format("01-02"),
+				ReplyCount: comment.ReplyCount,
 			},
 		})
 
@@ -141,6 +147,25 @@ func CommentList(ctx context.Context, c *app.RequestContext) {
 
 	var commonComments []comment_model.Comment
 	for _, v := range comments {
+		var replies []comment_model.Comment
+		for _, reply := range v.Replies {
+			replies = append(replies, comment_model.Comment{
+				ID: int64(reply.ID),
+				User: common.User{
+					ID:            int64(reply.User.ID),
+					Name:          reply.User.Name,
+					FollowCount:   reply.User.FollowCount,
+					FollowerCount: reply.User.FollowerCount,
+					IsFollow:      relationService.IsFollow(currentUserID, reply.User.ID),
+					Avatar:        reply.User.Avatar,
+					BackgroundImage: reply.User.BackgroundImage,
+					Signature:     reply.User.Signature,
+				},
+				Content:    reply.Content,
+				CreateDate: reply.CreatedAt.Format("01-02"),
+			})
+		}
+
 		commonComments = append(commonComments, comment_model.Comment{
 			ID: int64(v.ID),
 			User: common.User{
@@ -149,9 +174,14 @@ func CommentList(ctx context.Context, c *app.RequestContext) {
 				FollowCount:   v.User.FollowCount,
 				FollowerCount: v.User.FollowerCount,
 				IsFollow:      relationService.IsFollow(currentUserID, v.User.ID),
+				Avatar:        v.User.Avatar,
+				BackgroundImage: v.User.BackgroundImage,
+				Signature:     v.User.Signature,
 			},
 			Content:    v.Content,
 			CreateDate: v.CreatedAt.Format("01-02"),
+			ReplyCount: v.ReplyCount,
+			Replies:    replies,
 		})
 	}
 
