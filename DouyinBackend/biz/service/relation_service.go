@@ -164,3 +164,32 @@ func (s *RelationService) IsFollow(userID uint, toUserID uint) bool {
 	db.DB.Model(&model.Relation{}).Where("user_id = ? AND follow_id = ?", userID, toUserID).Count(&count)
 	return count > 0
 }
+
+
+// IsFollowMap performs a bulk lookup to check if a user follows a set of users (solves N+1 query problem)
+func (s *RelationService) IsFollowMap(userID uint, targetUserIDs []uint) (map[uint]bool, error) {
+	resultMap := make(map[uint]bool)
+	if userID == 0 || len(targetUserIDs) == 0 {
+		for _, id := range targetUserIDs {
+			resultMap[id] = false
+		}
+		return resultMap, nil
+	}
+
+	var relations []model.Relation
+	if err := db.DB.Where("user_id = ? AND follow_id IN ?", userID, targetUserIDs).Find(&relations).Error; err != nil {
+		return nil, err
+	}
+
+	for _, rel := range relations {
+		resultMap[rel.FollowID] = true
+	}
+
+	for _, id := range targetUserIDs {
+		if _, exists := resultMap[id]; !exists {
+			resultMap[id] = false
+		}
+	}
+
+	return resultMap, nil
+}
