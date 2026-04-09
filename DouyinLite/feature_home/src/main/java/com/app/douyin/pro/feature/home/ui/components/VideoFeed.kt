@@ -11,6 +11,12 @@ import androidx.compose.ui.input.pointer.pointerInput
 import com.app.douyin.pro.feature.home.ui.VideoPage
 import com.app.douyin.pro.feature.home.domain.model.VideoModel
 
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
+import com.app.douyin.pro.lib.media.VideoPlayerManager
+
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun VideoFeed(
@@ -19,6 +25,16 @@ fun VideoFeed(
     onNavigateToProfile: () -> Unit
 ) {
     val pagerState = rememberPagerState(pageCount = { videos.size })
+    val context = LocalContext.current
+    val playerManager = remember { VideoPlayerManager.getInstance(context) }
+
+    // Preload next 3 videos to ensure Zero First-Frame Delay
+    LaunchedEffect(pagerState.currentPage) {
+        val nextIndex = pagerState.currentPage + 1
+        for (i in nextIndex..minOf(nextIndex + 2, videos.size - 1)) {
+            playerManager.preLoad(videos[i].playUrl)
+        }
+    }
 
     VerticalPager(
         state = pagerState,
