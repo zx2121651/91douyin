@@ -55,6 +55,16 @@ func (s *RelationService) RelationAction(userID uint, toUserID uint, actionType 
 				return err
 			}
 
+			// Add asynchronous notification triggered by Follow
+			notif := model.SystemNotification{
+				ToUserID:   toUserID,
+				FromUserID: userID,
+				Type:       model.NotificationTypeFollow,
+				Content:    "开始关注了你",
+				TargetID:   userID,
+			}
+			tx.Create(&notif) // Graceful degradation
+
 		} else if actionType == 2 { // Unfollow
 			res := tx.Unscoped().Where("user_id = ? AND follow_id = ?", userID, toUserID).Delete(&model.Relation{})
 			if res.Error != nil {

@@ -13,4 +13,5 @@ type Video struct {
 	FavoriteCount int64  `gorm:"default:0"`
 	CommentCount  int64  `gorm:"default:0"`
 	Title         string `gorm:"type:varchar(128);not null"`
+	Status        string `gorm:"type:varchar(32);default:published"`
 }

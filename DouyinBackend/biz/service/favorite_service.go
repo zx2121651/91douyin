@@ -39,9 +39,20 @@ func (s *FavoriteService) FavoriteAction(userID uint, videoID uint, actionType i
 				return err
 			}
 
-			// Update video favorite count
 			if err := tx.Model(&video).Update("favorite_count", gorm.Expr("favorite_count + ?", 1)).Error; err != nil {
 				return err
+			}
+
+			// Add asynchronous notification triggered by Like
+			if video.AuthorID != userID {
+				notif := model.SystemNotification{
+					ToUserID:   video.AuthorID,
+					FromUserID: userID,
+					Type:       model.NotificationTypeLike,
+					Content:    "赞了你的视频",
+					TargetID:   videoID,
+				}
+				tx.Create(&notif) // We ignore the error gracefully for notifications
 			}
 		} else if actionType == 2 { // Unlike
 			res := tx.Unscoped().Where("user_id = ? AND video_id = ?", userID, videoID).Delete(&model.Favorite{})
