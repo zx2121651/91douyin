@@ -8,5 +8,5 @@ import javax.inject.Inject
 class GetCategoriesUseCase @Inject constructor(
     private val repository: InboxRepository
 ) {
-    operator fun invoke(): Resource<List<NotificationCategory>> = repository.getCategories()
+    suspend operator fun invoke(): Resource<List<NotificationCategory>> = repository.getCategories()
 }

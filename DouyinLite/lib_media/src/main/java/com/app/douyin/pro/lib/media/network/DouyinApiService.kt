@@ -6,8 +6,12 @@ import com.app.douyin.pro.lib.media.network.model.UserInfoResponse
 import com.app.douyin.pro.lib.media.network.model.PublishResponse
 import com.app.douyin.pro.lib.media.network.model.EffectResponse
 import com.app.douyin.pro.lib.media.network.model.CommentListResponse
+import com.app.douyin.pro.lib.media.network.model.NotificationListResponse
+import com.app.douyin.pro.lib.media.network.model.UnreadCountResponse
+
 import com.app.douyin.pro.lib.media.network.model.CommentActionResponse
 import com.app.douyin.pro.lib.media.network.model.MessageChatResponse
+import com.app.douyin.pro.lib.media.network.model.MessageActionResponse
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Query
@@ -19,6 +23,21 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody
 
 interface DouyinApiService {
+    @GET("douyin/message/chat/")
+    suspend fun getChatHistory(
+        @Query("to_user_id") toUserId: Long,
+        @Query("pre_msg_time") preMsgTime: Long? = null,
+        @Query("token") token: String
+    ): MessageChatResponse
+
+    @POST("douyin/message/action/")
+    suspend fun sendMessage(
+        @Query("to_user_id") toUserId: Long,
+        @Query("action_type") actionType: Int = 1,
+        @Query("content") content: String,
+        @Query("token") token: String
+    ): MessageActionResponse
+
     @GET("douyin/comment/list/")
     suspend fun getCommentList(
         @Query("video_id") videoId: Long,
@@ -45,6 +64,12 @@ interface DouyinApiService {
     @GET("douyin/effect/list/")
     suspend fun getEffectList(): EffectResponse
 
+
+    @GET("douyin/message/notifications/")
+    suspend fun getNotifications(@Query("token") token: String): NotificationListResponse
+
+    @GET("douyin/message/unread/")
+    suspend fun getUnreadCount(@Query("token") token: String): UnreadCountResponse
 
     @GET("douyin/feed/")
     suspend fun getFeed(
@@ -86,11 +111,7 @@ interface DouyinApiService {
         @Query("action_type") actionType: Int
     ): AuthResponse
 
-    @GET("douyin/message/chat/")
-    suspend fun getChatHistory(
-        @Query("to_user_id") toUserId: Long,
-        @Query("pre_msg_time") preMsgTime: Long? = null
-    ): MessageChatResponse
+
 
     @POST("douyin/relation/action/")
     suspend fun relationAction(

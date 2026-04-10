@@ -15,5 +15,5 @@ class InboxRepository @Inject constructor(
     } catch (e: Exception) {
         Resource.Error(e.message ?: "Unknown Error", AppError.NetworkError)
     }
-    fun getCategories(): Resource<List<com.app.douyin.pro.feature.inbox.domain.model.NotificationCategory>> = Resource.Success(dataSource.getCategories())
+    suspend fun getCategories(): Resource<List<com.app.douyin.pro.feature.inbox.domain.model.NotificationCategory>> = Resource.Success(dataSource.getCategories())
 }

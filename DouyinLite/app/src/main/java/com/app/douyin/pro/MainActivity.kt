@@ -51,6 +51,7 @@ import com.app.douyin.pro.feature.edit.ui.EditScreen
 import com.app.douyin.pro.feature.home.ui.FriendsScreen
 import com.app.douyin.pro.feature.home.ui.HomeScreen
 import com.app.douyin.pro.feature.inbox.ui.InboxScreen
+import com.app.douyin.pro.feature.inbox.ui.ChatScreen
 import com.app.douyin.pro.feature.mall.ui.MallScreen
 import com.app.douyin.pro.feature.profile.ui.ProfileScreen
 import com.app.douyin.pro.feature.record.ui.RecordScreen
@@ -122,7 +123,7 @@ fun DouyinLiteApp(navController: NavHostController) {
         bottomBar = {
             val navBackStackEntry by navController.currentBackStackEntryAsState()
             val currentRoute = navBackStackEntry?.destination?.route
-            val hideBottom = currentRoute == BottomNavItem.Record.route || currentRoute?.startsWith("edit") == true
+            val hideBottom = currentRoute == BottomNavItem.Record.route || currentRoute?.startsWith("edit") == true || currentRoute?.startsWith("chat") == true
 
             if (!hideBottom) {
                 val isDarkBgRoute = currentRoute == BottomNavItem.Home.route || currentRoute == BottomNavItem.Friends.route
@@ -193,7 +194,7 @@ fun DouyinLiteApp(navController: NavHostController) {
         }
     ) { innerPadding ->
         val route = navController.currentBackStackEntryAsState().value?.destination?.route
-        val noBottomPadding = route == BottomNavItem.Home.route || route == BottomNavItem.Friends.route || route == BottomNavItem.Record.route || route?.startsWith("edit") == true
+        val noBottomPadding = route == BottomNavItem.Home.route || route == BottomNavItem.Friends.route || route == BottomNavItem.Record.route || route?.startsWith("edit") == true || route?.startsWith("chat") == true
 
         NavHost(
             navController = navController,
@@ -227,7 +228,24 @@ fun DouyinLiteApp(navController: NavHostController) {
                 )
             }
             composable(BottomNavItem.Inbox.route) {
-                InboxScreen()
+                InboxScreen(onNavigateToChat = { userId, userName ->
+                    navController.navigate("chat/$userId/${android.net.Uri.encode(userName)}")
+                })
+            }
+            composable(
+                route = "chat/{userId}/{userName}",
+                arguments = listOf(
+                    navArgument("userId") { type = NavType.LongType },
+                    navArgument("userName") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val userId = backStackEntry.arguments?.getLong("userId") ?: 0L
+                val userName = backStackEntry.arguments?.getString("userName") ?: "User"
+                ChatScreen(
+                    userId = userId,
+                    userName = userName,
+                    onBack = { navController.popBackStack() }
+                )
             }
             composable(BottomNavItem.Me.route) {
                 ProfileScreen()

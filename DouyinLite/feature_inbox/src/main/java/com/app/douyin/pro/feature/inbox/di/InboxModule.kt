@@ -15,6 +15,15 @@ import javax.inject.Singleton
 object InboxModule {
     @Provides
     @Singleton
+    fun provideChatDataSource(
+        apiService: com.app.douyin.pro.lib.media.network.DouyinApiService,
+        authManager: com.app.douyin.pro.lib.media.auth.AuthManager
+    ): com.app.douyin.pro.feature.inbox.data.source.ChatDataSource {
+        return com.app.douyin.pro.feature.inbox.data.source.RemoteChatDataSource(apiService, authManager)
+    }
+
+    @Provides
+    @Singleton
     fun provideInboxDataSource(apiService: DouyinApiService, authManager: AuthManager): InboxDataSource {
         return RemoteInboxDataSource(apiService, authManager)
     }
