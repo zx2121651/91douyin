@@ -5,6 +5,8 @@ import com.app.douyin.pro.lib.media.network.model.AuthResponse
 import com.app.douyin.pro.lib.media.network.model.UserInfoResponse
 import com.app.douyin.pro.lib.media.network.model.PublishResponse
 import com.app.douyin.pro.lib.media.network.model.EffectResponse
+import com.app.douyin.pro.lib.media.network.model.CommentListResponse
+import com.app.douyin.pro.lib.media.network.model.CommentActionResponse
 import com.app.douyin.pro.lib.media.network.model.MessageChatResponse
 import retrofit2.http.GET
 import retrofit2.http.POST
@@ -17,6 +19,22 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody
 
 interface DouyinApiService {
+    @GET("douyin/comment/list/")
+    suspend fun getCommentList(
+        @Query("video_id") videoId: Long,
+        @Query("token") token: String? = null
+    ): CommentListResponse
+
+    @FormUrlEncoded
+    @POST("douyin/comment/action/")
+    suspend fun postComment(
+        @Field("video_id") videoId: Long,
+        @Field("action_type") actionType: Int,
+        @Field("comment_text") commentText: String,
+        @Field("parent_id") parentId: Long?,
+        @Field("token") token: String
+    ): CommentActionResponse
+
     @GET("douyin/publish/list/")
     suspend fun getPublishList(
         @Query("user_id") userId: Long,
