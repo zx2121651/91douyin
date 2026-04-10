@@ -25,6 +25,7 @@ func Register(h *server.Hertz) {
 
 	// Feed
 	api.GET("/feed/", mw.SoftAuthMiddleware(), video.Feed)
+	api.POST("/feed/view/", mw.SoftAuthMiddleware(), video.ViewAction)
 
 	// Publish
 	publishGroup := api.Group("/publish")
