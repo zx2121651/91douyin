@@ -1,11 +1,13 @@
 package com.app.douyin.pro.feature.profile.data.source
 
 import com.app.douyin.pro.lib.media.network.DouyinApiService
+import com.app.douyin.pro.lib.media.network.model.VideoDto
 import com.app.douyin.pro.lib.media.auth.AuthManager
 import javax.inject.Inject
 
 interface ProfileDataSource {
     suspend fun getUserInfo(): ProfileInfo
+    suspend fun getPublishedVideos(): List<VideoDto>
 }
 
 class RemoteProfileDataSource @Inject constructor(
@@ -36,6 +38,27 @@ class RemoteProfileDataSource @Inject constructor(
             )
         }
         throw Exception(response.statusMsg ?: "Failed to load profile")
+    }
+
+    override suspend fun getPublishedVideos(): List<VideoDto> {
+        val userId = authManager.getUserId()
+        val token = authManager.getToken()
+
+        if (userId == -1L || token == null) {
+            return emptyList()
+        }
+
+        try {
+            val response = apiService.getPublishList(userId, token)
+            if (response.statusCode == 0) {
+                response.videoList?.let { list ->
+                    return list
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return emptyList()
     }
 
     private fun formatCount(count: Long): String {

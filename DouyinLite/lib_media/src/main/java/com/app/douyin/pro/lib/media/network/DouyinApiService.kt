@@ -17,6 +17,13 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody
 
 interface DouyinApiService {
+    @GET("douyin/publish/list/")
+    suspend fun getPublishList(
+        @Query("user_id") userId: Long,
+        @Query("token") token: String
+    ): FeedResponse
+
+
     @GET("douyin/effect/list/")
     suspend fun getEffectList(): EffectResponse
 
