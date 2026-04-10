@@ -27,8 +27,8 @@ class GetVideosUseCaseTest {
     @Test
     fun `invoke should return videos from repository`() = runBlocking {
         val mockVideos = listOf(
-            VideoModel(1, "video1", "", 1, "", null, "0", "0", "0", false, false),
-            VideoModel(2, "video2", "", 2, "", null, "0", "0", "0", false, false)
+            VideoModel(1L, "video1", "", "title1", 1L, "author1", null, "0", "0", "0", false, false),
+            VideoModel(2L, "video2", "", "title2", 2L, "author2", null, "0", "0", "0", false, false)
         )
         `when`(mockRepository.getInitialVideos()).thenReturn(Resource.Success(mockVideos))
 
