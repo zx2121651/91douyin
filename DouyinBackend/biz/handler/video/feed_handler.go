@@ -29,7 +29,7 @@ func Feed(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	videos, nextTime, err := videoService.GetFeed(req.LatestTime, 30)
+	videos, nextTime, err := videoService.GetFeed(req.LatestTime, 30, currentUserID)
 	if err != nil {
 		c.JSON(consts.StatusOK, video_model.FeedResponse{
 			BaseResponse: common.BaseResponse{

@@ -14,4 +14,5 @@ type Video struct {
 	CommentCount  int64  `gorm:"default:0"`
 	Title         string `gorm:"type:varchar(128);not null"`
 	Status        string `gorm:"type:varchar(32);default:published"`
+	CategoryTag   string `gorm:"type:varchar(32);default:"` // Used for recommendation engine
 }
