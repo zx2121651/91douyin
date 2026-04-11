@@ -12,6 +12,8 @@ import com.app.douyin.pro.lib.media.network.model.UnreadCountResponse
 import com.app.douyin.pro.lib.media.network.model.CommentActionResponse
 import com.app.douyin.pro.lib.media.network.model.MessageChatResponse
 import com.app.douyin.pro.lib.media.network.model.MessageActionResponse
+import com.app.douyin.pro.lib.media.network.model.SearchVideoResponse
+import com.app.douyin.pro.lib.media.network.model.SearchUserResponse
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Query
@@ -118,4 +120,18 @@ interface DouyinApiService {
         @Query("to_user_id") toUserId: Long,
         @Query("action_type") actionType: Int
     ): AuthResponse
+
+    @GET("douyin/search/video/")
+    suspend fun searchVideo(
+        @Query("keyword") keyword: String,
+        @Query("cursor") cursor: Long = 0L,
+        @Query("token") token: String? = null
+    ): SearchVideoResponse
+
+    @GET("douyin/search/user/")
+    suspend fun searchUser(
+        @Query("keyword") keyword: String,
+        @Query("cursor") cursor: Long = 0L,
+        @Query("token") token: String? = null
+    ): SearchUserResponse
 }
