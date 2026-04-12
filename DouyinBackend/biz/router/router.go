@@ -3,6 +3,7 @@ package router
 import (
 	"github.com/cloudwego/hertz/pkg/app/server"
 	"github.com/douyin/backend/biz/handler/comment"
+	"github.com/douyin/backend/biz/handler/effect"
 	"github.com/douyin/backend/biz/handler/favorite"
 	"github.com/douyin/backend/biz/handler/message"
 	"github.com/douyin/backend/biz/handler/relation"
@@ -24,6 +25,7 @@ func Register(h *server.Hertz) {
 
 	// Feed
 	api.GET("/feed/", mw.SoftAuthMiddleware(), video.Feed)
+	api.POST("/feed/view/", mw.SoftAuthMiddleware(), video.ViewAction)
 
 	// Publish
 	publishGroup := api.Group("/publish")
@@ -56,4 +58,9 @@ func Register(h *server.Hertz) {
 	searchGroup := api.Group("/search")
 	searchGroup.GET("/video/", mw.SoftAuthMiddleware(), search.SearchVideo)
 	searchGroup.GET("/user/", mw.SoftAuthMiddleware(), search.SearchUser)
+
+	// Effect
+	effectGroup := api.Group("/effect")
+	effectGroup.GET("/list/", effect.EffectList)
+
 }

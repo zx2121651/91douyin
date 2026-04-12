@@ -50,6 +50,7 @@ fun VideoPlayerComponent(
         player.addListener(listener)
         onDispose {
             player.removeListener(listener)
+            playerManager.releasePlayer(url)
         }
     }
 

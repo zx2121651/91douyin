@@ -29,7 +29,7 @@ func Feed(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	videos, nextTime, err := videoService.GetFeed(req.LatestTime, 30)
+	videos, nextTime, err := videoService.GetFeed(req.LatestTime, 30, currentUserID)
 	if err != nil {
 		c.JSON(consts.StatusOK, video_model.FeedResponse{
 			BaseResponse: common.BaseResponse{
@@ -38,6 +38,28 @@ func Feed(ctx context.Context, c *app.RequestContext) {
 			},
 		})
 		return
+	}
+
+	// ---------------------------------------------------------
+	// Advanced Architecture: Solve N+1 Query Problem for Feed List
+	// ---------------------------------------------------------
+	var videoIDs []uint
+	var authorIDs []uint
+	for _, v := range videos {
+		videoIDs = append(videoIDs, v.ID)
+		authorIDs = append(authorIDs, v.Author.ID)
+	}
+
+	// 1. Bulk query the favorite statuses
+	favoriteMap, err := favoriteService.IsFavoriteMap(currentUserID, videoIDs)
+	if err != nil {
+		favoriteMap = make(map[uint]bool) // Fallback gracefully
+	}
+
+	// 2. Bulk query the follow statuses
+	followMap, err := relationService.IsFollowMap(currentUserID, authorIDs)
+	if err != nil {
+		followMap = make(map[uint]bool) // Fallback gracefully
 	}
 
 	var commonVideos []common.Video
@@ -49,13 +71,13 @@ func Feed(ctx context.Context, c *app.RequestContext) {
 				Name:          v.Author.Name,
 				FollowCount:   v.Author.FollowCount,
 				FollowerCount: v.Author.FollowerCount,
-				IsFollow:      relationService.IsFollow(currentUserID, v.Author.ID),
+				IsFollow:      followMap[v.Author.ID],
 			},
 			PlayURL:       v.PlayURL,
 			CoverURL:      v.CoverURL,
 			FavoriteCount: v.FavoriteCount,
 			CommentCount:  v.CommentCount,
-			IsFavorite:    favoriteService.IsFavorite(currentUserID, v.ID),
+			IsFavorite:    favoriteMap[v.ID],
 			Title:         v.Title,
 		})
 	}

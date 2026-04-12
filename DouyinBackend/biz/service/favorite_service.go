@@ -39,9 +39,20 @@ func (s *FavoriteService) FavoriteAction(userID uint, videoID uint, actionType i
 				return err
 			}
 
-			// Update video favorite count
 			if err := tx.Model(&video).Update("favorite_count", gorm.Expr("favorite_count + ?", 1)).Error; err != nil {
 				return err
+			}
+
+			// Add asynchronous notification triggered by Like
+			if video.AuthorID != userID {
+				notif := model.SystemNotification{
+					ToUserID:   video.AuthorID,
+					FromUserID: userID,
+					Type:       model.NotificationTypeLike,
+					Content:    "赞了你的视频",
+					TargetID:   videoID,
+				}
+				tx.Create(&notif) // We ignore the error gracefully for notifications
 			}
 		} else if actionType == 2 { // Unlike
 			res := tx.Unscoped().Where("user_id = ? AND video_id = ?", userID, videoID).Delete(&model.Favorite{})
@@ -97,4 +108,32 @@ func (s *FavoriteService) IsFavorite(userID uint, videoID uint) bool {
 	var count int64
 	db.DB.Model(&model.Favorite{}).Where("user_id = ? AND video_id = ?", userID, videoID).Count(&count)
 	return count > 0
+}
+
+// IsFavoriteMap performs a bulk lookup to check if a user has favorited a set of videos (solves N+1 query problem)
+func (s *FavoriteService) IsFavoriteMap(userID uint, videoIDs []uint) (map[uint]bool, error) {
+	resultMap := make(map[uint]bool)
+	if userID == 0 || len(videoIDs) == 0 {
+		for _, id := range videoIDs {
+			resultMap[id] = false
+		}
+		return resultMap, nil
+	}
+
+	var favorites []model.Favorite
+	if err := db.DB.Where("user_id = ? AND video_id IN ?", userID, videoIDs).Find(&favorites).Error; err != nil {
+		return nil, err
+	}
+
+	for _, fav := range favorites {
+		resultMap[fav.VideoID] = true
+	}
+
+	for _, id := range videoIDs {
+		if _, exists := resultMap[id]; !exists {
+			resultMap[id] = false
+		}
+	}
+
+	return resultMap, nil
 }

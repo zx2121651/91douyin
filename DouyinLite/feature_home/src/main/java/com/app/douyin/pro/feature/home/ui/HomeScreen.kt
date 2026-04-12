@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.app.douyin.pro.feature.home.ui.components.*
+import com.app.douyin.pro.feature.home.ui.components.CommentsBottomSheet
 import com.app.douyin.pro.feature.home.viewmodel.HomeViewModel
 import com.app.douyin.pro.feature.home.domain.model.VideoModel
 import kotlinx.coroutines.launch
@@ -141,7 +142,7 @@ fun VideoPage(video: VideoModel, isVisible: Boolean) {
             musicTitle = "原声 - 潮流音乐库"
         )
 
-        if (showCommentsSheet) CommentsBottomSheet(onDismiss = { showCommentsSheet = false })
+        if (showCommentsSheet) CommentsBottomSheet(videoId = video.id, commentCount = video.commentCount, onDismiss = { showCommentsSheet = false })
         if (showShareSheet) ShareBottomSheet(onDismiss = { showShareSheet = false })
         if (showLongPressMenu) LongPressMenu(onDismiss = { showLongPressMenu = false })
     }
@@ -178,20 +179,6 @@ fun TopNavigationBar(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun CommentsBottomSheet(onDismiss: () -> Unit) {
-    val sheetState = rememberModalBottomSheetState()
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, containerColor = Color(0xCC000000)) {
-        Column(modifier = Modifier.fillMaxHeight(0.7f).padding(16.dp)) {
-            Text("评论 (128)", color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
-            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = Color.Gray.copy(alpha = 0.3f))
-            LazyColumn(modifier = Modifier.weight(1f)) {
-                items(20) { Text("精彩评论 #", color = Color.White, modifier = Modifier.padding(vertical = 8.dp)) }
-            }
-        }
-    }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

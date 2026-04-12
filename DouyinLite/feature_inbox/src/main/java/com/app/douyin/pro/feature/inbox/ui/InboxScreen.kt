@@ -34,7 +34,7 @@ val ErrorColorDot = Color(0xFFFF0050)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun InboxScreen(
+fun InboxScreen(onNavigateToChat: (Long, String) -> Unit = { _, _ -> },
     viewModel: InboxViewModel = hiltViewModel()
 ) {
     val messages by viewModel.messages.collectAsState()
@@ -70,7 +70,7 @@ fun InboxScreen(
         ) {
             item { NotificationCategoriesRow(categories) }
             item { Spacer(modifier = Modifier.height(8.dp)) }
-            items(messages) { message -> MessageItemRow(message) }
+            items(messages) { message -> MessageItemRow(message, onNavigateToChat) }
         }
     }
 }
@@ -121,8 +121,16 @@ fun CategoryItem(category: NotificationCategory) {
 }
 
 @Composable
-fun MessageItemRow(message: Message) {
-    Row(modifier = Modifier.fillMaxWidth().clickable { }.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+fun MessageItemRow(message: Message, onNavigateToChat: (Long, String) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable {
+            // In a real app, message should contain target user ID.
+            // Since we mocked some IDs via seed earlier, let's just extract numeric ID if possible or default to 1
+            val targetId = message.id.toLongOrNull() ?: 1L
+            onNavigateToChat(targetId, message.name)
+        }.padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
         Box(modifier = Modifier.size(48.dp)) {
             AsyncImage(model = message.avatarUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize().clip(CircleShape).then(if (message.isLive) Modifier.background(Color(0xFFFF5168), CircleShape).padding(2.dp).clip(CircleShape) else Modifier))
             if (message.isOfficial) {

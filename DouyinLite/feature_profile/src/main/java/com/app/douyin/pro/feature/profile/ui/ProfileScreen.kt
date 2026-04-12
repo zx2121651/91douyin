@@ -47,6 +47,7 @@ fun ProfileScreen(
 ) {
     val profileInfo by viewModel.profileInfo.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val publishedVideos by viewModel.publishedVideos.collectAsState()
 
     val username = profileInfo?.username ?: "加载中..."
     val douyinId = profileInfo?.douyinId ?: ""
@@ -231,7 +232,7 @@ fun ProfileScreen(
         ) {
             // Tab Row
             var selectedTab by remember { mutableIntStateOf(0) }
-            val tabs = listOf("作品 32", "私密", "推荐", "收藏")
+            val tabs = listOf("作品 ${publishedVideos.size}", "私密", "推荐", "收藏")
 
             ScrollableTabRow(
                 selectedTabIndex = selectedTab,
@@ -266,12 +267,13 @@ fun ProfileScreen(
             // Waterfall Grid
             LazyVerticalGrid(
                 columns = GridCells.Fixed(3),
-                contentPadding = PaddingValues(bottom = 120.dp, start = 1.dp, end = 1.dp, top = 1.dp), // Extra padding for bottom navigation
+                contentPadding = PaddingValues(bottom = 120.dp, start = 1.dp, end = 1.dp, top = 1.dp),
                 verticalArrangement = Arrangement.spacedBy(1.dp),
                 horizontalArrangement = Arrangement.spacedBy(1.dp),
                 modifier = Modifier.fillMaxSize()
             ) {
-                items(30) { _ ->
+                items(publishedVideos.size) { index ->
+                    val video = publishedVideos[index]
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -279,6 +281,12 @@ fun ProfileScreen(
                             .background(Color(0xFF2E2E2E)),
                         contentAlignment = Alignment.BottomStart
                     ) {
+                        AsyncImage(
+                            model = video.coverUrl,
+                            contentDescription = "Video Cover",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
                         Row(
                             modifier = Modifier.padding(8.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -290,8 +298,9 @@ fun ProfileScreen(
                                 modifier = Modifier.size(14.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
+                            val favStr = if (video.favoriteCount >= 10000) String.format("%.1fw", video.favoriteCount / 10000.0) else video.favoriteCount.toString()
                             Text(
-                                text = "${Random.nextInt(100, 9999)}",
+                                text = favStr,
                                 color = Color.White.copy(alpha = 0.8f),
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Medium

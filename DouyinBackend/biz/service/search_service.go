@@ -11,15 +11,43 @@ func NewSearchService() *SearchService {
 	return &SearchService{}
 }
 
-// SearchVideos searches for videos containing the keyword in title
+// SearchVideos searches for videos using a weighted hot rank formula based on interaction and time decay
 func (s *SearchService) SearchVideos(keyword string, offset int, limit int) ([]model.Video, error) {
 	var videos []model.Video
 
-	// Basic LIKE query. In production, this would be ElasticSearch or Meilisearch
-	if err := db.DB.Preload("Author").Where("title LIKE ?", "%"+keyword+"%").
-		Order("favorite_count desc, created_at desc").
-		Offset(offset).Limit(limit).Find(&videos).Error; err != nil {
+	// Hot Rank Formula = (FavoriteCount * 2 + CommentCount * 1) / (Time_Since_Upload_In_Days + 1)^1.5
+	// This ensures that fresh content isn't completely overshadowed by historically popular content,
+	// while still elevating quality interactions.
+	query := `
+		SELECT videos.*,
+		((videos.favorite_count * 2.0 + videos.comment_count * 1.0) / POW((julianday('now') - julianday(videos.created_at)) + 1.0, 1.5)) as hot_score
+		FROM videos
+		WHERE videos.deleted_at IS NULL AND videos.title LIKE ?
+		ORDER BY hot_score DESC, videos.created_at DESC
+		LIMIT ? OFFSET ?
+	`
+
+	if err := db.DB.Raw(query, "%"+keyword+"%", limit, offset).Scan(&videos).Error; err != nil {
 		return nil, err
+	}
+
+	// Because Raw scan doesn't auto-preload relations in GORM, we manually load the authors
+	var authorIDs []uint
+	for _, v := range videos {
+		authorIDs = append(authorIDs, v.AuthorID)
+	}
+
+	if len(authorIDs) > 0 {
+		var authors []model.User
+		if err := db.DB.Where("id IN ?", authorIDs).Find(&authors).Error; err == nil {
+			authorMap := make(map[uint]model.User)
+			for _, a := range authors {
+				authorMap[a.ID] = a
+			}
+			for i, v := range videos {
+				videos[i].Author = authorMap[v.AuthorID]
+			}
+		}
 	}
 
 	return videos, nil

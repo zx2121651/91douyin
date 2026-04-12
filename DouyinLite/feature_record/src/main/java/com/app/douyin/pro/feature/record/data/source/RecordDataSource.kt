@@ -11,7 +11,7 @@ import java.io.File
 import javax.inject.Inject
 
 interface RecordDataSource {
-    fun getFilters(): List<FilterEffect>
+    suspend fun getFilters(): List<FilterEffect>
     suspend fun publishVideo(videoFile: File, title: String)
 }
 
@@ -19,38 +19,29 @@ class RemoteRecordDataSource @Inject constructor(
     private val apiService: DouyinApiService,
     private val authManager: AuthManager
 ) : RecordDataSource {
-    override fun getFilters(): List<FilterEffect> {
-        val staticFilters = listOf("原片", "黑白", "RGB色散", "二分屏").map {
-            FilterEffect(name = it, isDynamic = false)
+
+    override suspend fun getFilters(): List<FilterEffect> {
+        try {
+            val response = apiService.getEffectList()
+            if (response.statusCode == 0) {
+                response.effectList?.let { list ->
+                    return list.map { dto ->
+                        FilterEffect(
+                            name = dto.name,
+                            isDynamic = dto.isDynamic,
+                            glslSource = dto.glslSource
+                        )
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
 
-        // Mock a dynamically downloaded shader from the server
-        val dynamicWavyShader = """
-            #version 310 es
-            #extension GL_OES_EGL_image_external_essl3 : require
-            precision mediump float;
-
-            in vec2 vTextureCoord;
-            uniform samplerExternalOES sTexture;
-
-            out vec4 fragColor;
-
-            void main() {
-                vec2 uv = vTextureCoord;
-                // Add a dynamic wave effect based on the y coordinate
-                uv.x += sin(uv.y * 10.0) * 0.05;
-
-                fragColor = texture(sTexture, uv);
-            }
-        """.trimIndent()
-
-        val dynamicFilter = FilterEffect(
-            name = "动态波浪 (云端)",
-            isDynamic = true,
-            glslSource = dynamicWavyShader
-        )
-
-        return staticFilters + dynamicFilter
+        // Fallback to basic if network fails
+        return listOf("原片", "黑白", "RGB色散", "二分屏").map {
+            FilterEffect(name = it, isDynamic = false)
+        }
     }
 
     override suspend fun publishVideo(videoFile: File, title: String) {
