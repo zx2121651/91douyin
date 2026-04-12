@@ -146,3 +146,53 @@ if (nextIndex < videos.size) {
 3. **消息队列削峰 (Kafka/MQ)**：
     * 针对点赞、评论等极高并发场景，采用 Kafka 进行流量削峰，后端异步消费消息从而实现数据库数据的最终一致性。
     * 后台视频处理（黄暴涉恐审查、多分辨率转码、抽帧）全面剥离为独立的消费者节点。
+
+## 5. 深度拓展：音视频底层的 C++ 架构重构指南 (实战级)
+
+真实的抖音采用了跨平台的自研 C++ 渲染引擎（VE）。目前的 DouyinLite 在 `feature_record` 中使用的纯 Kotlin 层的 `CameraGLSurfaceView` 渲染方案在性能、内存控制以及复杂特效叠加时会遇到严重瓶颈。为了向工业级应用迈进，我们需要实施“外科手术式”的重构：将核心渲染逻辑下沉至 C++。
+
+### 5.1 C++ 渲染引擎 (VideoEngine) 架构设计
+
+#### 5.1.1 JNI 桥接层设计
+我们需要在 Kotlin 层保留控制生命周期的胶水代码，而将耗时的绘制任务外包。
+```kotlin
+// NativeVideoEngine.kt
+class NativeVideoEngine {
+    init { System.loadLibrary("video_engine") }
+    private var nativeHandle: Long = 0 // C++ 实例指针
+    external fun initEngine(width: Int, height: Int)
+    external fun processFrame(oesTextureId: Int, matrix: FloatArray): Int
+    external fun addFilter(filterId: Int)
+    external fun release()
+}
+```
+
+#### 5.1.2 基于 FBO 的乒乓缓冲链 (Ping-Pong Rendering)
+当存在多个特效（例如：美颜 -> 滤镜 -> 贴纸）时，决不能将纹理读回 CPU，也不能在默认帧缓冲区上重复绘制引发闪屏。C++ 引擎核心必须实现 **FBO (Frame Buffer Object) 乒乓渲染**：
+
+*   准备两个离屏纹理缓存 `Texture A` 和 `Texture B`。
+*   **Step 1:** OES 相机流输入，绘制在 `FBO A`（输出为 Texture A）。
+*   **Step 2:** Texture A 作为输入交由美颜 Shader 绘制，挂载在 `FBO B`（输出为 Texture B）。
+*   **Step 3:** Texture B 作为输入交由贴纸 Shader 绘制，挂载回 `FBO A`（输出为 Texture A）。
+*   最后，将最终持有的纹理返回给 Android 宿主，直接进行上屏显示或送入 MediaCodec 进行 H.264 硬编码。
+
+### 5.2 落地 DouyinLite 工程的重构步骤
+
+1.  **环境配置**：在 `feature_record/build.gradle.kts` 中开启 NDK 支持，并配置 `CMakeLists.txt`，链接 `GLESv3` 和 `log` 等系统库。
+2.  **C++ 引擎开发**：在 `src/main/cpp` 下实现 `VideoEngine` 单例，管理全局的 FBO 队列，并将目前的 GLSL 脚本封装为 `BaseFilter` 的 C++ 子类。
+3.  **重写 CameraRenderer**：
+    掏空现存 `CameraRenderer.kt` 的 `onDrawFrame` 逻辑。
+    ```kotlin
+    override fun onDrawFrame(gl: GL10?) {
+        surfaceTexture.updateTexImage()
+        val matrix = FloatArray(16)
+        surfaceTexture.getTransformMatrix(matrix)
+
+        // 核心改造：不再由 Kotlin 执行 OpenGL 命令，将 OES 纹理交由 C++ 管线处理
+        val outTexture = nativeEngine.processFrame(oesTextureId, matrix)
+
+        // 录制器使用 C++ 吐出的成品纹理进行编码
+        videoRecorder.encodeFrame(outTexture)
+    }
+    ```
+4.  **无缝迁移**：UI 控制层（Compose）和系统硬件层（CameraX）保持完全不变，实现了渲染内核的热替换。这套 C++ 核心代码未来可一字不改直接复用于 iOS 端，彻底抹平双端特效差异。
