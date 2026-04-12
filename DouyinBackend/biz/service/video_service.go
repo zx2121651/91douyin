@@ -171,3 +171,9 @@ func (s *VideoService) RecordVideoView(videoID uint, userID uint) error {
 
 	return nil
 }
+
+// UpdateCoverByURL updates the cover URL of a video by its play URL.
+// This is used by the asynchronous cover generation process.
+func (s *VideoService) UpdateCoverByURL(playURL string, newCoverURL string) error {
+	return db.DB.Model(&model.Video{}).Where("play_url = ?", playURL).Update("cover_url", newCoverURL).Error
+}
