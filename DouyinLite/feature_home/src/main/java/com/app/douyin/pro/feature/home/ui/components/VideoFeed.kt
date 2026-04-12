@@ -28,11 +28,11 @@ fun VideoFeed(
     val context = LocalContext.current
     val playerManager = remember { VideoPlayerManager.getInstance(context) }
 
-    // Preload next 3 videos to ensure Zero First-Frame Delay
+    // Preload next 1 video to balance Zero First-Frame Delay and network bandwidth
     LaunchedEffect(pagerState.currentPage) {
         val nextIndex = pagerState.currentPage + 1
-        for (i in nextIndex..minOf(nextIndex + 2, videos.size - 1)) {
-            playerManager.preLoad(videos[i].playUrl)
+        if (nextIndex < videos.size) {
+            playerManager.preLoad(videos[nextIndex].playUrl)
         }
     }
 

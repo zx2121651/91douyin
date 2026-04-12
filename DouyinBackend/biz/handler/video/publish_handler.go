@@ -70,12 +70,12 @@ func PublishAction(ctx context.Context, c *app.RequestContext) {
 	playURL := storageService.BuildVideoURL(filename)
 
 	coverFilename := fmt.Sprintf("%d_%d_cover.jpg", userID, time.Now().Unix())
-	coverURL, err := storageService.GenerateCover(savePath, coverFilename)
-	if err != nil {
-		coverURL = "https://images.unsplash.com/photo-1611162617474-5b21e879e113"
-	}
 
-	if err := videoService.PublishVideo(userID, req.Title, playURL, coverURL); err != nil {
+	// 占位封面图，提升发布接口响应速度
+	placeholderCoverURL := "https://images.unsplash.com/photo-1611162617474-5b21e879e113"
+
+	// 先将视频及占位封面存入数据库
+	if err := videoService.PublishVideo(userID, req.Title, playURL, placeholderCoverURL); err != nil {
 		os.Remove(savePath)
 		c.JSON(consts.StatusInternalServerError, video_model.PublishActionResponse{
 			BaseResponse: common.BaseResponse{
@@ -85,6 +85,14 @@ func PublishAction(ctx context.Context, c *app.RequestContext) {
 		})
 		return
 	}
+
+	// 开启 goroutine 异步截取真实封面并更新数据库
+	go func(vPath, cName, pURL string) {
+		actualCoverURL, err := storageService.GenerateCover(vPath, cName)
+		if err == nil && actualCoverURL != "" {
+			videoService.UpdateCoverByURL(pURL, actualCoverURL)
+		}
+	}(savePath, coverFilename, playURL)
 
 	c.JSON(consts.StatusOK, video_model.PublishActionResponse{
 		BaseResponse: common.BaseResponse{

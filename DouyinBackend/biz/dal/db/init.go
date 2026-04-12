@@ -33,6 +33,11 @@ func Init() {
 		panic("failed to connect database")
 	}
 
+	// 优化 SQLite 并发性能 (WAL 模式)
+	DB.Exec("PRAGMA journal_mode=WAL;")
+	DB.Exec("PRAGMA busy_timeout=5000;")
+	DB.Exec("PRAGMA synchronous=NORMAL;")
+
 	// Migrate the schema
 	err = DB.AutoMigrate(&model.User{}, &model.Video{}, &model.Favorite{}, &model.Comment{}, &model.Relation{}, &model.Message{})
 	if err != nil {
