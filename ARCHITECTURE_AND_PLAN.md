@@ -196,3 +196,56 @@ class NativeVideoEngine {
     }
     ```
 4.  **无缝迁移**：UI 控制层（Compose）和系统硬件层（CameraX）保持完全不变，实现了渲染内核的热替换。这套 C++ 核心代码未来可一字不改直接复用于 iOS 端，彻底抹平双端特效差异。
+
+## 6. 终极远景：完全对标真实抖音的极度底层改造蓝图 (指令/API级)
+
+目前的 DouyinLite 虽然在业务层和初步的 C++ 渲染上实现了跑通，但距离支撑抖音级别的顺滑体验，我们必须在底层架构上进行一次“脱胎换骨”的大换血。这就要求我们将所有的核心业务逻辑从 Java/Kotlin 层剥离，**100% 下沉至 C/C++、汇编与 GPU 并行指令级进行重构**。
+
+以下是实现“终极对标”的四大战役级工程路线图，细化到 API 调用链与多线程锁机制：
+
+### 战役一：网络层彻底 C++ 化 (Cronet QUIC 落地与内存接管)
+**目标：干掉 Java 层 Socket 读写，实现弱网环境下的零 RTT 视频秒开。**
+
+1.  **无锁内存池 (Lock-Free RingBuffer) 建设**：
+    *   **弃用普通队列**：在 C++ 中通过 `malloc` 一次性分配 10MB 连续内存作为视频流的缓冲区。
+    *   **无锁并发**：利用 `std::atomic<size_t>` 管理读写指针，配合 `std::memory_order_acquire/release` 内存屏障，保证网络下载线程和播放器解码线程间的数据互通免受 Mutex 锁竞争的性能拖累。
+2.  **挂载 Cronet C API 进行 QUIC 拉流**：
+    *   不使用 Java 层的 HttpURLConnection/OkHttp 封装。
+    *   调用 `Cronet_UrlRequest_Create` 构建请求，在回调 `OnReadCompleted` 中拿到网络二进制块，利用 `memcpy` 极速塞入我们的 RingBuffer 中。
+3.  **OkHttp / Retrofit 无感知劫持**：
+    *   在应用层实现一个自定义的 `Call.Factory` 塞给 OkHttp。将原本的 HTTP 请求在发出前全部劫持并路由给底层的 C++ Cronet 引擎，实现业务层对底层 UDP (QUIC) 协议切换的“完全无感知”。
+
+### 战役二：手写硬核播放引擎 (全 NDK 链路解码与零拷贝)
+**目标：废除 ExoPlayer，接管一切流媒体缓冲控制，实现内存 Zero-Copy 上屏。**
+
+1.  **基于 FFmpeg 的 Demuxer 线程 (解复用)**：
+    *   **魔改输入源**：使用 `pthread` 开启死循环线程。实现自定义的 `AVIOContext`，将其读指针指向战役一中建立的 RingBuffer（边下边播机制）。
+    *   **流量控制**：利用 `av_read_frame` 抽出压缩帧 (AVPacket) 压入解码队列，当队列堆积超 50 帧时，调用 `pthread_cond_wait` 进行阻塞，防止内存溢出。
+2.  **NDK 硬件解码器接管 (Decoder 线程)**：
+    *   摒弃 Java 层 API，直接调用 NDK `<media/NdkMediaCodec.h>`。
+    *   通过 `AMediaCodec_dequeueInputBuffer` 和 `AMediaCodec_queueInputBuffer` 向高通/联发科硬解芯片送入压缩帧。
+3.  **终极操作：AHardwareBuffer 零拷贝接力**：
+    *   在解码器返回画面时 (`AMediaCodec_dequeueOutputBuffer`)，**绝对禁止**将 YUV 读回 CPU 内存！
+    *   调用 `AMediaCodec_releaseOutputBuffer(..., true)` 将画面直接映射到绑定的 EGL Surface 上。通过 `eglCreateImageKHR` 将其转化为 `AHardwareBuffer` 并绑定给 OpenGL 纹理。全程 0 CPU 拷贝开销。
+
+### 战役三：重构 C++ 特效引擎 (算力压榨与 Compute Shader)
+**目标：升级现有的 VideoEngine 雏形，利用现代 GPU 管线实现极致性能。**
+
+1.  **重写渲染管线为 DAG 图调度器**：
+    *   废除线性的 `for` 循环 FBO 乒乓缓冲。在 C++ 层实现一个有向无环图 (DAG) 引擎。针对多个特效（如：美颜、瘦脸、贴图），根据节点依赖动态规划出最优的 OpenGL Draw Call 路径，实现 Shader 的合批渲染。
+2.  **向 Compute Shader 升级**：
+    *   针对高斯模糊、色彩 LUT 等耗费大量纹理采样带宽的算法，废弃传统的 Fragment Shader。
+    *   调用 OpenGL ES 3.1 级别的 `glDispatchCompute(width/16, height/16, 1)`。
+    *   在 `.comp` 着色器中使用 `shared` 显存变量，让 16x16 的 GPU 线程组局域内共享像素缓存，大幅降低全局显存寻址延迟，性能提升数倍。
+
+### 战役四：端侧 AI 推理的多线程架构与同步锁模型
+**目标：毫秒级端侧人脸识别，且绝不能引起主渲染管线的丝毫卡顿。**
+
+1.  **引入 C++ 轻量级端侧推理框架**：
+    *   在 NDK 中编译链接 Tencent NCNN 或 Alibaba MNN 库（对标字节的 ByteNN）。
+2.  **推理与渲染双线程解耦机制**：
+    *   **渲染线程 (RenderThread, 60fps)**：通过 PBO (Pixel Buffer Object) 异步将当前帧缩小至 256x256 的 RGB 数组，利用 `std::mutex` 将其传递给 AI 线程，随后通过 `std::condition_variable` 唤醒 AI。
+    *   **推理线程 (InferenceThread, 30fps)**：拿到极小尺寸画面后，跑一遍人脸关键点模型，输出 106 个坐标。
+    *   **自旋锁 (Spinlock) 融合机制**：渲染线程在执行特效 `Draw` 之前，尝试拿锁获取最新的坐标。如果拿不到，绝不等待，直接复用上一帧的坐标，确保 60fps 的绝对流畅度。
+3.  **Vertex Shader 网格形变驱动**：
+    *   将 106 个人脸特征坐标点以 Uniform 形式传给底层 Vertex Shader。在 GPU 层面动态生成密集的三角网格 (Mesh)，通过顶点偏移实现毫秒级的“大眼瘦脸”甚至复杂的 3D 面具跟随。
