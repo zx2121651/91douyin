@@ -249,3 +249,34 @@ class NativeVideoEngine {
     *   **自旋锁 (Spinlock) 融合机制**：渲染线程在执行特效 `Draw` 之前，尝试拿锁获取最新的坐标。如果拿不到，绝不等待，直接复用上一帧的坐标，确保 60fps 的绝对流畅度。
 3.  **Vertex Shader 网格形变驱动**：
     *   将 106 个人脸特征坐标点以 Uniform 形式传给底层 Vertex Shader。在 GPU 层面动态生成密集的三角网格 (Mesh)，通过顶点偏移实现毫秒级的“大眼瘦脸”甚至复杂的 3D 面具跟随。
+
+## 7. 附录：发给高级别 C++ 工程师的终极底层实战 WBS (工单指令集)
+
+为了确保终极蓝图不仅停留在架构图上，能够真实落地，本项目在底层 `lib_media` 模块中预置了核心的 C++ 基础设施。以下是必须严格遵守的代码级开发工单（精确到每一行如何手写），请在后续的底层重构中逐一落实。
+
+### 7.1 WBS 1: 内存级的无锁环形缓冲区 (LockFreeRingBuffer)
+**技术痛点**：消除网络下载与视频解码跨线程通信时的 L1 Cache 伪共享 (False Sharing)，以及互斥锁 (Mutex) 带来的频繁用户态/内核态切换。
+**落地实操**：
+已在 `DouyinLite/lib_media/src/main/cpp/core/LockFreeRingBuffer.h` 植入代码：
+*   使用 `alignas(64)` 强行隔离 `read_pos` 和 `write_pos`，强制其位于不同的缓存行。
+*   使用 `posix_memalign` 分配基于 64 字节对齐的内存块。
+*   利用 C++11 的 `std::memory_order_release` (写操作发布) 和 `std::memory_order_acquire` (读操作获取) 实现严格无锁的内存可见性。
+
+### 7.2 WBS 2: 用户态极速自旋锁 (SpinLock) 的硬件级调优
+**技术痛点**：在端侧 AI 推理线程与 OpenGL 渲染线程交接人脸坐标时，如果使用 `std::mutex` 阻塞，会极大增加渲染流水线掉帧风险。
+**落地实操**：
+已在 `DouyinLite/lib_media/src/main/cpp/core/SpinLock.h` 植入代码：
+*   底层封装 `std::atomic_flag`。
+*   在 `test_and_set` 自旋死循环中，根据 CPU 架构插入汇编指令 `asm volatile("yield")` (ARM) 或 `asm volatile("pause")` (x86)，有效避免超线程架构下的流水线清空惩罚，降低 CPU 功耗热量。
+
+### 7.3 WBS 3: NDK 硬件解码与零拷贝上屏 (AMediaCodec)
+**技术痛点**：传统的 Java MediaCodec 解码后的视频帧存在向 CPU 的来回拷贝，耗时且增加 OOM 风险。
+**落地实操**：
+已在 `DouyinLite/lib_media/src/main/cpp/player/HardwareDecoder.h` 铺设骨架：
+*   直接包含 `<media/NdkMediaCodec.h>`。
+*   通过 `AMediaCodec_dequeueOutputBuffer` 拿到解码硬件吐出的缓冲区。
+*   **极致零拷贝**：直接执行 `AMediaCodec_releaseOutputBuffer(mCodec, outIndex, true)`。这里的布尔值 `true` 将指令 GPU 显卡直接将这块物理内存在 VRAM 内部挂载到对应的 `EGL Surface`，跳过所有的像素搬运。
+
+---
+
+*以上三步极客级的底层基建已由 Jules 实装进工程，通过了 NDK 交叉编译。这也标志着本项目正式推开了工业级 C/C++ 音视频重构的大门！*
