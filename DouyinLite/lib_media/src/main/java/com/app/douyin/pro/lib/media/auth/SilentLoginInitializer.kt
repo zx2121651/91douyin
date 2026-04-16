@@ -33,13 +33,21 @@ class SilentLoginInitializer @Inject constructor(
                 }
 
                 if (response.statusCode == 0) {
-                    authManager.saveAuth(response.token, response.userId)
-                    Log.d("Auth", "Silent login/register successful. UserID: ${response.userId}")
+                    val userInfoResponse = apiService.getUserInfo(response.userId, response.token)
+                    if (userInfoResponse.statusCode == 0 && userInfoResponse.user != null) {
+                        authManager.saveAuth(response.token, userInfoResponse.user)
+                        Log.d("Auth", "Silent login/register successful. UserID: ${response.userId}")
+                    } else {
+                        Log.e("Auth", "Silent login: Failed to get user info: ${userInfoResponse.statusMsg}")
+                        authManager.updateSession(SessionState.Guest)
+                    }
                 } else {
-                    Log.e("Auth", "Failed to get token: ${response.statusMsg}")
+                    Log.e("Auth", "Silent login: Failed to get token: ${response.statusMsg}")
+                    authManager.updateSession(SessionState.Guest)
                 }
             } catch (e: Exception) {
                 Log.e("Auth", "Network error during silent login: ${e.message}")
+                authManager.updateSession(SessionState.Guest)
             }
         }
     }

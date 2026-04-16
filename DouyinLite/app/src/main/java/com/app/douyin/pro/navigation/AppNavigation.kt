@@ -7,6 +7,8 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.app.douyin.pro.feature.auth.ui.LoginScreen
+import com.app.douyin.pro.feature.auth.ui.RegisterScreen
 import com.app.douyin.pro.feature.edit.ui.EditScreen
 import com.app.douyin.pro.feature.home.ui.FriendsScreen
 import com.app.douyin.pro.feature.home.ui.HomeScreen
@@ -77,10 +79,26 @@ fun AppNavHost(
             )
         }
         composable(NavRoutes.ME) {
-            ProfileScreen()
+            ProfileScreen(
+                onNavigateToLogin = { navController.navigate(NavRoutes.LOGIN) }
+            )
         }
         composable(NavRoutes.MALL) {
             MallScreen(onBack = { navController.popBackStack() })
+        }
+        composable(NavRoutes.LOGIN) {
+            LoginScreen(
+                onBack = { navController.popBackStack() },
+                onNavigateToRegister = { navController.navigate(NavRoutes.REGISTER) },
+                onLoginSuccess = { navController.popBackStack() }
+            )
+        }
+        composable(NavRoutes.REGISTER) {
+            RegisterScreen(
+                onBack = { navController.popBackStack() },
+                onNavigateToLogin = { navController.navigate(NavRoutes.LOGIN) },
+                onRegisterSuccess = { navController.popBackStack() }
+            )
         }
     }
 }
