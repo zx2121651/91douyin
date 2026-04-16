@@ -17,33 +17,31 @@ class RemoteHomeDataSource @Inject constructor(
     override suspend fun getVideos(page: Int): List<VideoModel> {
         val requestTime = if (page == 0) null else currentNextTime
 
-        try {
-            val response = apiService.getFeed(latestTime = requestTime)
+        val response = apiService.getFeed(latestTime = requestTime)
 
-            val list = response.videoList
-            if (response.statusCode == 0 && list != null) {
-                currentNextTime = response.nextTime
-                return list.map { dto ->
-                    VideoModel(
-                        id = dto.id,
-                        playUrl = dto.playUrl,
-                        coverUrl = dto.coverUrl,
-                        title = dto.title,
-                    authorId = dto.author.id,
-                        authorName = dto.author.name,
-                        authorAvatar = dto.author.avatar,
-                        likeCount = formatCount(dto.favoriteCount),
-                        commentCount = formatCount(dto.commentCount),
-                        shareCount = "分享", // Placeholder
-                        isLiked = dto.isFavorite,
-                        isFollowed = dto.author.isFollow
-                    )
-                }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
+        if (response.statusCode != 0) {
+            throw Exception(response.statusMsg ?: "Server Error")
         }
-        return emptyList()
+
+        val list = response.videoList ?: return emptyList()
+
+        currentNextTime = response.nextTime
+        return list.map { dto ->
+            VideoModel(
+                id = dto.id,
+                playUrl = dto.playUrl,
+                coverUrl = dto.coverUrl,
+                title = dto.title,
+                authorId = dto.author.id,
+                authorName = dto.author.name,
+                authorAvatar = dto.author.avatar,
+                likeCount = formatCount(dto.favoriteCount),
+                commentCount = formatCount(dto.commentCount),
+                shareCount = "分享", // Placeholder
+                isLiked = dto.isFavorite,
+                isFollowed = dto.author.isFollow
+            )
+        }
     }
 
     private fun formatCount(count: Long): String {

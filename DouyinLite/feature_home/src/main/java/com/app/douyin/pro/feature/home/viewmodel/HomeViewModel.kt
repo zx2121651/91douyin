@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.app.douyin.pro.feature.home.domain.model.VideoModel
 import com.app.douyin.pro.feature.home.domain.usecase.GetVideosUseCase
 import com.app.douyin.pro.feature.home.domain.usecase.LoadMoreVideosUseCase
+import com.app.douyin.pro.lib.media.model.AppError
 import com.app.douyin.pro.lib.media.model.Resource
 import com.app.douyin.pro.lib.media.network.DouyinApiService
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -19,7 +20,7 @@ sealed class LoadState {
     object Idle : LoadState()
     object Loading : LoadState()
     data class Success(val isEmpty: Boolean) : LoadState()
-    data class Error(val message: String) : LoadState()
+    data class Error(val message: String, val error: AppError? = null) : LoadState()
 }
 
 sealed class PagingState {
@@ -51,6 +52,8 @@ class HomeViewModel @Inject constructor(
     }
 
     fun loadInitialData() {
+        if (_uiState.value.loadState is LoadState.Loading) return
+
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(loadState = LoadState.Loading)
             when (val result = getVideosUseCase()) {
@@ -63,7 +66,7 @@ class HomeViewModel @Inject constructor(
                 }
                 is Resource.Error -> {
                     _uiState.value = _uiState.value.copy(
-                        loadState = LoadState.Error(result.message)
+                        loadState = LoadState.Error(result.message, result.error)
                     )
                 }
                 else -> {
