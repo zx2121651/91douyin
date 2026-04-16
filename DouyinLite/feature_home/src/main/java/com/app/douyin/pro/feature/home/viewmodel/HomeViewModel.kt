@@ -15,6 +15,25 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+sealed class LoadState {
+    object Idle : LoadState()
+    object Loading : LoadState()
+    data class Success(val isEmpty: Boolean) : LoadState()
+    data class Error(val message: String) : LoadState()
+}
+
+sealed class PagingState {
+    object Idle : PagingState()
+    object Loading : PagingState()
+    data class Error(val message: String) : PagingState()
+}
+
+data class HomeUiState(
+    val videos: List<VideoModel> = emptyList(),
+    val loadState: LoadState = LoadState.Idle,
+    val pagingState: PagingState = PagingState.Idle
+)
+
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val getVideosUseCase: GetVideosUseCase,
@@ -22,14 +41,8 @@ class HomeViewModel @Inject constructor(
     private val apiService: DouyinApiService
 ) : ViewModel() {
 
-    private val _videos = mutableStateListOf<VideoModel>()
-    val videos: List<VideoModel> = _videos
-
-    private val _isLoading = MutableStateFlow(false)
-    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
-
-    private val _error = MutableStateFlow<String?>(null)
-    val error: StateFlow<String?> = _error.asStateFlow()
+    private val _uiState = MutableStateFlow(HomeUiState())
+    val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     private var pageCount = 1
 
@@ -37,47 +50,69 @@ class HomeViewModel @Inject constructor(
         loadInitialData()
     }
 
-    private fun loadInitialData() {
+    fun loadInitialData() {
         viewModelScope.launch {
-            _isLoading.value = true
-            _error.value = null
+            _uiState.value = _uiState.value.copy(loadState = LoadState.Loading)
             when (val result = getVideosUseCase()) {
-                is Resource.Success -> _videos.addAll(result.data)
-                is Resource.Error -> _error.value = result.message
-                else -> {}
+                is Resource.Success -> {
+                    _uiState.value = _uiState.value.copy(
+                        videos = result.data,
+                        loadState = LoadState.Success(isEmpty = result.data.isEmpty())
+                    )
+                    pageCount = 1
+                }
+                is Resource.Error -> {
+                    _uiState.value = _uiState.value.copy(
+                        loadState = LoadState.Error(result.message)
+                    )
+                }
+                else -> {
+                    _uiState.value = _uiState.value.copy(loadState = LoadState.Idle)
+                }
             }
-            _isLoading.value = false
         }
     }
 
     fun loadMore() {
-        if (_isLoading.value) return
+        if (_uiState.value.pagingState is PagingState.Loading) return
 
         viewModelScope.launch {
-            _isLoading.value = true
+            _uiState.value = _uiState.value.copy(pagingState = PagingState.Loading)
             when (val result = loadMoreVideosUseCase(pageCount)) {
                 is Resource.Success -> {
-                    _videos.addAll(result.data)
+                    val currentVideos = _uiState.value.videos.toMutableList()
+                    currentVideos.addAll(result.data)
+                    _uiState.value = _uiState.value.copy(
+                        videos = currentVideos,
+                        pagingState = PagingState.Idle
+                    )
                     pageCount++
                 }
-                is Resource.Error -> _error.value = result.message
-                else -> {}
+                is Resource.Error -> {
+                    _uiState.value = _uiState.value.copy(
+                        pagingState = PagingState.Error(result.message)
+                    )
+                }
+                else -> {
+                    _uiState.value = _uiState.value.copy(pagingState = PagingState.Idle)
+                }
             }
-            _isLoading.value = false
         }
     }
 
     fun toggleLike(videoId: Long) {
-        val index = _videos.indexOfFirst { it.id == videoId }
+        val currentVideos = _uiState.value.videos.toMutableList()
+        val index = currentVideos.indexOfFirst { it.id == videoId }
         if (index != -1) {
-            val video = _videos[index]
+            val video = currentVideos[index]
             val newIsLiked = !video.isLiked
 
             // Optimistic update
-            _videos[index] = video.copy(
+            currentVideos[index] = video.copy(
                 isLiked = newIsLiked,
                 likeCount = adjustCount(video.likeCount, if (newIsLiked) 1 else -1)
             )
+            _uiState.value = _uiState.value.copy(videos = currentVideos)
 
             // Send to backend
             viewModelScope.launch {
@@ -85,14 +120,21 @@ class HomeViewModel @Inject constructor(
                     val actionType = if (newIsLiked) 1 else 2
                     val response = apiService.favoriteAction(videoId, actionType)
                     if (response.statusCode != 0) {
-                        // Revert on failure
-                        _videos[index] = video
+                        revertLike(videoId, video)
                     }
                 } catch (e: Exception) {
-                    // Revert on failure
-                    _videos[index] = video
+                    revertLike(videoId, video)
                 }
             }
+        }
+    }
+
+    private fun revertLike(videoId: Long, originalVideo: VideoModel) {
+        val currentVideos = _uiState.value.videos.toMutableList()
+        val index = currentVideos.indexOfFirst { it.id == videoId }
+        if (index != -1) {
+            currentVideos[index] = originalVideo
+            _uiState.value = _uiState.value.copy(videos = currentVideos)
         }
     }
 
@@ -107,24 +149,35 @@ class HomeViewModel @Inject constructor(
     }
 
     fun toggleFollow(videoId: Long) {
-        val index = _videos.indexOfFirst { it.id == videoId }
+        val currentVideos = _uiState.value.videos.toMutableList()
+        val index = currentVideos.indexOfFirst { it.id == videoId }
         if (index != -1) {
-            val video = _videos[index]
+            val video = currentVideos[index]
             val newIsFollowed = !video.isFollowed
 
-            _videos[index] = video.copy(isFollowed = newIsFollowed)
+            currentVideos[index] = video.copy(isFollowed = newIsFollowed)
+            _uiState.value = _uiState.value.copy(videos = currentVideos)
 
             viewModelScope.launch {
                 try {
                     val actionType = if (newIsFollowed) 1 else 2
                     val response = apiService.relationAction(video.authorId, actionType)
                     if (response.statusCode != 0) {
-                        _videos[index] = video // revert on failure
+                        revertFollow(videoId, video)
                     }
                 } catch (e: Exception) {
-                    _videos[index] = video // revert on failure
+                    revertFollow(videoId, video)
                 }
             }
+        }
+    }
+
+    private fun revertFollow(videoId: Long, originalVideo: VideoModel) {
+        val currentVideos = _uiState.value.videos.toMutableList()
+        val index = currentVideos.indexOfFirst { it.id == videoId }
+        if (index != -1) {
+            currentVideos[index] = originalVideo
+            _uiState.value = _uiState.value.copy(videos = currentVideos)
         }
     }
 }

@@ -32,6 +32,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.app.douyin.pro.feature.home.ui.components.*
 import com.app.douyin.pro.feature.home.ui.components.CommentsBottomSheet
 import com.app.douyin.pro.feature.home.viewmodel.HomeViewModel
+import com.app.douyin.pro.feature.home.viewmodel.LoadState
+import com.app.douyin.pro.feature.home.viewmodel.PagingState
 import com.app.douyin.pro.feature.home.domain.model.VideoModel
 import kotlinx.coroutines.launch
 import java.util.*
@@ -42,9 +44,7 @@ fun HomeScreen(
     onNavigateToProfile: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel()
 ) {
-    val videos = viewModel.videos
-    val isLoading by viewModel.isLoading.collectAsState()
-    val error by viewModel.error.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
     val coroutineScope = rememberCoroutineScope()
     val horizontalPagerState = rememberPagerState(initialPage = 3, pageCount = { 4 })
     val selectedTopTabIndex = horizontalPagerState.currentPage + 1
@@ -56,44 +56,148 @@ fun HomeScreen(
         return
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        if (isLoading && videos.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = Color(0xFFFF2C55))
-            }
-        } else if (error != null && videos.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
-                Text(text = "加载失败: ", color = Color.White)
-            }
-        } else {
-            HorizontalPager(
-                state = horizontalPagerState,
-                modifier = Modifier.fillMaxSize()
-            ) { page ->
-                when (page) {
-                    0 -> LiveScreen()
-                    1 -> { /* Place for Local Screen */ }
-                    2 -> VideoFeed(videos = videos.reversed(), isVisible = horizontalPagerState.currentPage == 2, onNavigateToProfile = onNavigateToProfile)
-                    3 -> VideoFeed(videos = videos, isVisible = horizontalPagerState.currentPage == 3, onNavigateToProfile = onNavigateToProfile)
+    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+        when (val loadState = uiState.loadState) {
+            is LoadState.Loading -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = Color(0xFFFF2C55))
                 }
             }
-
-            AnimatedVisibility(
-                visible = horizontalPagerState.currentPage != 0,
-                enter = fadeIn(),
-                exit = fadeOut(),
-                modifier = Modifier.align(Alignment.TopCenter)
-            ) {
-                TopNavigationBar(
-                    selectedTabIndex = selectedTopTabIndex,
-                    onTabSelected = { index ->
-                        coroutineScope.launch { horizontalPagerState.animateScrollToPage(index) }
-                    },
-                    onSearchClick = { showSearchScreen = true },
-                    onNavigateToMall = onNavigateToMall,
-                    modifier = Modifier.statusBarsPadding()
+            is LoadState.Error -> {
+                ErrorView(
+                    message = loadState.message,
+                    onRetry = { viewModel.loadInitialData() }
                 )
             }
+            is LoadState.Success -> {
+                if (loadState.isEmpty) {
+                    EmptyView(onRetry = { viewModel.loadInitialData() })
+                } else {
+                    HomeContent(
+                        uiState = uiState,
+                        horizontalPagerState = horizontalPagerState,
+                        coroutineScope = coroutineScope,
+                        onNavigateToMall = onNavigateToMall,
+                        onNavigateToProfile = onNavigateToProfile,
+                        onSearchClick = { showSearchScreen = true },
+                        onLoadMore = { viewModel.loadMore() }
+                    )
+                }
+            }
+            else -> {}
+        }
+    }
+}
+
+@Composable
+private fun HomeContent(
+    uiState: com.app.douyin.pro.feature.home.viewmodel.HomeUiState,
+    horizontalPagerState: androidx.compose.foundation.pager.PagerState,
+    coroutineScope: kotlinx.coroutines.CoroutineScope,
+    onNavigateToMall: () -> Unit,
+    onNavigateToProfile: () -> Unit,
+    onSearchClick: () -> Unit,
+    onLoadMore: () -> Unit
+) {
+    val selectedTopTabIndex = horizontalPagerState.currentPage + 1
+    Box(modifier = Modifier.fillMaxSize()) {
+        HorizontalPager(
+            state = horizontalPagerState,
+            modifier = Modifier.fillMaxSize()
+        ) { page ->
+            when (page) {
+                0 -> LiveScreen()
+                1 -> { /* Place for Local Screen */ }
+                2 -> VideoFeed(
+                    videos = uiState.videos.reversed(),
+                    isVisible = horizontalPagerState.currentPage == 2,
+                    onNavigateToProfile = onNavigateToProfile,
+                    pagingState = uiState.pagingState,
+                    onLoadMore = onLoadMore
+                )
+                3 -> VideoFeed(
+                    videos = uiState.videos,
+                    isVisible = horizontalPagerState.currentPage == 3,
+                    onNavigateToProfile = onNavigateToProfile,
+                    pagingState = uiState.pagingState,
+                    onLoadMore = onLoadMore
+                )
+            }
+        }
+
+        AnimatedVisibility(
+            visible = horizontalPagerState.currentPage != 0,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.TopCenter)
+        ) {
+            TopNavigationBar(
+                selectedTabIndex = selectedTopTabIndex,
+                onTabSelected = { index ->
+                    coroutineScope.launch { horizontalPagerState.animateScrollToPage(index) }
+                },
+                onSearchClick = onSearchClick,
+                onNavigateToMall = onNavigateToMall,
+                modifier = Modifier.statusBarsPadding()
+            )
+        }
+    }
+}
+
+@Composable
+fun ErrorView(message: String, onRetry: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(32.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(
+            Icons.Filled.Warning,
+            contentDescription = null,
+            tint = Color.Gray,
+            modifier = Modifier.size(64.dp)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "加载失败: $message",
+            color = Color.White,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(24.dp))
+        Button(
+            onClick = onRetry,
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF2C55))
+        ) {
+            Text("重试")
+        }
+    }
+}
+
+@Composable
+fun EmptyView(onRetry: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(32.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(
+            Icons.Filled.Info,
+            contentDescription = null,
+            tint = Color.Gray,
+            modifier = Modifier.size(64.dp)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "暂无视频内容",
+            color = Color.White,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(24.dp))
+        Button(
+            onClick = onRetry,
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF2C55))
+        ) {
+            Text("刷新")
         }
     }
 }
