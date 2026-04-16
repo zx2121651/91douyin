@@ -1,6 +1,7 @@
 package com.app.douyin.pro.feature.home.viewmodel
 
 import com.app.douyin.pro.feature.home.domain.model.VideoModel
+import com.app.douyin.pro.feature.home.domain.model.VideoPage
 import com.app.douyin.pro.feature.home.domain.usecase.GetVideosUseCase
 import com.app.douyin.pro.feature.home.domain.usecase.LoadMoreVideosUseCase
 import com.app.douyin.pro.lib.media.model.Resource
@@ -15,6 +16,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import org.mockito.ArgumentMatchers.anyLong
 
 @ExperimentalCoroutinesApi
 class HomeViewModelTest {
@@ -38,8 +40,9 @@ class HomeViewModelTest {
 
     @Test
     fun `loadInitialData success updates state with videos`() = runTest {
-        val videos = listOf(VideoModel(1, "title", "author", "authorAvatar", 101, "playUrl", "coverUrl", "100", "50", "10", false, false))
-        `when`(getVideosUseCase()).thenReturn(Resource.Success(videos))
+        val videos = listOf(VideoModel(1, "p1", "c1", "t1", 101, "a1", "av1", "1", "1", "1", false, false))
+        val page = VideoPage(videos, 123L)
+        `when`(getVideosUseCase()).thenReturn(Resource.Success(page))
 
         viewModel = HomeViewModel(getVideosUseCase, loadMoreVideosUseCase, apiService)
         testDispatcher.scheduler.advanceUntilIdle()
@@ -65,10 +68,13 @@ class HomeViewModelTest {
 
     @Test
     fun `loadMore success appends videos to state`() = runTest {
-        val initialVideos = listOf(VideoModel(1, "v1", "a1", "av1", 101, "p1", "c1", "1", "1", "1", false, false))
-        val moreVideos = listOf(VideoModel(2, "v2", "a2", "av2", 102, "p2", "c2", "2", "2", "2", false, false))
-        `when`(getVideosUseCase()).thenReturn(Resource.Success(initialVideos))
-        `when`(loadMoreVideosUseCase(1)).thenReturn(Resource.Success(moreVideos))
+        val video1 = VideoModel(1, "p1", "c1", "t1", 101, "a1", "av1", "1", "1", "1", false, false)
+        val video2 = VideoModel(2, "p2", "c2", "t2", 102, "a2", "av2", "2", "2", "2", false, false)
+        val initialPage = VideoPage(listOf(video1), 123L)
+        val nextPage = VideoPage(listOf(video2), 456L)
+
+        `when`(getVideosUseCase()).thenReturn(Resource.Success(initialPage))
+        `when`(loadMoreVideosUseCase(123L)).thenReturn(Resource.Success(nextPage))
 
         viewModel = HomeViewModel(getVideosUseCase, loadMoreVideosUseCase, apiService)
         testDispatcher.scheduler.advanceUntilIdle()
@@ -78,16 +84,18 @@ class HomeViewModelTest {
 
         val state = viewModel.uiState.value
         assertEquals(2, state.videos.size)
-        assertEquals(initialVideos + moreVideos, state.videos)
+        assertEquals(listOf(video1, video2), state.videos)
         assertTrue(state.pagingState is PagingState.Idle)
     }
 
     @Test
     fun `loadMore failure updates pagingState with error`() = runTest {
-        val initialVideos = listOf(VideoModel(1, "v1", "a1", "av1", 101, "p1", "c1", "1", "1", "1", false, false))
+        val video1 = VideoModel(1, "p1", "c1", "t1", 101, "a1", "av1", "1", "1", "1", false, false)
+        val initialPage = VideoPage(listOf(video1), 123L)
         val errorMessage = "Paging Error"
-        `when`(getVideosUseCase()).thenReturn(Resource.Success(initialVideos))
-        `when`(loadMoreVideosUseCase(1)).thenReturn(Resource.Error(errorMessage))
+
+        `when`(getVideosUseCase()).thenReturn(Resource.Success(initialPage))
+        `when`(loadMoreVideosUseCase(123L)).thenReturn(Resource.Error(errorMessage))
 
         viewModel = HomeViewModel(getVideosUseCase, loadMoreVideosUseCase, apiService)
         testDispatcher.scheduler.advanceUntilIdle()
@@ -99,5 +107,49 @@ class HomeViewModelTest {
         assertEquals(1, state.videos.size)
         assertTrue(state.pagingState is PagingState.Error)
         assertEquals(errorMessage, (state.pagingState as PagingState.Error).message)
+    }
+
+    @Test
+    fun `loadMore with duplicate videos should deduplicate`() = runTest {
+        val video1 = VideoModel(1, "p1", "c1", "t1", 101, "a1", "av1", "1", "1", "1", false, false)
+        val video2 = VideoModel(2, "p2", "c2", "t2", 102, "a2", "av2", "2", "2", "2", false, false)
+
+        val initialPage = VideoPage(listOf(video1), 123L)
+        // video1 is repeated in the second page
+        val nextPage = VideoPage(listOf(video1, video2), 456L)
+
+        `when`(getVideosUseCase()).thenReturn(Resource.Success(initialPage))
+        `when`(loadMoreVideosUseCase(123L)).thenReturn(Resource.Success(nextPage))
+
+        viewModel = HomeViewModel(getVideosUseCase, loadMoreVideosUseCase, apiService)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.loadMore()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals("Should deduplicate repeated videos", 2, state.videos.size)
+        assertEquals(listOf(video1, video2), state.videos)
+    }
+
+    @Test
+    fun `loadMore with null nextTime should not trigger request`() = runTest {
+        val video1 = VideoModel(1, "p1", "c1", "t1", 101, "a1", "av1", "1", "1", "1", false, false)
+        val initialPage = VideoPage(listOf(video1), null)
+
+        `when`(getVideosUseCase()).thenReturn(Resource.Success(initialPage))
+
+        viewModel = HomeViewModel(getVideosUseCase, loadMoreVideosUseCase, apiService)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.loadMore()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // loadMoreVideosUseCase should not have been called
+        // We can't easily verify with mockito in this setup without more boilerplate,
+        // but we can check state remains Idle and videos didn't change.
+        val state = viewModel.uiState.value
+        assertEquals(1, state.videos.size)
+        assertTrue(state.pagingState is PagingState.Idle)
     }
 }

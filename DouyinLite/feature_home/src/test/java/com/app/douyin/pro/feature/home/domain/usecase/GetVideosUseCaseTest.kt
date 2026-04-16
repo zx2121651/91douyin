@@ -2,6 +2,7 @@ package com.app.douyin.pro.feature.home.domain.usecase
 
 import com.app.douyin.pro.feature.home.data.HomeRepository
 import com.app.douyin.pro.feature.home.domain.model.VideoModel
+import com.app.douyin.pro.feature.home.domain.model.VideoPage
 import com.app.douyin.pro.lib.media.model.Resource
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -30,11 +31,12 @@ class GetVideosUseCaseTest {
             VideoModel(1L, "video1", "", "title1", 1L, "author1", null, "0", "0", "0", false, false),
             VideoModel(2L, "video2", "", "title2", 2L, "author2", null, "0", "0", "0", false, false)
         )
-        `when`(mockRepository.getInitialVideos()).thenReturn(Resource.Success(mockVideos))
+        val mockPage = VideoPage(mockVideos, 123L)
+        `when`(mockRepository.getInitialVideos()).thenReturn(Resource.Success(mockPage))
 
         val result = getVideosUseCase()
 
         assert(result is Resource.Success)
-        assertEquals(mockVideos, (result as Resource.Success).data)
+        assertEquals(mockPage, (result as Resource.Success).data)
     }
 }

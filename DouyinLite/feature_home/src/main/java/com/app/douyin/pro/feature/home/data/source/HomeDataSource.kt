@@ -1,32 +1,28 @@
 package com.app.douyin.pro.feature.home.data.source
 
 import com.app.douyin.pro.feature.home.domain.model.VideoModel
+import com.app.douyin.pro.feature.home.domain.model.VideoPage
 import com.app.douyin.pro.lib.media.network.DouyinApiService
 import javax.inject.Inject
 
 interface HomeDataSource {
-    suspend fun getVideos(page: Int): List<VideoModel>
+    suspend fun getVideos(latestTime: Long?): VideoPage
 }
 
 class RemoteHomeDataSource @Inject constructor(
     private val apiService: DouyinApiService
 ) : HomeDataSource {
 
-    private var currentNextTime: Long? = null
-
-    override suspend fun getVideos(page: Int): List<VideoModel> {
-        val requestTime = if (page == 0) null else currentNextTime
-
-        val response = apiService.getFeed(latestTime = requestTime)
+    override suspend fun getVideos(latestTime: Long?): VideoPage {
+        val response = apiService.getFeed(latestTime = latestTime)
 
         if (response.statusCode != 0) {
             throw Exception(response.statusMsg ?: "Server Error")
         }
 
-        val list = response.videoList ?: return emptyList()
+        val list = response.videoList ?: return VideoPage(emptyList(), null)
 
-        currentNextTime = response.nextTime
-        return list.map { dto ->
+        val videos = list.map { dto ->
             VideoModel(
                 id = dto.id,
                 playUrl = dto.playUrl,
@@ -42,6 +38,7 @@ class RemoteHomeDataSource @Inject constructor(
                 isFollowed = dto.author.isFollow
             )
         }
+        return VideoPage(videos, response.nextTime)
     }
 
     private fun formatCount(count: Long): String {
@@ -55,15 +52,16 @@ class RemoteHomeDataSource @Inject constructor(
 
 // Keep mock for fallback or preview
 class MockHomeDataSource : HomeDataSource {
-    override suspend fun getVideos(page: Int): List<VideoModel> {
+    override suspend fun getVideos(latestTime: Long?): VideoPage {
+        val page = if (latestTime == null) 0 else 1
         val urls = if (page == 0) {
             com.app.douyin.pro.feature.home.ui.MockData.videos
         } else {
             com.app.douyin.pro.feature.home.ui.MockData.loadMoreVideos(page)
         }
-        return urls.mapIndexed { index, url ->
+        val videos = urls.mapIndexed { index, url ->
             VideoModel(
-                id = index.toLong(),
+                id = (page * 100 + index).toLong(),
                 playUrl = url,
                 coverUrl = "",
                 title = "这是一个 Mock 视频",
@@ -77,5 +75,6 @@ class MockHomeDataSource : HomeDataSource {
                 isFollowed = false
             )
         }
+        return VideoPage(videos, if (page == 0) System.currentTimeMillis() else null)
     }
 }
