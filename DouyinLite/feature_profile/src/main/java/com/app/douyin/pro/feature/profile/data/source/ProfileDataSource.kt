@@ -15,12 +15,8 @@ class RemoteProfileDataSource @Inject constructor(
     private val authManager: AuthManager
 ) : ProfileDataSource {
     override suspend fun getUserInfo(): ProfileInfo {
+        val token = authManager.requireToken()
         val userId = authManager.getUserId()
-        val token = authManager.getToken()
-
-        if (userId == -1L || token == null) {
-            throw Exception("Not logged in")
-        }
 
         val response = apiService.getUserInfo(userId, token)
         val user = response.user
@@ -41,12 +37,9 @@ class RemoteProfileDataSource @Inject constructor(
     }
 
     override suspend fun getPublishedVideos(): List<VideoDto> {
+        if (!authManager.isLoggedIn()) return emptyList()
         val userId = authManager.getUserId()
-        val token = authManager.getToken()
-
-        if (userId == -1L || token == null) {
-            return emptyList()
-        }
+        val token = authManager.requireToken()
 
         try {
             val response = apiService.getPublishList(userId, token)

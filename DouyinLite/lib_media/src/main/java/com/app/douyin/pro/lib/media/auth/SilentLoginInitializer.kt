@@ -14,12 +14,27 @@ class SilentLoginInitializer @Inject constructor(
     private val apiService: DouyinApiService
 ) {
     fun initialize() {
-        if (authManager.isLoggedIn()) {
-            Log.d("Auth", "Already logged in with user ID: ${authManager.getUserId()}")
-            return
-        }
-
         CoroutineScope(Dispatchers.IO).launch {
+            if (authManager.isLoggedIn()) {
+                val token = authManager.getToken()!!
+                val userId = authManager.getUserId()
+                Log.d("Auth", "Already logged in with user ID: $userId, refreshing user info...")
+                try {
+                    val userInfoResponse = apiService.getUserInfo(userId, token)
+                    if (userInfoResponse.statusCode == 0 && userInfoResponse.user != null) {
+                        authManager.saveAuth(token, userInfoResponse.user)
+                        Log.d("Auth", "User info refreshed successfully.")
+                    } else {
+                        Log.w("Auth", "Failed to refresh user info, token might be invalid: ${userInfoResponse.statusMsg}")
+                        authManager.clearAuth()
+                    }
+                } catch (e: Exception) {
+                    Log.e("Auth", "Network error refreshing user info: ${e.message}")
+                    // Keep existing session if it's just a network error
+                }
+                return@launch
+            }
+
             try {
                 // Try login first (using a default test user)
                 val username = "testuser"

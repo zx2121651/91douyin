@@ -28,6 +28,7 @@ class AuthInterceptor @Inject constructor(
         val response = chain.proceed(request)
 
         if (response.code == 401) {
+            // Centralized 401 handling
             authManager.clearAuth()
         }
 

@@ -16,10 +16,9 @@ class RemoteChatDataSource @Inject constructor(
 ) : ChatDataSource {
 
     override suspend fun getChatHistory(toUserId: Long, preMsgTime: Long?): List<ChatMessage> {
-        val token = authManager.getToken()
+        if (!authManager.isLoggedIn()) return emptyList()
+        val token = authManager.requireToken()
         val currentUserId = authManager.getUserId()
-
-        if (token == null || currentUserId == -1L) return emptyList()
 
         try {
             val response = apiService.getChatHistory(toUserId, preMsgTime, token)
@@ -44,7 +43,7 @@ class RemoteChatDataSource @Inject constructor(
     }
 
     override suspend fun sendMessage(toUserId: Long, content: String) {
-        val token = authManager.getToken() ?: throw Exception("Not logged in")
+        val token = authManager.requireToken()
         val response = apiService.sendMessage(toUserId = toUserId, content = content, token = token)
         if (response.statusCode != 0) {
             throw Exception(response.statusMsg ?: "Failed to send message")
