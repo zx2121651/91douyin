@@ -94,7 +94,7 @@ func (s *VideoService) GetFeed(latestTime int64, limit int, currentUserID uint) 
 	return videos, nextTime, nil
 }
 
-func (s *VideoService) PublishVideo(authorID uint, title string, playURL string, coverURL string) error {
+func (s *VideoService) PublishVideo(authorID uint, title string, playURL string, coverURL string) (*model.Video, error) {
 	// Step 1: Immediately persist the video as "processing" to ensure the user gets a fast response
 	video := model.Video{
 		AuthorID:      authorID,
@@ -108,34 +108,10 @@ func (s *VideoService) PublishVideo(authorID uint, title string, playURL string,
 	}
 
 	if err := db.DB.Create(&video).Error; err != nil {
-		return err
+		return nil, err
 	}
 
-	// Step 2: Spin off a Goroutine to handle asynchronous media post-processing and checks
-	go func(vid uint, uid uint) {
-		// Simulate network extraction, FFmpeg transcoding delay, and content safety moderation
-		time.Sleep(3 * time.Second)
-
-		// After processing, update the status to "published" safely inside a transaction
-		db.DB.Transaction(func(tx *gorm.DB) error {
-			if err := tx.Model(&model.Video{}).Where("id = ?", vid).Update("status", "published").Error; err != nil {
-				return err
-			}
-
-			// Generate a system notification to the author confirming successful processing
-			notif := model.SystemNotification{
-				ToUserID:   uid,
-				Type:       model.NotificationTypeSystem,
-				Content:    "您的视频《" + title + "》已发布成功",
-				TargetID:   vid,
-			}
-			tx.Create(&notif)
-
-			return nil
-		})
-	}(video.ID, authorID)
-
-	return nil
+	return &video, nil
 }
 
 func (s *VideoService) GetPublishList(userID uint) ([]model.Video, error) {
@@ -170,6 +146,46 @@ func (s *VideoService) RecordVideoView(videoID uint, userID uint) error {
 	}
 
 	return nil
+}
+
+// UpdateVideoStatusAndCover updates the status and cover URL of a video.
+// This is used by the asynchronous processing.
+func (s *VideoService) UpdateVideoStatusAndCover(vid uint, status string, coverURL string) error {
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		var video model.Video
+		if err := tx.First(&video, vid).Error; err != nil {
+			return err
+		}
+
+		updates := map[string]interface{}{
+			"status":    status,
+			"cover_url": coverURL,
+		}
+
+		if err := tx.Model(&video).Updates(updates).Error; err != nil {
+			return err
+		}
+
+		if status == "published" {
+			// Generate a system notification to the author confirming successful processing
+			notif := model.SystemNotification{
+				ToUserID: video.AuthorID,
+				Type:     model.NotificationTypeSystem,
+				Content:  "您的视频《" + video.Title + "》已发布成功",
+				TargetID: video.ID,
+			}
+			if err := tx.Create(&notif).Error; err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+}
+
+// DeleteVideo deletes a video record from the database.
+func (s *VideoService) DeleteVideo(vid uint) error {
+	return db.DB.Delete(&model.Video{}, vid).Error
 }
 
 // UpdateCoverByURL updates the cover URL of a video by its play URL.

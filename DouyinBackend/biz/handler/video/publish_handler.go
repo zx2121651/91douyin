@@ -75,8 +75,9 @@ func PublishAction(ctx context.Context, c *app.RequestContext) {
 	placeholderCoverURL := "https://images.unsplash.com/photo-1611162617474-5b21e879e113"
 
 	// 先将视频及占位封面存入数据库
-	if err := videoService.PublishVideo(userID, req.Title, playURL, placeholderCoverURL); err != nil {
-		os.Remove(savePath)
+	video, err := videoService.PublishVideo(userID, req.Title, playURL, placeholderCoverURL)
+	if err != nil {
+		storageService.DeleteFile(savePath)
 		c.JSON(consts.StatusInternalServerError, video_model.PublishActionResponse{
 			BaseResponse: common.BaseResponse{
 				StatusCode: 1,
@@ -87,12 +88,25 @@ func PublishAction(ctx context.Context, c *app.RequestContext) {
 	}
 
 	// 开启 goroutine 异步截取真实封面并更新数据库
-	go func(vPath, cName, pURL string) {
+	go func(vID uint, vPath, cName, pURL string) {
 		actualCoverURL, err := storageService.GenerateCover(vPath, cName)
-		if err == nil && actualCoverURL != "" {
-			videoService.UpdateCoverByURL(pURL, actualCoverURL)
+		if err != nil {
+			// 异步处理失败，执行回滚
+			storageService.DeleteFile(vPath)
+			videoService.DeleteVideo(vID)
+			return
 		}
-	}(savePath, coverFilename, playURL)
+
+		if err := videoService.UpdateVideoStatusAndCover(vID, "published", actualCoverURL); err != nil {
+			// 数据库更新失败，执行回滚
+			storageService.DeleteFile(vPath)
+			// 尝试删除已生成的封面文件
+			coverPath := filepath.Join(config.GlobalConfig.Storage.Local.CoverPath, cName)
+			storageService.DeleteFile(coverPath)
+			videoService.DeleteVideo(vID)
+			return
+		}
+	}(video.ID, savePath, coverFilename, playURL)
 
 	c.JSON(consts.StatusOK, video_model.PublishActionResponse{
 		BaseResponse: common.BaseResponse{

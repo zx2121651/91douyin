@@ -39,7 +39,7 @@ func Init() {
 	DB.Exec("PRAGMA synchronous=NORMAL;")
 
 	// Migrate the schema
-	err = DB.AutoMigrate(&model.User{}, &model.Video{}, &model.Favorite{}, &model.Comment{}, &model.Relation{}, &model.Message{})
+	err = DB.AutoMigrate(&model.User{}, &model.Video{}, &model.Favorite{}, &model.Comment{}, &model.Relation{}, &model.Message{}, &model.SystemNotification{})
 	if err != nil {
 		panic("failed to migrate database")
 	}

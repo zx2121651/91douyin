@@ -29,11 +29,9 @@ func (s *StorageService) GenerateCover(videoPath string, coverName string) (stri
 	cmd := exec.Command("ffmpeg", "-y", "-i", videoPath, "-ss", "00:00:01", "-vframes", "1", coverPath)
 
 	// If FFmpeg is not installed in the environment, this will fail.
-	// For production, ensure FFmpeg is available. For development, we can mock it if it fails.
+	// For production, ensure FFmpeg is available.
 	if err := cmd.Run(); err != nil {
-		// Mock a cover if FFmpeg fails (e.g. not installed locally)
-		// return "", fmt.Errorf("ffmpeg generate cover failed: %v", err)
-		return "https://images.unsplash.com/photo-1611162617474-5b21e879e113", nil
+		return "", fmt.Errorf("ffmpeg generate cover failed: %v", err)
 	}
 
 	// Generate local URL for the cover
@@ -55,6 +53,14 @@ func (s *StorageService) BuildAvatarURL(filename string) string {
 		return fmt.Sprintf("http://%s/static/avatars/%s", config.GlobalConfig.Storage.Local.Domain, filename)
 	}
 	return ""
+}
+
+// DeleteFile deletes a file from the local file system
+func (s *StorageService) DeleteFile(path string) error {
+	if path == "" {
+		return nil
+	}
+	return os.Remove(path)
 }
 
 func (s *StorageService) BuildBackgroundURL(filename string) string {
