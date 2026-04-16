@@ -8,8 +8,9 @@ import (
 	"time"
 
 	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/cloudwego/hertz/pkg/protocol/consts"
 	"github.com/douyin/backend/biz/common/config"
+	"github.com/douyin/backend/biz/common/errno"
+	"github.com/douyin/backend/biz/common/utils"
 	"github.com/douyin/backend/biz/model/common"
 	video_model "github.com/douyin/backend/biz/model/video"
 	"github.com/douyin/backend/biz/service"
@@ -23,23 +24,13 @@ var relationService = service.NewRelationService()
 func PublishAction(ctx context.Context, c *app.RequestContext) {
 	var req video_model.PublishActionRequest
 	if err := c.BindAndValidate(&req); err != nil {
-		c.JSON(consts.StatusBadRequest, video_model.PublishActionResponse{
-			BaseResponse: common.BaseResponse{
-				StatusCode: 1,
-				StatusMsg:  err.Error(),
-			},
-		})
+		utils.SendResponse(c, errno.ParamErr.WithMessage(err.Error()), nil)
 		return
 	}
 
 	userIDRaw, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(consts.StatusUnauthorized, video_model.PublishActionResponse{
-			BaseResponse: common.BaseResponse{
-				StatusCode: 1,
-				StatusMsg:  "Unauthorized",
-			},
-		})
+		utils.SendResponse(c, errno.AuthErr, nil)
 		return
 	}
 	userID := userIDRaw.(uint)
@@ -48,22 +39,12 @@ func PublishAction(ctx context.Context, c *app.RequestContext) {
 	savePath := filepath.Join(config.GlobalConfig.Storage.Local.VideoPath, filename)
 
 	if err := os.MkdirAll(filepath.Dir(savePath), 0755); err != nil {
-		c.JSON(consts.StatusInternalServerError, video_model.PublishActionResponse{
-			BaseResponse: common.BaseResponse{
-				StatusCode: 1,
-				StatusMsg:  "Failed to create directory: " + err.Error(),
-			},
-		})
+		utils.SendResponse(c, errno.ServiceErr.WithMessage("Failed to create directory: "+err.Error()), nil)
 		return
 	}
 
 	if err := c.SaveUploadedFile(req.Data, savePath); err != nil {
-		c.JSON(consts.StatusInternalServerError, video_model.PublishActionResponse{
-			BaseResponse: common.BaseResponse{
-				StatusCode: 1,
-				StatusMsg:  "Failed to save video: " + err.Error(),
-			},
-		})
+		utils.SendResponse(c, errno.ServiceErr.WithMessage("Failed to save video: "+err.Error()), nil)
 		return
 	}
 
@@ -78,12 +59,7 @@ func PublishAction(ctx context.Context, c *app.RequestContext) {
 	video, err := videoService.PublishVideo(userID, req.Title, playURL, placeholderCoverURL)
 	if err != nil {
 		storageService.DeleteFile(savePath)
-		c.JSON(consts.StatusInternalServerError, video_model.PublishActionResponse{
-			BaseResponse: common.BaseResponse{
-				StatusCode: 1,
-				StatusMsg:  "Failed to publish video: " + err.Error(),
-			},
-		})
+		utils.SendResponse(c, errno.ServiceErr.WithMessage("Failed to publish video: "+err.Error()), nil)
 		return
 	}
 
@@ -108,12 +84,7 @@ func PublishAction(ctx context.Context, c *app.RequestContext) {
 		}
 	}(video.ID, savePath, coverFilename, playURL)
 
-	c.JSON(consts.StatusOK, video_model.PublishActionResponse{
-		BaseResponse: common.BaseResponse{
-			StatusCode: 0,
-			StatusMsg:  "Success",
-		},
-	})
+	utils.SendResponse(c, errno.Success, nil)
 }
 
 func PublishList(ctx context.Context, c *app.RequestContext) {
@@ -123,23 +94,13 @@ func PublishList(ctx context.Context, c *app.RequestContext) {
 	}
 	var req video_model.PublishListRequest
 	if err := c.BindAndValidate(&req); err != nil {
-		c.JSON(consts.StatusBadRequest, video_model.PublishListResponse{
-			BaseResponse: common.BaseResponse{
-				StatusCode: 1,
-				StatusMsg:  err.Error(),
-			},
-		})
+		utils.SendResponse(c, errno.ParamErr.WithMessage(err.Error()), nil)
 		return
 	}
 
 	videos, err := videoService.GetPublishList(uint(req.UserID))
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, video_model.PublishListResponse{
-			BaseResponse: common.BaseResponse{
-				StatusCode: 1,
-				StatusMsg:  "Failed to get publish list: " + err.Error(),
-			},
-		})
+		utils.SendResponse(c, errno.ServiceErr.WithMessage("Failed to get publish list: "+err.Error()), nil)
 		return
 	}
 
@@ -165,11 +126,7 @@ func PublishList(ctx context.Context, c *app.RequestContext) {
 		})
 	}
 
-	c.JSON(consts.StatusOK, video_model.PublishListResponse{
-		BaseResponse: common.BaseResponse{
-			StatusCode: 0,
-			StatusMsg:  "Success",
-		},
-		VideoList: commonVideos,
+	utils.SendResponse(c, errno.Success, map[string]interface{}{
+		"video_list": commonVideos,
 	})
 }

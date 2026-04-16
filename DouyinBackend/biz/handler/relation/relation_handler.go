@@ -4,7 +4,8 @@ import (
 	"context"
 
 	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/cloudwego/hertz/pkg/protocol/consts"
+	"github.com/douyin/backend/biz/common/errno"
+	"github.com/douyin/backend/biz/common/utils"
 	"github.com/douyin/backend/biz/dal/model"
 	"github.com/douyin/backend/biz/model/common"
 	relation_model "github.com/douyin/backend/biz/model/relation"
@@ -16,44 +17,24 @@ var relationService = service.NewRelationService()
 func RelationAction(ctx context.Context, c *app.RequestContext) {
 	var req relation_model.RelationActionRequest
 	if err := c.BindAndValidate(&req); err != nil {
-		c.JSON(consts.StatusBadRequest, relation_model.RelationActionResponse{
-			BaseResponse: common.BaseResponse{
-				StatusCode: 1,
-				StatusMsg:  err.Error(),
-			},
-		})
+		utils.SendResponse(c, errno.ParamErr.WithMessage(err.Error()), nil)
 		return
 	}
 
 	userIDRaw, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(consts.StatusUnauthorized, relation_model.RelationActionResponse{
-			BaseResponse: common.BaseResponse{
-				StatusCode: 1,
-				StatusMsg:  "Unauthorized",
-			},
-		})
+		utils.SendResponse(c, errno.AuthErr, nil)
 		return
 	}
 	userID := userIDRaw.(uint)
 
 	err := relationService.RelationAction(userID, uint(req.ToUserID), req.ActionType)
 	if err != nil {
-		c.JSON(consts.StatusOK, relation_model.RelationActionResponse{
-			BaseResponse: common.BaseResponse{
-				StatusCode: 1,
-				StatusMsg:  err.Error(),
-			},
-		})
+		utils.SendResponse(c, err, nil)
 		return
 	}
 
-	c.JSON(consts.StatusOK, relation_model.RelationActionResponse{
-		BaseResponse: common.BaseResponse{
-			StatusCode: 0,
-			StatusMsg:  "Success",
-		},
-	})
+	utils.SendResponse(c, errno.Success, nil)
 }
 
 func FollowList(ctx context.Context, c *app.RequestContext) {
@@ -71,12 +52,7 @@ func FriendList(ctx context.Context, c *app.RequestContext) {
 func handleListRequest(c *app.RequestContext, getListFunc func(uint) ([]model.User, error)) {
 	var req relation_model.RelationListRequest
 	if err := c.BindAndValidate(&req); err != nil {
-		c.JSON(consts.StatusBadRequest, relation_model.RelationListResponse{
-			BaseResponse: common.BaseResponse{
-				StatusCode: 1,
-				StatusMsg:  err.Error(),
-			},
-		})
+		utils.SendResponse(c, errno.ParamErr.WithMessage(err.Error()), nil)
 		return
 	}
 
@@ -87,12 +63,7 @@ func handleListRequest(c *app.RequestContext, getListFunc func(uint) ([]model.Us
 
 	users, err := getListFunc(uint(req.UserID))
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, relation_model.RelationListResponse{
-			BaseResponse: common.BaseResponse{
-				StatusCode: 1,
-				StatusMsg:  err.Error(),
-			},
-		})
+		utils.SendResponse(c, err, nil)
 		return
 	}
 
@@ -110,11 +81,7 @@ func handleListRequest(c *app.RequestContext, getListFunc func(uint) ([]model.Us
 		})
 	}
 
-	c.JSON(consts.StatusOK, relation_model.RelationListResponse{
-		BaseResponse: common.BaseResponse{
-			StatusCode: 0,
-			StatusMsg:  "Success",
-		},
-		UserList: commonUsers,
+	utils.SendResponse(c, errno.Success, map[string]interface{}{
+		"user_list": commonUsers,
 	})
 }

@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/cloudwego/hertz/pkg/protocol/consts"
-	"github.com/douyin/backend/biz/model/common"
+	"github.com/douyin/backend/biz/common/errno"
+	"github.com/douyin/backend/biz/common/utils"
 	video_model "github.com/douyin/backend/biz/model/video"
 )
 
@@ -17,30 +17,15 @@ func ViewAction(ctx context.Context, c *app.RequestContext) {
 
 	var req video_model.ViewRequest
 	if err := c.BindAndValidate(&req); err != nil {
-		c.JSON(consts.StatusBadRequest, video_model.ViewResponse{
-			BaseResponse: common.BaseResponse{
-				StatusCode: 1,
-				StatusMsg:  err.Error(),
-			},
-		})
+		utils.SendResponse(c, errno.ParamErr.WithMessage(err.Error()), nil)
 		return
 	}
 
 	err := videoService.RecordVideoView(uint(req.VideoID), currentUserID)
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, video_model.ViewResponse{
-			BaseResponse: common.BaseResponse{
-				StatusCode: 1,
-				StatusMsg:  err.Error(),
-			},
-		})
+		utils.SendResponse(c, errno.ServiceErr.WithMessage(err.Error()), nil)
 		return
 	}
 
-	c.JSON(consts.StatusOK, video_model.ViewResponse{
-		BaseResponse: common.BaseResponse{
-			StatusCode: 0,
-			StatusMsg:  "Success",
-		},
-	})
+	utils.SendResponse(c, errno.Success, nil)
 }
