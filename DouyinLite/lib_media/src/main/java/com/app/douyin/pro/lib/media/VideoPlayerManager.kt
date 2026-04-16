@@ -135,6 +135,7 @@ class VideoPlayerManager private constructor(private val context: Context) {
 
         // Prepare media
         updateState(url, VideoPlayerState.Preparing)
+        Log.d(TAG, "Preparing player for: $url (potential cache use enabled)")
         val mediaSource = createMediaSource(url)
         player.setMediaSource(mediaSource)
         player.prepare()
@@ -201,19 +202,31 @@ class VideoPlayerManager private constructor(private val context: Context) {
     private fun preLoad(url: String, bufferSize: Long) {
         if (bufferSize <= 0) return
 
+        // Concurrent request de-duplication is already partially handled by the caller (updatePreloadList),
+        // but we double check here to ensure we don't start duplicate jobs.
+        if (preloadTasks.containsKey(url)) return
+
         val job = preLoadScope.launch {
             var cacheDataSource: androidx.media3.datasource.DataSource? = null
             try {
                 Log.d(TAG, "Starting preload for: $url with size: $bufferSize")
-                val dataSpec = DataSpec.Builder().setUri(url).build()
-                cacheDataSource = VideoCacheManager.getInstance(context).getCacheDataSourceFactory().createDataSource()
+                // Use the same CacheDataSourceFactory to ensure stable cache key logic is applied
+                val dataSourceFactory = VideoCacheManager.getInstance(context).getCacheDataSourceFactory()
+                cacheDataSource = dataSourceFactory.createDataSource()
+
+                val dataSpec = DataSpec.Builder()
+                    .setUri(url)
+                    .setLength(bufferSize)
+                    .build()
 
                 val buffer = ByteArray(64 * 1024) // 64KB chunks
                 var totalBytesRead = 0L
 
                 cacheDataSource.open(dataSpec)
                 while (totalBytesRead < bufferSize && isActive) {
-                    val read = cacheDataSource.read(buffer, 0, buffer.size)
+                    val remaining = bufferSize - totalBytesRead
+                    val toRead = if (remaining < buffer.size) remaining.toInt() else buffer.size
+                    val read = cacheDataSource.read(buffer, 0, toRead)
                     if (read == -1) break
                     totalBytesRead += read
                 }
@@ -221,7 +234,7 @@ class VideoPlayerManager private constructor(private val context: Context) {
             } catch (e: CancellationException) {
                 Log.d(TAG, "Preload cancelled for: $url")
             } catch (e: IOException) {
-                Log.e(TAG, "Preload failed for: $url", e)
+                Log.e(TAG, "Preload failed for: $url (will retry on playback if needed)", e)
             } finally {
                 try {
                     cacheDataSource?.close()
