@@ -48,10 +48,18 @@ fun VideoPlayerComponent(
     }
 
     LaunchedEffect(isVisible, isDucked, isPaused) {
-        if (isVisible && !isDucked && !isPaused) {
+        if (isVisible && !isPaused) {
             player.play()
         } else {
             player.pause()
+        }
+    }
+
+    LaunchedEffect(isDucked) {
+        if (isDucked) {
+            player.volume = 0.5f // Duck volume when comment sheet is open
+        } else {
+            player.volume = 1.0f
         }
     }
 
