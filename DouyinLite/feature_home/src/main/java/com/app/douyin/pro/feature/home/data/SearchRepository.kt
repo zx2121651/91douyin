@@ -1,7 +1,8 @@
 package com.app.douyin.pro.feature.home.data
 
 import com.app.douyin.pro.feature.home.data.source.SearchDataSource
-import com.app.douyin.pro.feature.home.domain.model.VideoModel
+import com.app.douyin.pro.lib.media.model.UserModel
+import com.app.douyin.pro.lib.media.model.VideoModel
 import com.app.douyin.pro.lib.media.model.Resource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -21,14 +22,22 @@ class SearchRepository @Inject constructor(
                             playUrl = dto.playUrl,
                             coverUrl = dto.coverUrl,
                             title = dto.title,
-                            authorId = dto.author.id,
-                            authorName = dto.author.name,
-                            authorAvatar = dto.author.avatar,
+                            author = UserModel(
+                                id = dto.author.id,
+                                name = dto.author.name,
+                                avatar = dto.author.avatar,
+                                followCount = dto.author.followCount,
+                                followerCount = dto.author.followerCount,
+                                isFollowed = dto.author.isFollow,
+                                signature = dto.author.signature,
+                                backgroundImage = dto.author.backgroundImage
+                            ),
                             likeCount = dto.favoriteCount,
                             commentCount = dto.commentCount,
                             shareCount = 0L, // 暂无 shareCount 字段
                             isLiked = dto.isFavorite,
-                            isFollowed = dto.author.isFollow
+                            status = dto.status ?: "published",
+                            createdAt = dto.createdAt ?: System.currentTimeMillis()
                         )
                     } ?: emptyList()
                     Resource.Success(Pair(models, if (response.hasMore) response.nextCursor else -1L))

@@ -323,7 +323,7 @@ fun ProfileScreen(
                                 modifier = Modifier.size(14.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            val favStr = if (video.favoriteCount >= 10000) String.format("%.1fw", video.favoriteCount / 10000.0) else video.favoriteCount.toString()
+                            val favStr = if (video.likeCount >= 10000) String.format("%.1fw", video.likeCount / 10000.0) else video.likeCount.toString()
                             Text(
                                 text = favStr,
                                 color = Color.White.copy(alpha = 0.8f),

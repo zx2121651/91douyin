@@ -14,7 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import com.app.douyin.pro.feature.home.ui.VideoPage
-import com.app.douyin.pro.feature.home.domain.model.VideoModel
+import com.app.douyin.pro.lib.media.model.VideoModel
 
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember

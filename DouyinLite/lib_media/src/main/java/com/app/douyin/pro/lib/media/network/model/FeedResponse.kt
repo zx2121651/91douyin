@@ -17,7 +17,9 @@ data class VideoDto(
     @SerializedName("favorite_count") val favoriteCount: Long,
     @SerializedName("comment_count") val commentCount: Long,
     @SerializedName("is_favorite") val isFavorite: Boolean,
-    @SerializedName("title") val title: String
+    @SerializedName("title") val title: String,
+    @SerializedName("status") val status: String?,
+    @SerializedName("created_at") val createdAt: Long?
 )
 
 data class UserDto(

@@ -3,7 +3,7 @@ package com.app.douyin.pro.feature.home.viewmodel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.app.douyin.pro.feature.home.domain.model.VideoModel
+import com.app.douyin.pro.lib.media.model.VideoModel
 import com.app.douyin.pro.feature.home.domain.model.VideoPage
 import com.app.douyin.pro.feature.home.domain.usecase.GetVideosUseCase
 import com.app.douyin.pro.feature.home.domain.usecase.LoadMoreVideosUseCase
@@ -74,8 +74,8 @@ class HomeViewModel @Inject constructor(
                         // Update all videos from this author
                         var changed = false
                         currentVideos.forEachIndexed { index, video ->
-                            if (video.authorId == event.authorId) {
-                                currentVideos[index] = video.copy(isFollowed = event.isFollowed)
+                            if (video.author.id == event.authorId) {
+                                currentVideos[index] = video.copy(author = video.author.copy(isFollowed = event.isFollowed))
                                 changed = true
                             }
                         }
@@ -179,6 +179,6 @@ class HomeViewModel @Inject constructor(
 
     fun toggleFollow(videoId: Long) {
         val video = _uiState.value.videos.find { it.id == videoId } ?: return
-        interactionManager.toggleFollow(video.authorId, video.isFollowed)
+        interactionManager.toggleFollow(video.author.id, video.author.isFollowed)
     }
 }

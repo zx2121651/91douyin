@@ -9,7 +9,7 @@ import com.app.douyin.pro.lib.media.model.Resource
 import com.app.douyin.pro.feature.profile.domain.usecase.GetPublishedVideosUseCase
 import com.app.douyin.pro.lib.media.auth.AuthRepository
 import com.app.douyin.pro.lib.media.auth.SessionState
-import com.app.douyin.pro.lib.media.network.model.VideoDto
+import com.app.douyin.pro.lib.media.model.VideoModel
 
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,8 +32,8 @@ class ProfileViewModel @Inject constructor(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    private val _publishedVideos = MutableStateFlow<List<VideoDto>>(emptyList())
-    val publishedVideos: StateFlow<List<VideoDto>> = _publishedVideos.asStateFlow()
+    private val _publishedVideos = MutableStateFlow<List<VideoModel>>(emptyList())
+    val publishedVideos: StateFlow<List<VideoModel>> = _publishedVideos.asStateFlow()
 
     init {
         viewModelScope.launch {

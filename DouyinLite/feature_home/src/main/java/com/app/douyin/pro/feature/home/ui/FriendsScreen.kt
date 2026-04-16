@@ -20,7 +20,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import com.app.douyin.pro.feature.home.domain.model.VideoModel
+import com.app.douyin.pro.lib.media.model.UserModel
+import com.app.douyin.pro.lib.media.model.VideoModel
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.VerticalPager
@@ -121,14 +122,16 @@ fun FriendsScreen() {
                         playUrl = videos[videoIndex],
                         coverUrl = "",
                         title = "好友发布的视频",
-                        authorId = 2,
-                        authorName = "你的好友",
-                        authorAvatar = null,
+                        author = UserModel(
+                            id = 2,
+                            name = "你的好友",
+                            avatar = null,
+                            isFollowed = true
+                        ),
                         likeCount = 88L,
                         commentCount = 12L,
                         shareCount = 0L,
-                        isLiked = false,
-                        isFollowed = true
+                        isLiked = false
                     ),
                     isVisible = isVisible
                 )

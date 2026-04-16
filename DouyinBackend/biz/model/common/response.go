@@ -28,4 +28,6 @@ type Video struct {
 	CommentCount  int64  `json:"comment_count"`
 	IsFavorite    bool   `json:"is_favorite"`
 	Title         string `json:"title"`
+	Status        string `json:"status"`
+	CreatedAt     int64  `json:"created_at"`
 }

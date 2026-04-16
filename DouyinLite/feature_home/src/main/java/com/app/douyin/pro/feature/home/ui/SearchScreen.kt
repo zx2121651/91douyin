@@ -31,7 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
-import com.app.douyin.pro.feature.home.domain.model.VideoModel
+import com.app.douyin.pro.lib.media.model.VideoModel
 import com.app.douyin.pro.feature.home.viewmodel.SearchViewModel
 
 @Composable
@@ -233,8 +233,8 @@ fun SearchResultItem(video: VideoModel) {
                 modifier = Modifier.fillMaxWidth()
             ) {
                 AsyncImage(
-                    model = video.authorAvatar,
-                    contentDescription = video.authorName,
+                    model = video.author.avatar,
+                    contentDescription = video.author.name,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .size(20.dp)
@@ -242,7 +242,7 @@ fun SearchResultItem(video: VideoModel) {
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = video.authorName,
+                    text = video.author.name,
                     color = Color.Gray,
                     fontSize = 12.sp,
                     modifier = Modifier.weight(1f),
