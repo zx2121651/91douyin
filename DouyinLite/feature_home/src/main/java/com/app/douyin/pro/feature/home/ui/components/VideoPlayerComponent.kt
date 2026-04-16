@@ -18,14 +18,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.media3.common.Player
 import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import com.app.douyin.pro.lib.media.VideoPlayerManager
+import com.app.douyin.pro.lib.media.state.VideoPlayerState
 
 @Composable
 fun VideoPlayerComponent(
@@ -38,18 +39,10 @@ fun VideoPlayerComponent(
     val context = LocalContext.current
     val playerManager = remember { VideoPlayerManager.getInstance(context) }
     val player = remember(url) { playerManager.getPlayer(url) }
-
-    var isFirstFrameRendered by remember { mutableStateOf(false) }
+    val playerState by playerManager.getState(url).collectAsState()
 
     DisposableEffect(player) {
-        val listener = object : Player.Listener {
-            override fun onRenderedFirstFrame() {
-                isFirstFrameRendered = true
-            }
-        }
-        player.addListener(listener)
         onDispose {
-            player.removeListener(listener)
             playerManager.releasePlayer(url)
         }
     }
@@ -77,8 +70,13 @@ fun VideoPlayerComponent(
             modifier = Modifier.fillMaxSize()
         )
 
+        val showCover = when (playerState) {
+            is VideoPlayerState.Idle, is VideoPlayerState.Preparing -> true
+            is VideoPlayerState.Buffering, is VideoPlayerState.Playing, is VideoPlayerState.Paused, is VideoPlayerState.Ready, is VideoPlayerState.Ended, is VideoPlayerState.Error -> false
+        }
+
         AnimatedVisibility(
-            visible = !isFirstFrameRendered,
+            visible = showCover,
             exit = fadeOut(animationSpec = tween(durationMillis = 300)),
             modifier = Modifier.fillMaxSize()
         ) {
@@ -105,6 +103,15 @@ fun VideoPlayerComponent(
                 contentDescription = "Paused",
                 tint = Color.White.copy(alpha = 0.5f),
                 modifier = Modifier.size(80.dp)
+            )
+        }
+
+        if (playerState is VideoPlayerState.Buffering || playerState is VideoPlayerState.Preparing) {
+            CircularProgressIndicator(
+                modifier = Modifier
+                    .size(40.dp)
+                    .align(Alignment.Center),
+                color = Color.White.copy(alpha = 0.5f)
             )
         }
     }
