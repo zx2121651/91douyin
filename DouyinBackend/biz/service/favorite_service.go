@@ -28,9 +28,10 @@ func (s *FavoriteService) FavoriteAction(userID uint, videoID uint, actionType i
 
 		if actionType == 1 { // Like
 			// Check if already liked
-			err := tx.Where("user_id = ? AND video_id = ?", userID, videoID).First(&model.Favorite{}).Error
+			var existing model.Favorite
+			err := tx.Where("user_id = ? AND video_id = ?", userID, videoID).First(&existing).Error
 			if err == nil {
-				return errors.New("already liked")
+				return nil // Idempotent: already liked
 			} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 				return err
 			}
@@ -60,15 +61,15 @@ func (s *FavoriteService) FavoriteAction(userID uint, videoID uint, actionType i
 				return res.Error
 			}
 			if res.RowsAffected > 0 {
-				// Prevent negative count
-				if video.FavoriteCount > 0 {
-					if err := tx.Model(&video).Update("favorite_count", gorm.Expr("favorite_count - ?", 1)).Error; err != nil {
-						return err
-					}
+				// Row was deleted, update count atomically.
+				// Even if current memory count is 0, we should ensure DB doesn't go below 0 if possible,
+				// but more importantly we only decrement if we actually deleted something.
+				if err := tx.Model(&video).Where("favorite_count > 0").Update("favorite_count", gorm.Expr("favorite_count - ?", 1)).Error; err != nil {
+					return err
 				}
-			} else {
-				return errors.New("not liked yet")
 			}
+			// If RowsAffected == 0, it means it was already unliked or never liked.
+			// We return nil for idempotency.
 		} else {
 			return errors.New("invalid action type")
 		}

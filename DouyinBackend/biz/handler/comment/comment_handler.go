@@ -39,7 +39,7 @@ func CommentAction(ctx context.Context, c *app.RequestContext) {
 			val := uint(*req.ParentID)
 			parentIDPtr = &val
 		}
-		comment, err := commentService.PostComment(userID, uint(req.VideoID), req.CommentText, parentIDPtr)
+		comment, err := commentService.PostComment(userID, uint(req.VideoID), req.CommentText, parentIDPtr, req.IdempotencyKey)
 		if err != nil {
 			utils.SendResponse(c, err, nil)
 			return

@@ -16,9 +16,10 @@ type CommentActionRequest struct {
 	Token       string `query:"token"`
 	VideoID     int64  `query:"video_id" vd:"$>0;msg:'invalid video id'"`
 	ActionType  int32  `query:"action_type" vd:"$==1||$==2;msg:'action_type must be 1 (post) or 2 (delete)'"`
-	CommentText string `query:"comment_text"`
-	CommentID   int64  `query:"comment_id"`
-	ParentID    *int64 `query:"parent_id"` // Optional: id of the comment being replied to
+	CommentText    string `query:"comment_text"`
+	CommentID      int64  `query:"comment_id"`
+	ParentID       *int64 `query:"parent_id"` // Optional: id of the comment being replied to
+	IdempotencyKey string `query:"idempotency_key"`
 }
 
 type CommentActionResponse struct {
