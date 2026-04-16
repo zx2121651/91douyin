@@ -30,7 +30,7 @@ class RemoteCommentDataSource @Inject constructor(
     }
 
     override suspend fun postComment(videoId: Long, content: String, parentId: Long?): CommentModel {
-        val token = authManager.getToken() ?: throw Exception("Not logged in")
+        val token = authManager.requireToken()
         val response = apiService.postComment(videoId, 1, content, parentId, token)
 
         if (response.statusCode == 0) {

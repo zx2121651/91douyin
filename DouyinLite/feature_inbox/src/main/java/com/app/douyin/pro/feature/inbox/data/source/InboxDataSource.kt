@@ -21,8 +21,8 @@ class RemoteInboxDataSource @Inject constructor(
 
     override suspend fun getMessages(): List<Message> {
         try {
-            val token = authManager.getToken()
-            if (token == null) return emptyList()
+            if (!authManager.isLoggedIn()) return emptyList()
+            val token = authManager.requireToken()
             val response = apiService.getNotifications(token)
             if (response.statusCode == 0) {
                 val format = SimpleDateFormat("MM-dd", Locale.getDefault())
@@ -51,8 +51,8 @@ class RemoteInboxDataSource @Inject constructor(
     override suspend fun getCategories(): List<NotificationCategory> {
         var unreadCount = 0L
         try {
-            val token = authManager.getToken()
-            if (token != null) {
+            if (authManager.isLoggedIn()) {
+                val token = authManager.requireToken()
                 val response = apiService.getUnreadCount(token)
                 if (response.statusCode == 0) {
                     unreadCount = response.unreadCount

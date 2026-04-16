@@ -45,7 +45,7 @@ class RemoteRecordDataSource @Inject constructor(
     }
 
     override suspend fun publishVideo(videoFile: File, title: String) {
-        val token = authManager.getToken() ?: throw Exception("Not logged in")
+        val token = authManager.requireToken()
 
         val tokenBody = token.toRequestBody("text/plain".toMediaTypeOrNull())
         val titleBody = title.toRequestBody("text/plain".toMediaTypeOrNull())
