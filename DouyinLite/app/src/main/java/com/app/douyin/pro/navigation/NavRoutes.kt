@@ -19,6 +19,11 @@ object NavRoutes {
 
     const val MALL = "mall_standalone"
 
+    const val PUBLISH = "publish?videoUri={videoUri}"
+    fun buildPublishRoute(videoUri: String): String {
+        return "publish?videoUri=${android.net.Uri.encode(videoUri)}"
+    }
+
     const val LOGIN = "login"
     const val REGISTER = "register"
 }

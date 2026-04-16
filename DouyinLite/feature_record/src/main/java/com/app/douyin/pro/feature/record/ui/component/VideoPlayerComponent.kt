@@ -1,0 +1,126 @@
+package com.app.douyin.pro.feature.record.ui.component
+
+import android.view.ViewGroup
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.Icon
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.ui.PlayerView
+import coil.compose.AsyncImage
+import com.app.douyin.pro.lib.media.VideoPlayerManager
+import com.app.douyin.pro.lib.media.state.VideoPlayerState
+
+@Composable
+fun VideoPlayerComponent(
+    url: String,
+    coverUrl: String = "",
+    isVisible: Boolean,
+    isDucked: Boolean = false,
+    isPaused: Boolean = false
+) {
+    val context = LocalContext.current
+    val playerManager = remember { VideoPlayerManager.getInstance(context) }
+    val player = remember(url) { playerManager.getPlayer(url) }
+    val playerState by playerManager.getState(url).collectAsState()
+
+    DisposableEffect(player) {
+        onDispose {
+            playerManager.releasePlayer(url)
+        }
+    }
+
+    LaunchedEffect(isVisible, isDucked, isPaused) {
+        if (isVisible && !isPaused) {
+            player.play()
+        } else {
+            player.pause()
+        }
+    }
+
+    LaunchedEffect(isDucked) {
+        if (isDucked) {
+            player.volume = 0.5f // Duck volume when comment sheet is open
+        } else {
+            player.volume = 1.0f
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        AndroidView(
+            factory = { ctx ->
+                PlayerView(ctx).apply {
+                    this.player = player
+                    useController = false
+                    layoutParams = ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT
+                    )
+                }
+            },
+            modifier = Modifier.fillMaxSize()
+        )
+
+        val showCover = when (playerState) {
+            is VideoPlayerState.Idle, is VideoPlayerState.Preparing -> true
+            else -> false
+        }
+
+        AnimatedVisibility(
+            visible = showCover,
+            exit = fadeOut(animationSpec = tween(durationMillis = 300)),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            if (coverUrl.isNotEmpty()) {
+                AsyncImage(
+                    model = coverUrl,
+                    contentDescription = "Video Cover",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                Box(modifier = Modifier.fillMaxSize().background(Color.Black))
+            }
+        }
+
+        AnimatedVisibility(
+            visible = isPaused,
+            enter = fadeIn() + scaleIn(initialScale = 1.5f),
+            exit = fadeOut() + scaleOut(targetScale = 1.5f),
+            modifier = Modifier.align(Alignment.Center)
+        ) {
+            Icon(
+                imageVector = Icons.Filled.PlayArrow,
+                contentDescription = "Paused",
+                tint = Color.White.copy(alpha = 0.5f),
+                modifier = Modifier.size(80.dp)
+            )
+        }
+
+        if (playerState is VideoPlayerState.Buffering || playerState is VideoPlayerState.Preparing) {
+            CircularProgressIndicator(
+                modifier = Modifier
+                    .size(40.dp)
+                    .align(Alignment.Center),
+                color = Color.White.copy(alpha = 0.5f)
+            )
+        }
+    }
+}
