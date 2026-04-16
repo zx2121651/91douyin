@@ -12,10 +12,12 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -26,6 +28,8 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.app.douyin.pro.feature.home.domain.model.CommentModel
+import com.app.douyin.pro.feature.home.domain.model.CommentStatus
+import com.app.douyin.pro.feature.home.viewmodel.CommentUiState
 import com.app.douyin.pro.feature.home.viewmodel.CommentViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -38,7 +42,7 @@ fun CommentsBottomSheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val comments by viewModel.comments.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
 
     var inputText by remember { mutableStateOf("") }
     var replyToComment by remember { mutableStateOf<CommentModel?>(null) }
@@ -73,24 +77,48 @@ fun CommentsBottomSheet(
         }
     ) {
         Column(modifier = Modifier.fillMaxHeight(0.7f).fillMaxWidth()) {
-            if (isLoading && comments.isEmpty()) {
-                Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = Color(0xFFFF2C55))
-                }
-            } else if (comments.isEmpty()) {
-                Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Text("暂无评论，快来抢沙发吧~", color = Color.Gray, fontSize = 14.sp)
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.weight(1f).fillMaxWidth(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-                ) {
-                    items(comments) { comment ->
-                        CommentRow(
-                            comment = comment,
-                            onReply = { replyToComment = it }
-                        )
+            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                when (val state = uiState) {
+                    is CommentUiState.Loading -> {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(color = Color(0xFFFF2C55))
+                        }
+                    }
+                    is CommentUiState.Error -> {
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(state.message, color = Color.Gray)
+                            Button(
+                                onClick = { viewModel.retryLoadComments() },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF2C55)),
+                                modifier = Modifier.padding(top = 8.dp)
+                            ) {
+                                Text("重试")
+                            }
+                        }
+                    }
+                    is CommentUiState.Success -> {
+                        if (comments.isEmpty()) {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text("暂无评论，快来抢沙发吧~", color = Color.Gray, fontSize = 14.sp)
+                            }
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                            ) {
+                                items(comments, key = { it.tempId ?: it.id }) { comment ->
+                                    CommentRow(
+                                        comment = comment,
+                                        onReply = { replyToComment = it },
+                                        onRetrySend = { viewModel.retryPostComment(it, videoId) }
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -138,26 +166,26 @@ fun CommentsBottomSheet(
                         keyboardActions = KeyboardActions(
                             onSend = {
                                 if (inputText.isNotBlank()) {
-                                    viewModel.postComment(videoId, inputText, replyToComment?.id) {
-                                        inputText = ""
-                                        replyToComment = null
+                                    val text = inputText
+                                    viewModel.postComment(videoId, text, replyToComment?.id) {
+                                        // only clear if it was actually this text
                                     }
+                                    inputText = ""
+                                    replyToComment = null
                                 }
                             }
                         )
                     )
                     Spacer(modifier = Modifier.width(12.dp))
-                    Icon(
-                        imageVector = Icons.Filled.FavoriteBorder,
-                        contentDescription = "Like",
-                        tint = Color.Gray,
-                        modifier = Modifier.size(28.dp).clickable {
-                            if (inputText.isNotBlank()) {
-                                viewModel.postComment(videoId, inputText, replyToComment?.id) {
-                                    inputText = ""
-                                    replyToComment = null
-                                }
-                            }
+                    Text(
+                        text = "发送",
+                        color = if (inputText.isNotBlank()) Color(0xFFFF2C55) else Color.Gray,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.clickable(enabled = inputText.isNotBlank()) {
+                            val text = inputText
+                            viewModel.postComment(videoId, text, replyToComment?.id)
+                            inputText = ""
+                            replyToComment = null
                         }
                     )
                 }
@@ -167,8 +195,18 @@ fun CommentsBottomSheet(
 }
 
 @Composable
-fun CommentRow(comment: CommentModel, onReply: (CommentModel) -> Unit, isSubComment: Boolean = false) {
-    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
+fun CommentRow(
+    comment: CommentModel,
+    onReply: (CommentModel) -> Unit,
+    onRetrySend: (CommentModel) -> Unit = {},
+    isSubComment: Boolean = false
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp)
+            .alpha(if (comment.status == CommentStatus.SENDING) 0.5f else 1f)
+    ) {
         AsyncImage(
             model = comment.authorAvatar,
             contentDescription = "Avatar",
@@ -183,13 +221,32 @@ fun CommentRow(comment: CommentModel, onReply: (CommentModel) -> Unit, isSubComm
                 text = comment.content,
                 color = Color.White,
                 fontSize = 15.sp,
-                modifier = Modifier.clickable { onReply(comment) }
+                modifier = Modifier.clickable { if (comment.status == CommentStatus.SUCCESS) onReply(comment) }
             )
             Spacer(modifier = Modifier.height(6.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(comment.createDate, color = Color.Gray, fontSize = 12.sp)
-                Spacer(modifier = Modifier.width(16.dp))
-                Text("回复", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.clickable { onReply(comment) })
+                if (comment.status == CommentStatus.SUCCESS) {
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text("回复", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.clickable { onReply(comment) })
+                }
+
+                if (comment.status == CommentStatus.FAILED) {
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Row(
+                        modifier = Modifier.clickable { onRetrySend(comment) },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Filled.Refresh, contentDescription = "Retry", tint = Color(0xFFFF2C55), modifier = Modifier.size(12.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("发送失败，点击重试", color = Color(0xFFFF2C55), fontSize = 12.sp)
+                    }
+                }
+
+                if (comment.status == CommentStatus.SENDING) {
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text("发送中...", color = Color.Gray, fontSize = 12.sp)
+                }
             }
 
             // Render Sub-comments (Replies)
@@ -197,7 +254,7 @@ fun CommentRow(comment: CommentModel, onReply: (CommentModel) -> Unit, isSubComm
                 Spacer(modifier = Modifier.height(8.dp))
                 Column {
                     comment.replies.forEach { subComment ->
-                        CommentRow(comment = subComment, onReply = onReply, isSubComment = true)
+                        CommentRow(comment = subComment, onReply = onReply, onRetrySend = onRetrySend, isSubComment = true)
                     }
                     if (comment.replyCount > comment.replies.size) {
                         Text(
