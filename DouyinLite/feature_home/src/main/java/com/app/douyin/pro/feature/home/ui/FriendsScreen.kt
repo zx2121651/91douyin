@@ -90,17 +90,17 @@ fun FriendsScreen() {
 
     // Observe pager changes for preloading
     val context = LocalContext.current
-    LaunchedEffect(pagerState) {
+    LaunchedEffect(pagerState, videos) {
         snapshotFlow { pagerState.currentPage }.collect { page ->
              val playerManager = VideoPlayerManager.getInstance(context)
-             // Preload next video
-             if (page > 0 && page < videos.size) { // Because page 0 is discover section, video indices are page - 1
-                 playerManager.preLoad(videos[page]) // Current page is `page`, so next video is at index `page`
+
+             // page 0 is discover section, video indices are page - 1
+             val preloadUrls = if (page < videos.size) {
+                 videos.subList(page, (page + 3).coerceAtMost(videos.size))
+             } else {
+                 emptyList()
              }
-             // Preload previous video
-             if (page > 1) {
-                 playerManager.preLoad(videos[page - 2]) // Current page is `page`, so previous video is at index `page - 2`
-             }
+             playerManager.updatePreloadList(preloadUrls)
         }
     }
 

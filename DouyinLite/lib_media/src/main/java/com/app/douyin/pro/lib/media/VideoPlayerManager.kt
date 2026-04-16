@@ -14,13 +14,15 @@ import android.util.Log
 import androidx.media3.common.PlaybackException
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import com.app.douyin.pro.lib.media.state.VideoPlayerState
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import com.app.douyin.pro.lib.media.strategy.NetworkQuality
+import com.app.douyin.pro.lib.media.strategy.PreloadStrategy
+import com.app.douyin.pro.lib.media.util.NetworkMonitor
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 import java.io.IOException
+import java.util.concurrent.ConcurrentHashMap
 
 @OptIn(UnstableApi::class)
 class VideoPlayerManager private constructor(private val context: Context) {
@@ -43,12 +45,22 @@ class VideoPlayerManager private constructor(private val context: Context) {
     private val activePlayers = mutableMapOf<String, ExoPlayer>()
     private val playerStates = mutableMapOf<String, MutableStateFlow<VideoPlayerState>>()
     private val playerListeners = mutableMapOf<String, Player.Listener>()
-    private val preLoadScope = CoroutineScope(Dispatchers.IO)
+    private val preLoadScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val preloadTasks = ConcurrentHashMap<String, Job>()
+    private val preloadStrategy = PreloadStrategy()
+    private val networkMonitor = NetworkMonitor(context)
 
     init {
         // Initialize pool
         for (i in 0 until playerPoolSize) {
             idlePlayers.add(createPlayer())
+        }
+
+        // Observe network quality
+        preLoadScope.launch {
+            networkMonitor.networkQuality.collect { quality ->
+                updateNetworkQuality(quality)
+            }
         }
     }
 
@@ -159,36 +171,67 @@ class VideoPlayerManager private constructor(private val context: Context) {
         }
     }
 
-    fun preLoad(url: String) {
-        // Execute preload in a background coroutine
-        preLoadScope.launch {
+    fun updateNetworkQuality(quality: NetworkQuality) {
+        preloadStrategy.updateNetworkQuality(quality)
+    }
+
+    fun updatePreloadList(urls: List<String>) {
+        val config = preloadStrategy.getConfig()
+        val targetPreloadUrls = urls.take(config.preloadDepth)
+
+        // Cancel tasks that are no longer in the preload list
+        val iterator = preloadTasks.entries.iterator()
+        while (iterator.hasNext()) {
+            val entry = iterator.next()
+            if (!targetPreloadUrls.contains(entry.key) && !activePlayers.containsKey(entry.key)) {
+                Log.d(TAG, "Cancelling preload for: ${entry.key}")
+                entry.value.cancel()
+                iterator.remove()
+            }
+        }
+
+        // Start new preload tasks
+        targetPreloadUrls.forEach { url ->
+            if (!preloadTasks.containsKey(url) && !activePlayers.containsKey(url)) {
+                preLoad(url, config.bufferSize)
+            }
+        }
+    }
+
+    private fun preLoad(url: String, bufferSize: Long) {
+        if (bufferSize <= 0) return
+
+        val job = preLoadScope.launch {
             var cacheDataSource: androidx.media3.datasource.DataSource? = null
             try {
+                Log.d(TAG, "Starting preload for: $url with size: $bufferSize")
                 val dataSpec = DataSpec.Builder().setUri(url).build()
                 cacheDataSource = VideoCacheManager.getInstance(context).getCacheDataSourceFactory().createDataSource()
-                // Download the first 1MB of the video
-                val buffer = ByteArray(1024 * 1024)
-                var bytesRead = 0
-                val lengthToRead = buffer.size
+
+                val buffer = ByteArray(64 * 1024) // 64KB chunks
+                var totalBytesRead = 0L
 
                 cacheDataSource.open(dataSpec)
-                while (bytesRead < lengthToRead) {
-                    val read = cacheDataSource.read(buffer, bytesRead, lengthToRead - bytesRead)
+                while (totalBytesRead < bufferSize && isActive) {
+                    val read = cacheDataSource.read(buffer, 0, buffer.size)
                     if (read == -1) break
-                    bytesRead += read
+                    totalBytesRead += read
                 }
-
+                Log.d(TAG, "Completed preload for: $url, read: $totalBytesRead bytes")
+            } catch (e: CancellationException) {
+                Log.d(TAG, "Preload cancelled for: $url")
             } catch (e: IOException) {
-                e.printStackTrace()
+                Log.e(TAG, "Preload failed for: $url", e)
             } finally {
                 try {
                     cacheDataSource?.close()
                 } catch (e: Exception) {
-                    e.printStackTrace()
+                    // Ignore
                 }
+                preloadTasks.remove(url)
             }
-
         }
+        preloadTasks[url] = job
     }
 
     private fun createMediaSource(url: String): MediaSource {
