@@ -24,9 +24,9 @@ class SearchRepository @Inject constructor(
                             authorId = dto.author.id,
                             authorName = dto.author.name,
                             authorAvatar = dto.author.avatar,
-                            likeCount = dto.favoriteCount.toString(),
-                            commentCount = dto.commentCount.toString(),
-                            shareCount = "0", // 暂无 shareCount 字段
+                            likeCount = dto.favoriteCount,
+                            commentCount = dto.commentCount,
+                            shareCount = 0L, // 暂无 shareCount 字段
                             isLiked = dto.isFavorite,
                             isFollowed = dto.author.isFollow
                         )
