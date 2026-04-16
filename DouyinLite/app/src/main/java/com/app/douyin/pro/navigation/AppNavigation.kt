@@ -16,6 +16,7 @@ import com.app.douyin.pro.feature.inbox.ui.ChatScreen
 import com.app.douyin.pro.feature.inbox.ui.InboxScreen
 import com.app.douyin.pro.feature.mall.ui.MallScreen
 import com.app.douyin.pro.feature.profile.ui.ProfileScreen
+import com.app.douyin.pro.feature.record.ui.PublishScreen
 import com.app.douyin.pro.feature.record.ui.RecordScreen
 
 @androidx.compose.foundation.ExperimentalFoundationApi
@@ -51,9 +52,22 @@ fun AppNavHost(
             EditScreen(
                 videoUri = videoUri,
                 onClose = { navController.popBackStack() },
-                onNext = {
-                    navController.navigate(NavRoutes.HOME) {
-                        popUpTo(NavRoutes.HOME) { inclusive = true }
+                onNext = { exportedUri ->
+                    navController.navigate(NavRoutes.buildPublishRoute(exportedUri.toString()))
+                }
+            )
+        }
+        composable(
+            route = NavRoutes.PUBLISH,
+            arguments = listOf(navArgument("videoUri") { type = NavType.StringType; defaultValue = "" })
+        ) { backStackEntry ->
+            val videoUri = backStackEntry.arguments?.getString("videoUri") ?: ""
+            PublishScreen(
+                videoUri = videoUri,
+                onBack = { navController.popBackStack() },
+                onPublishSuccess = {
+                    navController.navigate(NavRoutes.ME) {
+                        popUpTo(NavRoutes.HOME) { inclusive = false }
                     }
                 }
             )

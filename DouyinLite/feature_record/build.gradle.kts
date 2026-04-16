@@ -78,6 +78,8 @@ dependencies {
     implementation(libs.androidx.camera.video)
     implementation(libs.androidx.camera.view)
     implementation(libs.androidx.camera.extensions)
+    implementation(libs.androidx.media3.ui)
+    implementation(libs.androidx.media3.exoplayer)
     implementation(libs.guava)
     implementation(libs.mediapipe.tasks.vision)
     testImplementation(libs.junit)

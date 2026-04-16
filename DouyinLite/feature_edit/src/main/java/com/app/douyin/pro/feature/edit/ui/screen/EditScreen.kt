@@ -30,7 +30,7 @@ import androidx.compose.ui.platform.LocalContext
 fun EditScreen(
     videoUri: String,
     onClose: () -> Unit,
-    onNext: () -> Unit,
+    onNext: (Uri) -> Unit,
     viewModel: EditViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -53,7 +53,7 @@ fun EditScreen(
                 onUndo = viewModel::undo,
                 onRedo = viewModel::redo,
                 onClose = onClose,
-                onNext = { viewModel.exportProject { onNext() } }
+                onNext = { viewModel.exportProject { uri -> onNext(uri) } }
             )
         },
         bottomBar = {
