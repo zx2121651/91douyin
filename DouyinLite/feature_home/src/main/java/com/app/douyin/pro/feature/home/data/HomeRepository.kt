@@ -11,6 +11,16 @@ import javax.inject.Singleton
 class HomeRepository @Inject constructor(
     private val remoteDataSource: HomeDataSource
 ) {
-    suspend fun getInitialVideos(): Resource<List<VideoModel>> = try { Resource.Success(remoteDataSource.getVideos(0)) } catch (e: Exception) { Resource.Error(e.message ?: "Unknown Error", AppError.UnknownError) }
-    suspend fun loadMoreVideos(page: Int): Resource<List<VideoModel>> = try { Resource.Success(remoteDataSource.getVideos(page)) } catch (e: Exception) { Resource.Error(e.message ?: "Unknown Error", AppError.UnknownError) }
+    suspend fun getInitialVideos(): Resource<List<VideoModel>> = safeApiCall { remoteDataSource.getVideos(0) }
+    suspend fun loadMoreVideos(page: Int): Resource<List<VideoModel>> = safeApiCall { remoteDataSource.getVideos(page) }
+
+    private suspend fun <T> safeApiCall(call: suspend () -> T): Resource<T> {
+        return try {
+            Resource.Success(call())
+        } catch (e: java.io.IOException) {
+            Resource.Error("网络连接错误，请检查网络设置", AppError.NetworkError)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "服务器响应异常", AppError.ServerError)
+        }
+    }
 }

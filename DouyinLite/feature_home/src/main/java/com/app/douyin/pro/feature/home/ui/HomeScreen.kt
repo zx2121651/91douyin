@@ -3,6 +3,7 @@ package com.app.douyin.pro.feature.home.ui
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -66,6 +67,7 @@ fun HomeScreen(
             is LoadState.Error -> {
                 ErrorView(
                     message = loadState.message,
+                    errorCode = loadState.error?.code,
                     onRetry = { viewModel.loadInitialData() }
                 )
             }
@@ -145,7 +147,7 @@ private fun HomeContent(
 }
 
 @Composable
-fun ErrorView(message: String, onRetry: () -> Unit) {
+fun ErrorView(message: String, errorCode: Int? = null, onRetry: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxSize().padding(32.dp),
         verticalArrangement = Arrangement.Center,
@@ -154,21 +156,32 @@ fun ErrorView(message: String, onRetry: () -> Unit) {
         Icon(
             Icons.Filled.Warning,
             contentDescription = null,
-            tint = Color.Gray,
+            tint = Color(0xFFFF2C55),
             modifier = Modifier.size(64.dp)
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "加载失败: $message",
+            text = "加载失败",
             color = Color.White,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center
         )
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = if (errorCode != null) "$message ($errorCode)" else message,
+            color = Color.Gray,
+            fontSize = 14.sp,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(32.dp))
         Button(
             onClick = onRetry,
+            modifier = Modifier.width(140.dp).height(48.dp),
+            shape = RoundedCornerShape(24.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF2C55))
         ) {
-            Text("重试")
+            Text("点击重试", fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -181,7 +194,7 @@ fun EmptyView(onRetry: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Icon(
-            Icons.Filled.Info,
+            Icons.Filled.Inbox,
             contentDescription = null,
             tint = Color.Gray,
             modifier = Modifier.size(64.dp)
@@ -190,14 +203,17 @@ fun EmptyView(onRetry: () -> Unit) {
         Text(
             text = "暂无视频内容",
             color = Color.White,
+            fontSize = 18.sp,
             textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(24.dp))
-        Button(
+        OutlinedButton(
             onClick = onRetry,
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF2C55))
+            modifier = Modifier.width(120.dp),
+            border = BorderStroke(1.dp, Color.Gray),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
         ) {
-            Text("刷新")
+            Text("重试")
         }
     }
 }
