@@ -124,9 +124,9 @@ fun FriendsScreen() {
                         authorId = 2,
                         authorName = "你的好友",
                         authorAvatar = null,
-                        likeCount = "88",
-                        commentCount = "12",
-                        shareCount = "分享",
+                        likeCount = 88L,
+                        commentCount = 12L,
+                        shareCount = 0L,
                         isLiked = false,
                         isFollowed = true
                     ),

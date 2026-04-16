@@ -31,12 +31,13 @@ import com.app.douyin.pro.feature.home.domain.model.CommentModel
 import com.app.douyin.pro.feature.home.domain.model.CommentStatus
 import com.app.douyin.pro.feature.home.viewmodel.CommentUiState
 import com.app.douyin.pro.feature.home.viewmodel.CommentViewModel
+import com.app.douyin.pro.lib.media.util.CountFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CommentsBottomSheet(
     videoId: Long,
-    commentCount: String,
+    commentCount: Long,
     onDismiss: () -> Unit,
     viewModel: CommentViewModel = hiltViewModel()
 ) {
@@ -46,10 +47,6 @@ fun CommentsBottomSheet(
 
     var inputText by remember { mutableStateOf("") }
     var replyToComment by remember { mutableStateOf<CommentModel?>(null) }
-
-    LaunchedEffect(videoId) {
-        viewModel.loadComments(videoId)
-    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -68,7 +65,7 @@ fun CommentsBottomSheet(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Spacer(modifier = Modifier.width(24.dp))
-                    Text("全部评论 ($commentCount)", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text("全部评论 (${CountFormatter.format(commentCount)})", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
                         Icon(Icons.Filled.Close, contentDescription = "Close", tint = Color.Gray)
                     }

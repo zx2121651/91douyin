@@ -31,22 +31,14 @@ class RemoteHomeDataSource @Inject constructor(
                 authorId = dto.author.id,
                 authorName = dto.author.name,
                 authorAvatar = dto.author.avatar,
-                likeCount = formatCount(dto.favoriteCount),
-                commentCount = formatCount(dto.commentCount),
-                shareCount = "分享", // Placeholder
+                likeCount = dto.favoriteCount,
+                commentCount = dto.commentCount,
+                shareCount = 0L, // Placeholder
                 isLiked = dto.isFavorite,
                 isFollowed = dto.author.isFollow
             )
         }
         return VideoPage(videos, response.nextTime)
-    }
-
-    private fun formatCount(count: Long): String {
-        return if (count >= 10000) {
-            String.format("%.1fw", count / 10000.0)
-        } else {
-            count.toString()
-        }
     }
 }
 
@@ -68,9 +60,9 @@ class MockHomeDataSource : HomeDataSource {
                 authorId = 1,
                 authorName = "Mock User",
                 authorAvatar = null,
-                likeCount = "1.2w",
-                commentCount = "856",
-                shareCount = "分享",
+                likeCount = 12000L,
+                commentCount = 856L,
+                shareCount = 0L,
                 isLiked = false,
                 isFollowed = false
             )

@@ -258,7 +258,7 @@ fun SearchResultItem(video: VideoModel) {
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = video.likeCount,
+                    text = com.app.douyin.pro.lib.media.util.CountFormatter.format(video.likeCount),
                     color = Color.Gray,
                     fontSize = 12.sp
                 )

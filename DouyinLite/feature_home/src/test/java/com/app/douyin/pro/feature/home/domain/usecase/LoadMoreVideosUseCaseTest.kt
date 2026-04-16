@@ -29,7 +29,7 @@ class LoadMoreVideosUseCaseTest {
     fun `invoke should return more videos from repository`() = runBlocking {
         val nextTime = 123L
         val mockVideos = listOf(
-            VideoModel(3L, "video3", "", "title3", 3L, "author3", null, "0", "0", "0", false, false)
+            VideoModel(3L, "video3", "", "title3", 3L, "author3", null, 0L, 0L, 0L, false, false)
         )
         val mockPage = VideoPage(mockVideos, 456L)
         `when`(mockRepository.loadMoreVideos(nextTime)).thenReturn(Resource.Success(mockPage))

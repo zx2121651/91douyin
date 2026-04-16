@@ -8,9 +8,9 @@ data class VideoModel(
     val authorId: Long,
     val authorName: String,
     val authorAvatar: String?,
-    val likeCount: String,
-    val commentCount: String,
-    val shareCount: String,
+    val likeCount: Long,
+    val commentCount: Long,
+    val shareCount: Long,
     val isLiked: Boolean,
     val isFollowed: Boolean
 )

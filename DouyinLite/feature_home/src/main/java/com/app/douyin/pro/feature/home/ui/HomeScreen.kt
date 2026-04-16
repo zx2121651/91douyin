@@ -262,7 +262,18 @@ fun VideoPage(video: VideoModel, isVisible: Boolean) {
             musicTitle = "原声 - 潮流音乐库"
         )
 
-        if (showCommentsSheet) CommentsBottomSheet(videoId = video.id, commentCount = video.commentCount, onDismiss = { showCommentsSheet = false })
+        if (showCommentsSheet) {
+            val commentViewModel: com.app.douyin.pro.feature.home.viewmodel.CommentViewModel = hiltViewModel()
+            LaunchedEffect(video.id) {
+                commentViewModel.loadComments(video.id, video.commentCount)
+            }
+            CommentsBottomSheet(
+                videoId = video.id,
+                commentCount = video.commentCount,
+                onDismiss = { showCommentsSheet = false },
+                viewModel = commentViewModel
+            )
+        }
         if (showShareSheet) ShareBottomSheet(onDismiss = { showShareSheet = false })
         if (showLongPressMenu) LongPressMenu(onDismiss = { showLongPressMenu = false })
     }

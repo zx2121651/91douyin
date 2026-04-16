@@ -26,13 +26,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
+import com.app.douyin.pro.lib.media.util.CountFormatter
 
 @Composable
 fun ActionPanel(
     isLiked: Boolean,
-    likeCount: String,
-    commentCount: String,
-    shareCount: String,
+    likeCount: Long,
+    commentCount: Long,
+    shareCount: Long,
     avatarUrl: String?,
     isFollowed: Boolean,
     onLikeClick: () -> Unit,
@@ -79,20 +80,20 @@ fun ActionPanel(
 
         ActionItem(
             icon = Icons.Filled.Favorite,
-            count = likeCount,
+            count = CountFormatter.format(likeCount),
             tint = if (isLiked) Color(0xFFFF2C55) else Color.White,
             onClick = onLikeClick
         )
 
         ActionItem(
             icon = Icons.Filled.Message,
-            count = commentCount,
+            count = CountFormatter.format(commentCount),
             onClick = onCommentClick
         )
 
         ActionItem(
             icon = Icons.Filled.Share,
-            count = shareCount,
+            count = CountFormatter.format(shareCount),
             onClick = onShareClick
         )
 

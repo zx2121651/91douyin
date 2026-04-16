@@ -8,6 +8,7 @@ import com.app.douyin.pro.feature.home.domain.usecase.GetCommentsUseCase
 import com.app.douyin.pro.feature.home.domain.usecase.PostCommentUseCase
 import com.app.douyin.pro.lib.media.model.Resource
 import com.app.douyin.pro.lib.media.auth.AuthManager
+import com.app.douyin.pro.lib.media.interaction.VideoInteractionManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,7 +27,8 @@ sealed class CommentUiState {
 class CommentViewModel @Inject constructor(
     private val getCommentsUseCase: GetCommentsUseCase,
     private val postCommentUseCase: PostCommentUseCase,
-    private val authManager: AuthManager
+    private val authManager: AuthManager,
+    private val interactionManager: VideoInteractionManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<CommentUiState>(CommentUiState.Loading)
@@ -36,9 +38,11 @@ class CommentViewModel @Inject constructor(
     val comments: StateFlow<List<CommentModel>> = _comments.asStateFlow()
 
     private var currentVideoId: Long = -1L
+    private var currentCommentCount: Long = 0L
 
-    fun loadComments(videoId: Long) {
+    fun loadComments(videoId: Long, commentCount: Long = 0L) {
         currentVideoId = videoId
+        currentCommentCount = commentCount
         viewModelScope.launch {
             _uiState.value = CommentUiState.Loading
             when (val result = getCommentsUseCase(videoId)) {
@@ -102,6 +106,9 @@ class CommentViewModel @Inject constructor(
                     _comments.value = _comments.value.map {
                         if (it.tempId == tempId) result.data.copy(status = CommentStatus.SUCCESS, tempId = tempId) else it
                     }
+                    // Notify interaction manager to update comment count in feed
+                    interactionManager.notifyCommentAdded(videoId, currentCommentCount)
+                    currentCommentCount++
                     onComplete()
                 }
                 is Resource.Error -> {
