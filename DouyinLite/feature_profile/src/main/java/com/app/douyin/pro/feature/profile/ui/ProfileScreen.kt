@@ -37,14 +37,17 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.app.douyin.pro.feature.profile.viewmodel.ProfileViewModel
+import com.app.douyin.pro.lib.media.auth.SessionState
 import kotlin.random.Random
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ProfileScreen(
+    onNavigateToLogin: () -> Unit,
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
+    val sessionState by viewModel.sessionState.collectAsState()
     val profileInfo by viewModel.profileInfo.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val publishedVideos by viewModel.publishedVideos.collectAsState()
@@ -59,6 +62,28 @@ fun ProfileScreen(
 
     val darkBg = Color(0xFF161823)
     val grayText = Color(0xFF8E8E93)
+
+    if (sessionState is SessionState.Guest) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(darkBg),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(text = "登录后查看个人主页", color = Color.White, fontSize = 16.sp)
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = onNavigateToLogin,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF2C55)),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("去登录", color = Color.White)
+                }
+            }
+        }
+        return
+    }
 
     if (isLoading && profileInfo == null) {
         Box(modifier = Modifier.fillMaxSize().background(darkBg), contentAlignment = Alignment.Center) {
@@ -189,13 +214,13 @@ fun ProfileScreen(
                 // Action Buttons
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(
-                        onClick = {},
+                        onClick = { viewModel.logout() },
                         modifier = Modifier.weight(1f).height(40.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E2E2E)),
                         shape = RoundedCornerShape(8.dp),
                         contentPadding = PaddingValues(0.dp)
                     ) {
-                        Text("编辑资料", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Text("退出登录", fontSize = 14.sp, fontWeight = FontWeight.Bold)
                     }
                     Button(
                         onClick = {},
@@ -204,7 +229,7 @@ fun ProfileScreen(
                         shape = RoundedCornerShape(8.dp),
                         contentPadding = PaddingValues(0.dp)
                     ) {
-                        Text("添加朋友", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Text("编辑资料", fontSize = 14.sp, fontWeight = FontWeight.Bold)
                     }
                     Box(
                         modifier = Modifier

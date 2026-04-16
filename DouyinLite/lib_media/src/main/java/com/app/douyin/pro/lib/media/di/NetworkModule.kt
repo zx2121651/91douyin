@@ -3,6 +3,7 @@ package com.app.douyin.pro.lib.media.di
 import com.app.douyin.pro.lib.media.auth.AuthInterceptor
 import com.app.douyin.pro.lib.media.auth.AuthManager
 import com.app.douyin.pro.lib.media.network.DouyinApiService
+import com.google.gson.Gson
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -18,6 +19,12 @@ import javax.inject.Singleton
 object NetworkModule {
 
     private const val BASE_URL = "http://10.0.2.2:8080/"
+
+    @Provides
+    @Singleton
+    fun provideGson(): Gson {
+        return Gson()
+    }
 
     @Provides
     @Singleton

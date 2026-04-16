@@ -7,6 +7,8 @@ import com.app.douyin.pro.feature.profile.domain.usecase.GetProfileInfoUseCase
 import com.app.douyin.pro.lib.media.model.Resource
 
 import com.app.douyin.pro.feature.profile.domain.usecase.GetPublishedVideosUseCase
+import com.app.douyin.pro.lib.media.auth.AuthRepository
+import com.app.douyin.pro.lib.media.auth.SessionState
 import com.app.douyin.pro.lib.media.network.model.VideoDto
 
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -19,8 +21,11 @@ import javax.inject.Inject
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     private val getProfileInfoUseCase: GetProfileInfoUseCase,
-    private val getPublishedVideosUseCase: GetPublishedVideosUseCase
+    private val getPublishedVideosUseCase: GetPublishedVideosUseCase,
+    private val authRepository: AuthRepository
 ) : ViewModel() {
+    val sessionState: StateFlow<SessionState> = authRepository.getSessionState()
+
     private val _profileInfo = MutableStateFlow<ProfileInfo?>(null)
     val profileInfo: StateFlow<ProfileInfo?> = _profileInfo.asStateFlow()
 
@@ -30,9 +35,17 @@ class ProfileViewModel @Inject constructor(
     private val _publishedVideos = MutableStateFlow<List<VideoDto>>(emptyList())
     val publishedVideos: StateFlow<List<VideoDto>> = _publishedVideos.asStateFlow()
 
-
     init {
-        loadProfile()
+        viewModelScope.launch {
+            sessionState.collect { state ->
+                if (state is SessionState.LoggedIn) {
+                    loadProfile()
+                } else {
+                    _profileInfo.value = null
+                    _publishedVideos.value = emptyList()
+                }
+            }
+        }
     }
 
     fun loadProfile() {
@@ -40,13 +53,17 @@ class ProfileViewModel @Inject constructor(
             _isLoading.value = true
             when (val result = getProfileInfoUseCase()) {
                 is Resource.Success -> _profileInfo.value = result.data
-                else -> {}
+                else -> _profileInfo.value = null
             }
             when (val result = getPublishedVideosUseCase()) {
                 is Resource.Success -> _publishedVideos.value = result.data
-                else -> {}
+                else -> _publishedVideos.value = emptyList()
             }
             _isLoading.value = false
         }
+    }
+
+    fun logout() {
+        authRepository.logout()
     }
 }

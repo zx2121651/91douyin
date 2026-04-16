@@ -27,5 +27,5 @@ include(":feature_record")
 include(":feature_edit")
 include(":feature_profile")
 include(":feature_mall")
-
+include(":feature_auth")
 include(":feature_inbox")
