@@ -2,6 +2,7 @@ package com.app.douyin.pro.feature.home.data
 
 import com.app.douyin.pro.feature.home.data.source.HomeDataSource
 import com.app.douyin.pro.feature.home.domain.model.VideoModel
+import com.app.douyin.pro.feature.home.domain.model.VideoPage
 import com.app.douyin.pro.lib.media.model.Resource
 import com.app.douyin.pro.lib.media.model.AppError
 import javax.inject.Inject
@@ -11,8 +12,8 @@ import javax.inject.Singleton
 class HomeRepository @Inject constructor(
     private val remoteDataSource: HomeDataSource
 ) {
-    suspend fun getInitialVideos(): Resource<List<VideoModel>> = safeApiCall { remoteDataSource.getVideos(0) }
-    suspend fun loadMoreVideos(page: Int): Resource<List<VideoModel>> = safeApiCall { remoteDataSource.getVideos(page) }
+    suspend fun getInitialVideos(): Resource<VideoPage> = safeApiCall { remoteDataSource.getVideos(null) }
+    suspend fun loadMoreVideos(latestTime: Long?): Resource<VideoPage> = safeApiCall { remoteDataSource.getVideos(latestTime) }
 
     private suspend fun <T> safeApiCall(call: suspend () -> T): Resource<T> {
         return try {

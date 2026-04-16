@@ -1,9 +1,11 @@
 package com.app.douyin.pro.feature.home.viewmodel
 
+import android.util.Log
 import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.app.douyin.pro.feature.home.domain.model.VideoModel
+import com.app.douyin.pro.feature.home.domain.model.VideoPage
 import com.app.douyin.pro.feature.home.domain.usecase.GetVideosUseCase
 import com.app.douyin.pro.feature.home.domain.usecase.LoadMoreVideosUseCase
 import com.app.douyin.pro.lib.media.model.AppError
@@ -42,10 +44,15 @@ class HomeViewModel @Inject constructor(
     private val apiService: DouyinApiService
 ) : ViewModel() {
 
+    companion object {
+        private const val TAG = "HomeViewModel"
+    }
+
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
-    private var pageCount = 1
+    private var nextTime: Long? = null
+    private var lastRequestedTime: Long? = null
 
     init {
         loadInitialData()
@@ -55,16 +62,21 @@ class HomeViewModel @Inject constructor(
         if (_uiState.value.loadState is LoadState.Loading) return
 
         viewModelScope.launch {
+            // Log.d(TAG, "loadInitialData: starting")
             _uiState.value = _uiState.value.copy(loadState = LoadState.Loading)
             when (val result = getVideosUseCase()) {
                 is Resource.Success -> {
+                    val page = result.data
+                    // Log.d(TAG, "loadInitialData success: videos=${page.videos.size}, nextTime=${page.nextTime}")
                     _uiState.value = _uiState.value.copy(
-                        videos = result.data,
-                        loadState = LoadState.Success(isEmpty = result.data.isEmpty())
+                        videos = page.videos,
+                        loadState = LoadState.Success(isEmpty = page.videos.isEmpty())
                     )
-                    pageCount = 1
+                    nextTime = page.nextTime
+                    lastRequestedTime = null
                 }
                 is Resource.Error -> {
+                    // Log.e(TAG, "loadInitialData error: ${result.message}")
                     _uiState.value = _uiState.value.copy(
                         loadState = LoadState.Error(result.message, result.error)
                     )
@@ -77,24 +89,60 @@ class HomeViewModel @Inject constructor(
     }
 
     fun loadMore() {
-        if (_uiState.value.pagingState is PagingState.Loading) return
+        val currentState = _uiState.value
+        if (currentState.pagingState is PagingState.Loading) {
+            // Log.d(TAG, "loadMore: already loading, ignore")
+            return
+        }
+
+        // Boundary protection: if nextTime is null and we already have data, it means no more data
+        if (nextTime == null && currentState.videos.isNotEmpty()) {
+            // Log.d(TAG, "loadMore: nextTime is null, no more data")
+            return
+        }
+
+        // Prevent redundant requests for the same timestamp
+        if (nextTime != null && nextTime == lastRequestedTime) {
+            // Log.w(TAG, "loadMore: nextTime $nextTime is same as lastRequestedTime, potential loop, ignore")
+            return
+        }
 
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(pagingState = PagingState.Loading)
-            when (val result = loadMoreVideosUseCase(pageCount)) {
+            // Log.d(TAG, "loadMore: starting with nextTime=$nextTime")
+            _uiState.value = currentState.copy(pagingState = PagingState.Loading)
+            lastRequestedTime = nextTime
+
+            when (val result = loadMoreVideosUseCase(nextTime)) {
                 is Resource.Success -> {
+                    val page = result.data
+                    val newVideos = page.videos
                     val currentVideos = _uiState.value.videos.toMutableList()
-                    currentVideos.addAll(result.data)
+
+                    // Deduplication logic
+                    val existingIds = currentVideos.map { it.id }.toSet()
+                    val uniqueNewVideos = newVideos.filter { it.id !in existingIds }
+
+                    // if (uniqueNewVideos.size < newVideos.size) {
+                    //     Log.d(TAG, "loadMore: deduplicated ${newVideos.size - uniqueNewVideos.size} videos")
+                    // }
+
+                    currentVideos.addAll(uniqueNewVideos)
+
+                    // Log.d(TAG, "loadMore success: added ${uniqueNewVideos.size} videos, total=${currentVideos.size}, nextTime=${page.nextTime}")
+
                     _uiState.value = _uiState.value.copy(
                         videos = currentVideos,
                         pagingState = PagingState.Idle
                     )
-                    pageCount++
+                    nextTime = page.nextTime
                 }
                 is Resource.Error -> {
+                    // Log.e(TAG, "loadMore error: ${result.message}")
                     _uiState.value = _uiState.value.copy(
                         pagingState = PagingState.Error(result.message)
                     )
+                    // Reset lastRequestedTime on error so it can be retried
+                    lastRequestedTime = null
                 }
                 else -> {
                     _uiState.value = _uiState.value.copy(pagingState = PagingState.Idle)

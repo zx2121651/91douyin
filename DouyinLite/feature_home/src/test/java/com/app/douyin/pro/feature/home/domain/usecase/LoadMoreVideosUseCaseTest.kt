@@ -2,6 +2,7 @@ package com.app.douyin.pro.feature.home.domain.usecase
 
 import com.app.douyin.pro.feature.home.data.HomeRepository
 import com.app.douyin.pro.feature.home.domain.model.VideoModel
+import com.app.douyin.pro.feature.home.domain.model.VideoPage
 import com.app.douyin.pro.lib.media.model.Resource
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -26,15 +27,16 @@ class LoadMoreVideosUseCaseTest {
 
     @Test
     fun `invoke should return more videos from repository`() = runBlocking {
-        val page = 2
+        val nextTime = 123L
         val mockVideos = listOf(
             VideoModel(3L, "video3", "", "title3", 3L, "author3", null, "0", "0", "0", false, false)
         )
-        `when`(mockRepository.loadMoreVideos(page)).thenReturn(Resource.Success(mockVideos))
+        val mockPage = VideoPage(mockVideos, 456L)
+        `when`(mockRepository.loadMoreVideos(nextTime)).thenReturn(Resource.Success(mockPage))
 
-        val result = loadMoreVideosUseCase(page)
+        val result = loadMoreVideosUseCase(nextTime)
 
         assert(result is Resource.Success)
-        assertEquals(mockVideos, (result as Resource.Success).data)
+        assertEquals(mockPage, (result as Resource.Success).data)
     }
 }
