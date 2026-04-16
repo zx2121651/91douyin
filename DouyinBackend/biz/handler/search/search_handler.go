@@ -4,7 +4,8 @@ import (
 	"context"
 
 	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/cloudwego/hertz/pkg/protocol/consts"
+	"github.com/douyin/backend/biz/common/errno"
+	"github.com/douyin/backend/biz/common/utils"
 	"github.com/douyin/backend/biz/model/common"
 	search_model "github.com/douyin/backend/biz/model/search"
 	"github.com/douyin/backend/biz/service"
@@ -22,12 +23,7 @@ func SearchVideo(ctx context.Context, c *app.RequestContext) {
 
 	var req search_model.SearchVideoRequest
 	if err := c.BindAndValidate(&req); err != nil {
-		c.JSON(consts.StatusBadRequest, search_model.SearchVideoResponse{
-			BaseResponse: common.BaseResponse{
-				StatusCode: 1,
-				StatusMsg:  err.Error(),
-			},
-		})
+		utils.SendResponse(c, errno.ParamErr.WithMessage(err.Error()), nil)
 		return
 	}
 
@@ -36,12 +32,7 @@ func SearchVideo(ctx context.Context, c *app.RequestContext) {
 
 	videos, err := searchService.SearchVideos(req.Keyword, offset, limit)
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, search_model.SearchVideoResponse{
-			BaseResponse: common.BaseResponse{
-				StatusCode: 1,
-				StatusMsg:  err.Error(),
-			},
-		})
+		utils.SendResponse(c, err, nil)
 		return
 	}
 
@@ -74,14 +65,10 @@ func SearchVideo(ctx context.Context, c *app.RequestContext) {
 		nextCursor = req.Cursor + int64(limit)
 	}
 
-	c.JSON(consts.StatusOK, search_model.SearchVideoResponse{
-		BaseResponse: common.BaseResponse{
-			StatusCode: 0,
-			StatusMsg:  "Success",
-		},
-		VideoList:  commonVideos,
-		NextCursor: nextCursor,
-		HasMore:    hasMore,
+	utils.SendResponse(c, errno.Success, map[string]interface{}{
+		"video_list":  commonVideos,
+		"next_cursor": nextCursor,
+		"has_more":    hasMore,
 	})
 }
 
@@ -93,12 +80,7 @@ func SearchUser(ctx context.Context, c *app.RequestContext) {
 
 	var req search_model.SearchUserRequest
 	if err := c.BindAndValidate(&req); err != nil {
-		c.JSON(consts.StatusBadRequest, search_model.SearchUserResponse{
-			BaseResponse: common.BaseResponse{
-				StatusCode: 1,
-				StatusMsg:  err.Error(),
-			},
-		})
+		utils.SendResponse(c, errno.ParamErr.WithMessage(err.Error()), nil)
 		return
 	}
 
@@ -107,12 +89,7 @@ func SearchUser(ctx context.Context, c *app.RequestContext) {
 
 	users, err := searchService.SearchUsers(req.Keyword, offset, limit)
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, search_model.SearchUserResponse{
-			BaseResponse: common.BaseResponse{
-				StatusCode: 1,
-				StatusMsg:  err.Error(),
-			},
-		})
+		utils.SendResponse(c, err, nil)
 		return
 	}
 
@@ -136,13 +113,9 @@ func SearchUser(ctx context.Context, c *app.RequestContext) {
 		nextCursor = req.Cursor + int64(limit)
 	}
 
-	c.JSON(consts.StatusOK, search_model.SearchUserResponse{
-		BaseResponse: common.BaseResponse{
-			StatusCode: 0,
-			StatusMsg:  "Success",
-		},
-		UserList:   commonUsers,
-		NextCursor: nextCursor,
-		HasMore:    hasMore,
+	utils.SendResponse(c, errno.Success, map[string]interface{}{
+		"user_list":   commonUsers,
+		"next_cursor": nextCursor,
+		"has_more":    hasMore,
 	})
 }

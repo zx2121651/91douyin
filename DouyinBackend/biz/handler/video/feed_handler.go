@@ -4,7 +4,8 @@ import (
 	"context"
 
 	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/cloudwego/hertz/pkg/protocol/consts"
+	"github.com/douyin/backend/biz/common/errno"
+	"github.com/douyin/backend/biz/common/utils"
 	"github.com/douyin/backend/biz/model/common"
 	video_model "github.com/douyin/backend/biz/model/video"
 	"github.com/douyin/backend/biz/service"
@@ -20,23 +21,13 @@ func Feed(ctx context.Context, c *app.RequestContext) {
 	}
 	var req video_model.FeedRequest
 	if err := c.BindAndValidate(&req); err != nil {
-		c.JSON(consts.StatusBadRequest, video_model.FeedResponse{
-			BaseResponse: common.BaseResponse{
-				StatusCode: 1,
-				StatusMsg:  err.Error(),
-			},
-		})
+		utils.SendResponse(c, errno.ParamErr.WithMessage(err.Error()), nil)
 		return
 	}
 
 	videos, nextTime, err := videoService.GetFeed(req.LatestTime, 30, currentUserID)
 	if err != nil {
-		c.JSON(consts.StatusOK, video_model.FeedResponse{
-			BaseResponse: common.BaseResponse{
-				StatusCode: 1,
-				StatusMsg:  "Failed to get feed: " + err.Error(),
-			},
-		})
+		utils.SendResponse(c, errno.ServiceErr.WithMessage("Failed to get feed: "+err.Error()), nil)
 		return
 	}
 
@@ -84,12 +75,8 @@ func Feed(ctx context.Context, c *app.RequestContext) {
 		})
 	}
 
-	c.JSON(consts.StatusOK, video_model.FeedResponse{
-		BaseResponse: common.BaseResponse{
-			StatusCode: 0,
-			StatusMsg:  "Success",
-		},
-		VideoList: commonVideos,
-		NextTime:  nextTime,
+	utils.SendResponse(c, errno.Success, map[string]interface{}{
+		"video_list": commonVideos,
+		"next_time":  nextTime,
 	})
 }

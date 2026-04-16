@@ -4,7 +4,8 @@ import (
 	"context"
 
 	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/cloudwego/hertz/pkg/protocol/consts"
+	"github.com/douyin/backend/biz/common/errno"
+	"github.com/douyin/backend/biz/common/utils"
 	"github.com/douyin/backend/biz/model/common"
 	favorite_model "github.com/douyin/backend/biz/model/favorite"
 	"github.com/douyin/backend/biz/service"
@@ -16,55 +17,30 @@ var relationService = service.NewRelationService()
 func FavoriteAction(ctx context.Context, c *app.RequestContext) {
 	var req favorite_model.FavoriteActionRequest
 	if err := c.BindAndValidate(&req); err != nil {
-		c.JSON(consts.StatusBadRequest, favorite_model.FavoriteActionResponse{
-			BaseResponse: common.BaseResponse{
-				StatusCode: 1,
-				StatusMsg:  err.Error(),
-			},
-		})
+		utils.SendResponse(c, errno.ParamErr.WithMessage(err.Error()), nil)
 		return
 	}
 
 	userIDRaw, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(consts.StatusUnauthorized, favorite_model.FavoriteActionResponse{
-			BaseResponse: common.BaseResponse{
-				StatusCode: 1,
-				StatusMsg:  "Unauthorized",
-			},
-		})
+		utils.SendResponse(c, errno.AuthErr, nil)
 		return
 	}
 	userID := userIDRaw.(uint)
 
 	err := favoriteService.FavoriteAction(userID, uint(req.VideoID), req.ActionType)
 	if err != nil {
-		c.JSON(consts.StatusOK, favorite_model.FavoriteActionResponse{
-			BaseResponse: common.BaseResponse{
-				StatusCode: 1,
-				StatusMsg:  err.Error(),
-			},
-		})
+		utils.SendResponse(c, err, nil)
 		return
 	}
 
-	c.JSON(consts.StatusOK, favorite_model.FavoriteActionResponse{
-		BaseResponse: common.BaseResponse{
-			StatusCode: 0,
-			StatusMsg:  "Success",
-		},
-	})
+	utils.SendResponse(c, errno.Success, nil)
 }
 
 func FavoriteList(ctx context.Context, c *app.RequestContext) {
 	var req favorite_model.FavoriteListRequest
 	if err := c.BindAndValidate(&req); err != nil {
-		c.JSON(consts.StatusBadRequest, favorite_model.FavoriteListResponse{
-			BaseResponse: common.BaseResponse{
-				StatusCode: 1,
-				StatusMsg:  err.Error(),
-			},
-		})
+		utils.SendResponse(c, errno.ParamErr.WithMessage(err.Error()), nil)
 		return
 	}
 
@@ -77,12 +53,7 @@ func FavoriteList(ctx context.Context, c *app.RequestContext) {
 
 	videos, err := favoriteService.GetFavoriteList(targetUserID)
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, favorite_model.FavoriteListResponse{
-			BaseResponse: common.BaseResponse{
-				StatusCode: 1,
-				StatusMsg:  err.Error(),
-			},
-		})
+		utils.SendResponse(c, err, nil)
 		return
 	}
 
@@ -106,11 +77,7 @@ func FavoriteList(ctx context.Context, c *app.RequestContext) {
 		})
 	}
 
-	c.JSON(consts.StatusOK, favorite_model.FavoriteListResponse{
-		BaseResponse: common.BaseResponse{
-			StatusCode: 0,
-			StatusMsg:  "Success",
-		},
-		VideoList: commonVideos,
+	utils.SendResponse(c, errno.Success, map[string]interface{}{
+		"video_list": commonVideos,
 	})
 }

@@ -4,7 +4,8 @@ import (
 	"context"
 
 	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/cloudwego/hertz/pkg/protocol/consts"
+	"github.com/douyin/backend/biz/common/errno"
+	"github.com/douyin/backend/biz/common/utils"
 	comment_model "github.com/douyin/backend/biz/model/comment"
 	"github.com/douyin/backend/biz/model/common"
 	"github.com/douyin/backend/biz/service"
@@ -16,35 +17,20 @@ var relationService = service.NewRelationService()
 func CommentAction(ctx context.Context, c *app.RequestContext) {
 	var req comment_model.CommentActionRequest
 	if err := c.BindAndValidate(&req); err != nil {
-		c.JSON(consts.StatusBadRequest, comment_model.CommentActionResponse{
-			BaseResponse: common.BaseResponse{
-				StatusCode: 1,
-				StatusMsg:  err.Error(),
-			},
-		})
+		utils.SendResponse(c, errno.ParamErr.WithMessage(err.Error()), nil)
 		return
 	}
 
 	userIDRaw, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(consts.StatusUnauthorized, comment_model.CommentActionResponse{
-			BaseResponse: common.BaseResponse{
-				StatusCode: 1,
-				StatusMsg:  "Unauthorized",
-			},
-		})
+		utils.SendResponse(c, errno.AuthErr, nil)
 		return
 	}
 	userID := userIDRaw.(uint)
 
 	if req.ActionType == 1 {
 		if req.CommentText == "" {
-			c.JSON(consts.StatusBadRequest, comment_model.CommentActionResponse{
-				BaseResponse: common.BaseResponse{
-					StatusCode: 1,
-					StatusMsg:  "Comment text is required",
-				},
-			})
+			utils.SendResponse(c, errno.ParamErr.WithMessage("Comment text is required"), nil)
 			return
 		}
 
@@ -55,21 +41,12 @@ func CommentAction(ctx context.Context, c *app.RequestContext) {
 		}
 		comment, err := commentService.PostComment(userID, uint(req.VideoID), req.CommentText, parentIDPtr)
 		if err != nil {
-			c.JSON(consts.StatusInternalServerError, comment_model.CommentActionResponse{
-				BaseResponse: common.BaseResponse{
-					StatusCode: 1,
-					StatusMsg:  err.Error(),
-				},
-			})
+			utils.SendResponse(c, err, nil)
 			return
 		}
 
-		c.JSON(consts.StatusOK, comment_model.CommentActionResponse{
-			BaseResponse: common.BaseResponse{
-				StatusCode: 0,
-				StatusMsg:  "Success",
-			},
-			Comment: &comment_model.Comment{
+		utils.SendResponse(c, errno.Success, map[string]interface{}{
+			"comment": &comment_model.Comment{
 				ID: int64(comment.ID),
 				User: common.User{
 					ID:            int64(comment.User.ID),
@@ -89,32 +66,17 @@ func CommentAction(ctx context.Context, c *app.RequestContext) {
 
 	} else if req.ActionType == 2 {
 		if req.CommentID <= 0 {
-			c.JSON(consts.StatusBadRequest, comment_model.CommentActionResponse{
-				BaseResponse: common.BaseResponse{
-					StatusCode: 1,
-					StatusMsg:  "Comment ID is required for deletion",
-				},
-			})
+			utils.SendResponse(c, errno.ParamErr.WithMessage("Comment ID is required for deletion"), nil)
 			return
 		}
 
 		err := commentService.DeleteComment(userID, uint(req.CommentID), uint(req.VideoID))
 		if err != nil {
-			c.JSON(consts.StatusInternalServerError, comment_model.CommentActionResponse{
-				BaseResponse: common.BaseResponse{
-					StatusCode: 1,
-					StatusMsg:  err.Error(),
-				},
-			})
+			utils.SendResponse(c, err, nil)
 			return
 		}
 
-		c.JSON(consts.StatusOK, comment_model.CommentActionResponse{
-			BaseResponse: common.BaseResponse{
-				StatusCode: 0,
-				StatusMsg:  "Success",
-			},
-		})
+		utils.SendResponse(c, errno.Success, nil)
 	}
 }
 
@@ -125,23 +87,13 @@ func CommentList(ctx context.Context, c *app.RequestContext) {
 	}
 	var req comment_model.CommentListRequest
 	if err := c.BindAndValidate(&req); err != nil {
-		c.JSON(consts.StatusBadRequest, comment_model.CommentListResponse{
-			BaseResponse: common.BaseResponse{
-				StatusCode: 1,
-				StatusMsg:  err.Error(),
-			},
-		})
+		utils.SendResponse(c, errno.ParamErr.WithMessage(err.Error()), nil)
 		return
 	}
 
 	comments, err := commentService.GetCommentList(uint(req.VideoID))
 	if err != nil {
-		c.JSON(consts.StatusInternalServerError, comment_model.CommentListResponse{
-			BaseResponse: common.BaseResponse{
-				StatusCode: 1,
-				StatusMsg:  err.Error(),
-			},
-		})
+		utils.SendResponse(c, err, nil)
 		return
 	}
 
@@ -185,11 +137,7 @@ func CommentList(ctx context.Context, c *app.RequestContext) {
 		})
 	}
 
-	c.JSON(consts.StatusOK, comment_model.CommentListResponse{
-		BaseResponse: common.BaseResponse{
-			StatusCode: 0,
-			StatusMsg:  "Success",
-		},
-		CommentList: commonComments,
+	utils.SendResponse(c, errno.Success, map[string]interface{}{
+		"comment_list": commonComments,
 	})
 }
