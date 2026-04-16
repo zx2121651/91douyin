@@ -2,7 +2,7 @@ package com.app.douyin.pro.feature.home.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.app.douyin.pro.feature.home.domain.model.VideoModel
+import com.app.douyin.pro.lib.media.model.VideoModel
 import com.app.douyin.pro.feature.home.domain.usecase.SearchVideosUseCase
 import com.app.douyin.pro.lib.media.model.Resource
 import com.app.douyin.pro.lib.media.interaction.VideoInteractionManager
@@ -54,8 +54,8 @@ class SearchViewModel @Inject constructor(
                     is InteractionEvent.FollowChanged -> {
                         var changed = false
                         currentResults.forEachIndexed { index, video ->
-                            if (video.authorId == event.authorId) {
-                                currentResults[index] = video.copy(isFollowed = event.isFollowed)
+                            if (video.author.id == event.authorId) {
+                                currentResults[index] = video.copy(author = video.author.copy(isFollowed = event.isFollowed))
                                 changed = true
                             }
                         }
@@ -124,6 +124,6 @@ class SearchViewModel @Inject constructor(
 
     fun toggleFollow(videoId: Long) {
         val video = _searchResults.value.find { it.id == videoId } ?: return
-        interactionManager.toggleFollow(video.authorId, video.isFollowed)
+        interactionManager.toggleFollow(video.author.id, video.author.isFollowed)
     }
 }

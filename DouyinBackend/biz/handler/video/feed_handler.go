@@ -79,6 +79,8 @@ func Feed(ctx context.Context, c *app.RequestContext) {
 			CommentCount:  v.CommentCount,
 			IsFavorite:    favoriteMap[v.ID],
 			Title:         v.Title,
+			Status:        v.Status,
+			CreatedAt:     v.CreatedAt.UnixMilli(),
 		})
 	}
 

@@ -1,7 +1,7 @@
 package com.app.douyin.pro.feature.home.domain.usecase
 
 import com.app.douyin.pro.feature.home.data.SearchRepository
-import com.app.douyin.pro.feature.home.domain.model.VideoModel
+import com.app.douyin.pro.lib.media.model.VideoModel
 import com.app.douyin.pro.lib.media.model.Resource
 import javax.inject.Inject
 

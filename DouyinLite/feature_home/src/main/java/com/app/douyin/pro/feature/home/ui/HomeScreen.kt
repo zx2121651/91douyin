@@ -35,7 +35,7 @@ import com.app.douyin.pro.feature.home.ui.components.CommentsBottomSheet
 import com.app.douyin.pro.feature.home.viewmodel.HomeViewModel
 import com.app.douyin.pro.feature.home.viewmodel.LoadState
 import com.app.douyin.pro.feature.home.viewmodel.PagingState
-import com.app.douyin.pro.feature.home.domain.model.VideoModel
+import com.app.douyin.pro.lib.media.model.VideoModel
 import kotlinx.coroutines.launch
 import java.util.*
 
@@ -247,8 +247,8 @@ fun VideoPage(video: VideoModel, isVisible: Boolean) {
             likeCount = video.likeCount,
             commentCount = video.commentCount,
             shareCount = video.shareCount,
-            avatarUrl = video.authorAvatar,
-            isFollowed = video.isFollowed,
+            avatarUrl = video.author.avatar,
+            isFollowed = video.author.isFollowed,
             onLikeClick = { viewModel.toggleLike(video.id) },
             onFollowClick = { viewModel.toggleFollow(video.id) },
             onCommentClick = { showCommentsSheet = true },
@@ -257,7 +257,7 @@ fun VideoPage(video: VideoModel, isVisible: Boolean) {
         )
 
         VideoOverlay(
-            author = video.authorName,
+            author = video.author.name,
             description = video.title,
             musicTitle = "原声 - 潮流音乐库"
         )

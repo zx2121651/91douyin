@@ -160,6 +160,8 @@ func PublishList(ctx context.Context, c *app.RequestContext) {
 			CommentCount:  v.CommentCount,
 			IsFavorite:    favoriteService.IsFavorite(currentUserID, v.ID),
 			Title:         v.Title,
+			Status:        v.Status,
+			CreatedAt:     v.CreatedAt.UnixMilli(),
 		})
 	}
 

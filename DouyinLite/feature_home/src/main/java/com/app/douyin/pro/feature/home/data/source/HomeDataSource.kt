@@ -1,7 +1,8 @@
 package com.app.douyin.pro.feature.home.data.source
 
-import com.app.douyin.pro.feature.home.domain.model.VideoModel
 import com.app.douyin.pro.feature.home.domain.model.VideoPage
+import com.app.douyin.pro.lib.media.model.UserModel
+import com.app.douyin.pro.lib.media.model.VideoModel
 import com.app.douyin.pro.lib.media.network.DouyinApiService
 import javax.inject.Inject
 
@@ -28,14 +29,22 @@ class RemoteHomeDataSource @Inject constructor(
                 playUrl = dto.playUrl,
                 coverUrl = dto.coverUrl,
                 title = dto.title,
-                authorId = dto.author.id,
-                authorName = dto.author.name,
-                authorAvatar = dto.author.avatar,
+                author = UserModel(
+                    id = dto.author.id,
+                    name = dto.author.name,
+                    avatar = dto.author.avatar,
+                    followCount = dto.author.followCount,
+                    followerCount = dto.author.followerCount,
+                    isFollowed = dto.author.isFollow,
+                    signature = dto.author.signature,
+                    backgroundImage = dto.author.backgroundImage
+                ),
                 likeCount = dto.favoriteCount,
                 commentCount = dto.commentCount,
                 shareCount = 0L, // Placeholder
                 isLiked = dto.isFavorite,
-                isFollowed = dto.author.isFollow
+                status = dto.status ?: "published",
+                createdAt = dto.createdAt ?: System.currentTimeMillis()
             )
         }
         return VideoPage(videos, response.nextTime)
@@ -57,14 +66,15 @@ class MockHomeDataSource : HomeDataSource {
                 playUrl = url,
                 coverUrl = "",
                 title = "这是一个 Mock 视频",
-                authorId = 1,
-                authorName = "Mock User",
-                authorAvatar = null,
+                author = UserModel(
+                    id = 1,
+                    name = "Mock User",
+                    avatar = null
+                ),
                 likeCount = 12000L,
                 commentCount = 856L,
                 shareCount = 0L,
-                isLiked = false,
-                isFollowed = false
+                isLiked = false
             )
         }
         return VideoPage(videos, if (page == 0) System.currentTimeMillis() else null)

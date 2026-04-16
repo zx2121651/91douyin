@@ -1,7 +1,7 @@
 package com.app.douyin.pro.feature.home.data
 
 import com.app.douyin.pro.feature.home.data.source.HomeDataSource
-import com.app.douyin.pro.feature.home.domain.model.VideoModel
+import com.app.douyin.pro.lib.media.model.VideoModel
 import com.app.douyin.pro.feature.home.domain.model.VideoPage
 import com.app.douyin.pro.lib.media.model.Resource
 import com.app.douyin.pro.lib.media.model.AppError

@@ -4,7 +4,7 @@ import com.app.douyin.pro.feature.profile.data.source.ProfileDataSource
 import com.app.douyin.pro.feature.profile.data.source.ProfileInfo
 import com.app.douyin.pro.lib.media.model.Resource
 import com.app.douyin.pro.lib.media.model.AppError
-import com.app.douyin.pro.lib.media.network.model.VideoDto
+import com.app.douyin.pro.lib.media.model.VideoModel
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -18,7 +18,7 @@ class ProfileRepository @Inject constructor(
         Resource.Error(e.message ?: "Unknown Error", AppError.NetworkError)
     }
 
-    suspend fun getPublishedVideos(): Resource<List<VideoDto>> = try {
+    suspend fun getPublishedVideos(): Resource<List<VideoModel>> = try {
         Resource.Success(dataSource.getPublishedVideos())
     } catch (e: Exception) {
         Resource.Error(e.message ?: "Unknown Error", AppError.NetworkError)

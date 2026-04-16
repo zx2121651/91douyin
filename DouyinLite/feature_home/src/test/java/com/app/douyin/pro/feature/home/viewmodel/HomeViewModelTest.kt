@@ -1,6 +1,6 @@
 package com.app.douyin.pro.feature.home.viewmodel
 
-import com.app.douyin.pro.feature.home.domain.model.VideoModel
+import com.app.douyin.pro.lib.media.model.VideoModel
 import com.app.douyin.pro.feature.home.domain.model.VideoPage
 import com.app.douyin.pro.feature.home.domain.usecase.GetVideosUseCase
 import com.app.douyin.pro.feature.home.domain.usecase.LoadMoreVideosUseCase
