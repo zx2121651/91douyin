@@ -17,4 +17,6 @@ type Comment struct {
 	Parent     *Comment  `gorm:"foreignKey:ParentID"`
 	Replies    []Comment `gorm:"foreignKey:ParentID"`
 	ReplyCount int64     `gorm:"default:0"` // Tracks number of direct replies
+
+	IdempotencyKey *string `gorm:"uniqueIndex;type:varchar(64)"`
 }

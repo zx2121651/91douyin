@@ -36,9 +36,10 @@ func (s *RelationService) RelationAction(userID uint, toUserID uint, actionType 
 		}
 
 		if actionType == 1 { // Follow
-			err := tx.Where("user_id = ? AND follow_id = ?", userID, toUserID).First(&model.Relation{}).Error
+			var existing model.Relation
+			err := tx.Where("user_id = ? AND follow_id = ?", userID, toUserID).First(&existing).Error
 			if err == nil {
-				return errors.New("already followed")
+				return nil // Idempotent
 			} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 				return err
 			}
@@ -71,19 +72,14 @@ func (s *RelationService) RelationAction(userID uint, toUserID uint, actionType 
 				return res.Error
 			}
 			if res.RowsAffected > 0 {
-				if user.FollowCount > 0 {
-					if err := tx.Model(&user).Update("follow_count", gorm.Expr("follow_count - ?", 1)).Error; err != nil {
-						return err
-					}
+				if err := tx.Model(&user).Where("follow_count > 0").Update("follow_count", gorm.Expr("follow_count - ?", 1)).Error; err != nil {
+					return err
 				}
-				if toUser.FollowerCount > 0 {
-					if err := tx.Model(&toUser).Update("follower_count", gorm.Expr("follower_count - ?", 1)).Error; err != nil {
-						return err
-					}
+				if err := tx.Model(&toUser).Where("follower_count > 0").Update("follower_count", gorm.Expr("follower_count - ?", 1)).Error; err != nil {
+					return err
 				}
-			} else {
-				return errors.New("not followed yet")
 			}
+			// If RowsAffected == 0, already unfollowed, return nil for idempotency
 		} else {
 			return errors.New("invalid action type")
 		}

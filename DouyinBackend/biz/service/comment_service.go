@@ -16,23 +16,40 @@ func NewCommentService() *CommentService {
 }
 
 // PostComment supports creating both top-level comments and nested replies
-func (s *CommentService) PostComment(userID uint, videoID uint, content string, parentID *uint) (*model.Comment, error) {
+func (s *CommentService) PostComment(userID uint, videoID uint, content string, parentID *uint, idempotencyKey string) (*model.Comment, error) {
 	content = strings.TrimSpace(content)
 	if content == "" {
 		return nil, errors.New("comment content cannot be empty")
 	}
 
+	var keyPtr *string
+	if idempotencyKey != "" {
+		keyPtr = &idempotencyKey
+	}
+
 	var comment model.Comment
 	err := db.DB.Transaction(func(tx *gorm.DB) error {
+		// Check for idempotency if key is provided
+		if keyPtr != nil {
+			var existing model.Comment
+			if err := tx.Where("idempotency_key = ?", *keyPtr).Preload("User").First(&existing).Error; err == nil {
+				comment = existing
+				return nil
+			} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+				return err
+			}
+		}
+
 		var video model.Video
 		if err := tx.First(&video, videoID).Error; err != nil {
 			return errors.New("video not found")
 		}
 
 		comment = model.Comment{
-			UserID:  userID,
-			VideoID: videoID,
-			Content: content,
+			UserID:         userID,
+			VideoID:        videoID,
+			Content:        content,
+			IdempotencyKey: keyPtr,
 		}
 
 		// Handle hierarchical validation and reply count
@@ -78,7 +95,10 @@ func (s *CommentService) DeleteComment(userID uint, commentID uint, videoID uint
 	return db.DB.Transaction(func(tx *gorm.DB) error {
 		var comment model.Comment
 		if err := tx.Where("id = ? AND video_id = ?", commentID, videoID).First(&comment).Error; err != nil {
-			return errors.New("comment not found")
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil // Idempotent: already deleted
+			}
+			return err
 		}
 
 		// Check permission (only comment author can delete)
@@ -94,14 +114,11 @@ func (s *CommentService) DeleteComment(userID uint, commentID uint, videoID uint
 
 		// If this was a reply to another comment, decrement the parent's reply_count
 		if comment.ParentID != nil && *comment.ParentID > 0 {
-			tx.Model(&model.Comment{}).Where("id = ?", *comment.ParentID).Update("reply_count", gorm.Expr("reply_count - ?", 1))
+			tx.Model(&model.Comment{}).Where("id = ? AND reply_count > 0", *comment.ParentID).Update("reply_count", gorm.Expr("reply_count - ?", 1))
 		}
 
 		// Decrement video comment count safely (avoid negative counts)
-		var video model.Video
-		if err := tx.First(&video, videoID).Error; err == nil && video.CommentCount > 0 {
-			tx.Model(&video).Update("comment_count", gorm.Expr("comment_count - ?", 1))
-		}
+		tx.Model(&model.Video{}).Where("id = ? AND comment_count > 0", videoID).Update("comment_count", gorm.Expr("comment_count - ?", 1))
 
 		return nil
 	})
