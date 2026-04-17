@@ -30,6 +30,11 @@ object NavRoutes {
         return "search_player?keyword=${android.net.Uri.encode(keyword)}&index=$index"
     }
 
+    const val USER_PROFILE = "profile/{userId}"
+    fun buildUserProfileRoute(userId: Long): String {
+        return "profile/$userId"
+    }
+
     const val LOGIN = "login"
     const val REGISTER = "register"
 }

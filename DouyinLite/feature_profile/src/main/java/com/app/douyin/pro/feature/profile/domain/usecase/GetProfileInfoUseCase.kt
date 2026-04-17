@@ -8,5 +8,5 @@ import javax.inject.Inject
 class GetProfileInfoUseCase @Inject constructor(
     private val repository: ProfileRepository
 ) {
-    suspend operator fun invoke(): Resource<ProfileInfo> = repository.getProfileInfo()
+    suspend operator fun invoke(userId: Long? = null): Resource<ProfileInfo> = repository.getProfileInfo(userId)
 }

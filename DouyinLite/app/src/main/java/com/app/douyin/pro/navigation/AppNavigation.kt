@@ -99,6 +99,15 @@ fun AppNavHost(
                 onNavigateToLogin = { navController.navigate(NavRoutes.LOGIN) }
             )
         }
+        composable(
+            route = NavRoutes.USER_PROFILE,
+            arguments = listOf(navArgument("userId") { type = NavType.LongType })
+        ) {
+            ProfileScreen(
+                onNavigateToLogin = { navController.navigate(NavRoutes.LOGIN) },
+                onBack = { navController.popBackStack() }
+            )
+        }
         composable(NavRoutes.MALL) {
             MallScreen(onBack = { navController.popBackStack() })
         }
@@ -107,6 +116,9 @@ fun AppNavHost(
                 onBack = { navController.popBackStack() },
                 onVideoClick = { keyword, index ->
                     navController.navigate(NavRoutes.buildSearchPlayerRoute(keyword, index))
+                },
+                onUserClick = { userId ->
+                    navController.navigate(NavRoutes.buildUserProfileRoute(userId))
                 }
             )
         }

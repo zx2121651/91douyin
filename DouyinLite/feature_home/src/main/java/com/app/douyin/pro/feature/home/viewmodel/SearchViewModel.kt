@@ -168,25 +168,34 @@ class SearchViewModel @Inject constructor(
                         }
                     }
                     is InteractionEvent.FollowChanged -> {
-                        var changed = false
+                        var videoChanged = false
                         currentVideos.forEachIndexed { index, video ->
                             if (video.author.id == event.authorId) {
                                 currentVideos[index] = video.copy(author = video.author.copy(isFollowed = event.isFollowed))
-                                changed = true
+                                videoChanged = true
                             }
                         }
-                        if (changed) {
+                        if (videoChanged) {
                             _videoResults.value = currentVideos
                         }
 
+                        var userChanged = false
                         val currentUsers = _userResults.value.toMutableList()
                         currentUsers.forEachIndexed { index, user ->
                             if (user.id == event.authorId) {
-                                currentUsers[index] = user.copy(isFollowed = event.isFollowed)
-                                changed = true
+                                val newFollowerCount = if (event.isFollowed) {
+                                    user.followerCount + 1
+                                } else {
+                                    (user.followerCount - 1).coerceAtLeast(0)
+                                }
+                                currentUsers[index] = user.copy(
+                                    isFollowed = event.isFollowed,
+                                    followerCount = newFollowerCount
+                                )
+                                userChanged = true
                             }
                         }
-                        if (changed) {
+                        if (userChanged) {
                             _userResults.value = currentUsers
                         }
                     }
@@ -288,11 +297,7 @@ class SearchViewModel @Inject constructor(
                         hasMoreVideos = true
                     }
 
-                    if (_videoResults.value.isEmpty()) {
-                        _uiState.value = SearchUiState.Empty
-                    } else {
-                        _uiState.value = SearchUiState.Results
-                    }
+                    _uiState.value = SearchUiState.Results
                     _pagingState.value = PagingState.Idle
                 }
                 is Resource.Error -> {
@@ -336,6 +341,8 @@ class SearchViewModel @Inject constructor(
                         userCursor = nextCursor
                         hasMoreUsers = true
                     }
+
+                    _uiState.value = SearchUiState.Results
                     _pagingState.value = PagingState.Idle
                 }
                 is Resource.Error -> {

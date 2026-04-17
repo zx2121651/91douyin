@@ -101,7 +101,7 @@ class SearchViewModelTest {
     }
 
     @Test
-    fun `search with no results updates state to Empty`() = runTest {
+    fun `search with no results keep state as Results`() = runTest {
         val keyword = "nothing"
         `when`(searchVideosUseCase.invoke(anyString(), anyLong())).thenReturn(Resource.Success(Pair(emptyList(), -1L)))
 
@@ -111,7 +111,7 @@ class SearchViewModelTest {
         viewModel.search(keyword)
         testDispatcher.scheduler.advanceUntilIdle()
 
-        assertEquals(SearchUiState.Empty, viewModel.uiState.value)
+        assertEquals(SearchUiState.Results, viewModel.uiState.value)
     }
 
     @Test
