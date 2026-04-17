@@ -49,4 +49,31 @@ class SearchRepository @Inject constructor(
             }
         }
     }
+
+    suspend fun searchUsers(keyword: String, cursor: Long): Resource<Pair<List<UserModel>, Long>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = remoteDataSource.searchUsers(keyword, cursor)
+                if (response.statusCode == 0) {
+                    val models = response.userList?.map { dto ->
+                        UserModel(
+                            id = dto.id,
+                            name = dto.name,
+                            avatar = dto.avatar,
+                            followCount = dto.followCount,
+                            followerCount = dto.followerCount,
+                            isFollowed = dto.isFollow,
+                            signature = dto.signature,
+                            backgroundImage = dto.backgroundImage
+                        )
+                    } ?: emptyList()
+                    Resource.Success(Pair(models ?: emptyList(), if (response.hasMore) response.nextCursor else -1L))
+                } else {
+                    Resource.Error(response.statusMsg ?: "Search failed")
+                }
+            } catch (e: Exception) {
+                Resource.Error(e.message ?: "Unknown Error")
+            }
+        }
+    }
 }

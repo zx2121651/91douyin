@@ -1,6 +1,7 @@
 package com.app.douyin.pro.feature.home.viewmodel
 
 import com.app.douyin.pro.lib.media.model.VideoModel
+import com.app.douyin.pro.lib.media.model.UserModel
 import com.app.douyin.pro.feature.home.domain.model.VideoPage
 import com.app.douyin.pro.feature.home.domain.usecase.GetVideosUseCase
 import com.app.douyin.pro.feature.home.domain.usecase.LoadMoreVideosUseCase
@@ -41,7 +42,8 @@ class HomeViewModelTest {
 
     @Test
     fun `loadInitialData success updates state with videos`() = runTest {
-        val videos = listOf(VideoModel(1, "p1", "c1", "t1", 101, "a1", "av1", 1L, 1L, 1L, false, false))
+        val user = UserModel(101, "a1", "av1")
+        val videos = listOf(VideoModel(1, user, "p1", "c1", "t1"))
         val page = VideoPage(videos, 123L)
         `when`(getVideosUseCase()).thenReturn(Resource.Success(page))
 
@@ -69,8 +71,8 @@ class HomeViewModelTest {
 
     @Test
     fun `loadMore success appends videos to state`() = runTest {
-        val video1 = VideoModel(1, "p1", "c1", "t1", 101, "a1", "av1", 1L, 1L, 1L, false, false)
-        val video2 = VideoModel(2, "p2", "c2", "t2", 102, "a2", "av2", 2L, 2L, 2L, false, false)
+        val video1 = VideoModel(1, UserModel(101, "a1", "av1"), "p1", "c1", "t1")
+        val video2 = VideoModel(2, UserModel(102, "a2", "av2"), "p2", "c2", "t2")
         val initialPage = VideoPage(listOf(video1), 123L)
         val nextPage = VideoPage(listOf(video2), 456L)
 
@@ -91,7 +93,7 @@ class HomeViewModelTest {
 
     @Test
     fun `loadMore failure updates pagingState with error`() = runTest {
-        val video1 = VideoModel(1, "p1", "c1", "t1", 101, "a1", "av1", 1L, 1L, 1L, false, false)
+        val video1 = VideoModel(1, UserModel(101, "a1", "av1"), "p1", "c1", "t1")
         val initialPage = VideoPage(listOf(video1), 123L)
         val errorMessage = "Paging Error"
 
@@ -112,8 +114,8 @@ class HomeViewModelTest {
 
     @Test
     fun `loadMore with duplicate videos should deduplicate`() = runTest {
-        val video1 = VideoModel(1, "p1", "c1", "t1", 101, "a1", "av1", 1L, 1L, 1L, false, false)
-        val video2 = VideoModel(2, "p2", "c2", "t2", 102, "a2", "av2", 2L, 2L, 2L, false, false)
+        val video1 = VideoModel(1, UserModel(101, "a1", "av1"), "p1", "c1", "t1")
+        val video2 = VideoModel(2, UserModel(102, "a2", "av2"), "p2", "c2", "t2")
 
         val initialPage = VideoPage(listOf(video1), 123L)
         // video1 is repeated in the second page
@@ -135,7 +137,7 @@ class HomeViewModelTest {
 
     @Test
     fun `loadMore with null nextTime should not trigger request`() = runTest {
-        val video1 = VideoModel(1, "p1", "c1", "t1", 101, "a1", "av1", 1L, 1L, 1L, false, false)
+        val video1 = VideoModel(1, UserModel(101, "a1", "av1"), "p1", "c1", "t1")
         val initialPage = VideoPage(listOf(video1), null)
 
         `when`(getVideosUseCase()).thenReturn(Resource.Success(initialPage))

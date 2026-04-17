@@ -5,6 +5,9 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -12,10 +15,9 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,24 +28,31 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
-import com.app.douyin.pro.lib.media.model.VideoModel
+import com.app.douyin.pro.feature.home.viewmodel.SearchResultType
+import com.app.douyin.pro.feature.home.viewmodel.SearchUiState
 import com.app.douyin.pro.feature.home.viewmodel.SearchViewModel
+import com.app.douyin.pro.lib.media.model.UserModel
+import com.app.douyin.pro.lib.media.model.VideoModel
+import com.app.douyin.pro.lib.media.util.CountFormatter
 
 @Composable
 fun SearchScreen(
-    onCancel: () -> Unit,
+    onBack: () -> Unit,
     viewModel: SearchViewModel = hiltViewModel()
 ) {
     var searchQuery by remember { mutableStateOf("") }
-
-    val searchResults by viewModel.searchResults.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
+    val selectedTab by viewModel.selectedTab.collectAsState()
+    val videoResults by viewModel.videoResults.collectAsState()
+    val userResults by viewModel.userResults.collectAsState()
+    val history by viewModel.searchHistory.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
-    val error by viewModel.error.collectAsState()
 
     Column(
         modifier = Modifier
@@ -51,129 +60,301 @@ fun SearchScreen(
             .background(Color(0xFF161823))
             .statusBarsPadding()
     ) {
-        // Top Search Bar Area
-        Row(
+        SearchTopBar(
+            query = searchQuery,
+            onQueryChange = {
+                searchQuery = it
+                viewModel.onQueryChanged(it)
+            },
+            onSearch = { viewModel.search(searchQuery) },
+            onBack = onBack
+        )
+
+        Box(modifier = Modifier.weight(1f)) {
+            when (val state = uiState) {
+                is SearchUiState.Idle -> {
+                    SearchIdleContent(
+                        history = history,
+                        onHistoryClick = {
+                            searchQuery = it
+                            viewModel.search(it)
+                        },
+                        onDeleteHistory = { viewModel.deleteHistory(it) },
+                        onClearHistory = { viewModel.clearHistory() }
+                    )
+                }
+                is SearchUiState.Searching -> {
+                    // Could show suggestions here, currently just empty or same as idle
+                    SearchIdleContent(
+                        history = history,
+                        onHistoryClick = {
+                            searchQuery = it
+                            viewModel.search(it)
+                        },
+                        onDeleteHistory = { viewModel.deleteHistory(it) },
+                        onClearHistory = { viewModel.clearHistory() }
+                    )
+                }
+                is SearchUiState.Results -> {
+                    SearchResultContent(
+                        selectedTab = selectedTab,
+                        onTabSelect = { viewModel.selectTab(it) },
+                        videoResults = videoResults,
+                        userResults = userResults,
+                        isLoading = isLoading,
+                        onLoadMore = { viewModel.loadMore() },
+                        onLikeClick = { viewModel.toggleLike(it) },
+                        onFollowClick = { viewModel.toggleFollow(it) }
+                    )
+                }
+                is SearchUiState.Empty -> {
+                    EmptySearchView()
+                }
+                is SearchUiState.Error -> {
+                    ErrorSearchView(message = state.message, onRetry = { viewModel.search(searchQuery) })
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SearchTopBar(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onSearch: () -> Unit,
+    onBack: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            Icons.Default.ArrowBack,
+            contentDescription = "Back",
+            tint = Color.White,
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .size(24.dp)
+                .clickable { onBack() }
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(36.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(Color(0xFF2B2C33)),
+            contentAlignment = Alignment.CenterStart
         ) {
-            // Search Input Box
-            Box(
+            Row(
                 modifier = Modifier
-                    .weight(1f)
-                    .height(40.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(Color(0xFF2B2C33))
-                    .border(1.dp, Color(0xFFFE2C55), RoundedCornerShape(20.dp)),
-                contentAlignment = Alignment.CenterStart
+                    .fillMaxSize()
+                    .padding(horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                Icon(
+                    Icons.Default.Search,
+                    contentDescription = null,
+                    tint = Color.Gray,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                BasicTextField(
+                    value = query,
+                    onValueChange = onQueryChange,
+                    modifier = Modifier.weight(1f),
+                    textStyle = TextStyle(color = Color.White, fontSize = 14.sp),
+                    cursorBrush = SolidColor(Color(0xFFFE2C55)),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(onSearch = { onSearch() }),
+                    decorationBox = { innerTextField ->
+                        if (query.isEmpty()) {
+                            Text("搜你想看的", color = Color.Gray, fontSize = 14.sp)
+                        }
+                        innerTextField()
+                    }
+                )
+                if (query.isNotEmpty()) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = "Clear",
+                        tint = Color.Gray,
+                        modifier = Modifier
+                            .size(16.dp)
+                            .clickable { onQueryChange("") }
+                    )
+                }
+            }
+        }
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(
+            text = "搜索",
+            color = Color(0xFFFE2C55),
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.clickable { onSearch() }
+        )
+    }
+}
+
+@Composable
+fun SearchIdleContent(
+    history: List<String>,
+    onHistoryClick: (String) -> Unit,
+    onDeleteHistory: (String) -> Unit,
+    onClearHistory: () -> Unit
+) {
+    LazyColumn(modifier = Modifier.fillMaxSize()) {
+        if (history.isNotEmpty()) {
+            item {
                 Row(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 12.dp),
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    Text("搜索历史", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                     Icon(
-                        Icons.Filled.Search,
-                        contentDescription = "Search",
-                        tint = Color(0xFFFE2C55),
-                        modifier = Modifier.size(20.dp)
+                        Icons.Default.Delete,
+                        contentDescription = "Clear All",
+                        tint = Color.Gray,
+                        modifier = Modifier
+                            .size(16.dp)
+                            .clickable { onClearHistory() }
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    BasicTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        modifier = Modifier.weight(1f),
-                        textStyle = TextStyle(color = Color.White, fontSize = 14.sp),
-                        cursorBrush = SolidColor(Color(0xFFFE2C55)),
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                        keyboardActions = KeyboardActions(
-                            onSearch = {
-                                viewModel.search(searchQuery)
-                            }
-                        ),
-                        decorationBox = { innerTextField ->
-                            if (searchQuery.isEmpty()) {
-                                Text("发现更多精彩", color = Color.Gray, fontSize = 14.sp)
-                            }
-                            innerTextField()
-                        }
-                    )
-                    if (searchQuery.isNotEmpty()) {
-                        Icon(
-                            Icons.Filled.Close,
-                            contentDescription = "Clear",
-                            tint = Color.Gray,
+                }
+            }
+            item {
+                FlowRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    mainAxisSpacing = 8.dp,
+                    crossAxisSpacing = 8.dp
+                ) {
+                    history.forEach { item ->
+                        Box(
                             modifier = Modifier
-                                .size(16.dp)
-                                .clickable { searchQuery = "" }
-                        )
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(Color(0xFF2B2C33))
+                                .clickable { onHistoryClick(item) }
+                                .padding(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(item, color = Color.LightGray, fontSize = 13.sp)
+                                // Optional: delete icon per item
+                            }
+                        }
                     }
                 }
             }
+        }
 
-            Spacer(modifier = Modifier.width(16.dp))
+        item {
             Text(
-                text = "搜索",
-                color = Color(0xFFFE2C55),
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.clickable {
-                    viewModel.search(searchQuery)
-                }
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            Text(
-                text = "取消",
+                "猜你想搜",
                 color = Color.White,
-                fontSize = 16.sp,
-                modifier = Modifier.clickable { onCancel() }
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(16.dp)
             )
         }
 
-        // Search Results Content
-        Box(modifier = Modifier.fillMaxSize()) {
-            if (isLoading && searchResults.isEmpty()) {
-                CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.Center),
+        val recommendations = listOf("热点新闻", "搞笑视频", "美食教程", "旅游攻略", "科技数码", "电影推荐")
+        item {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp)
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                userScrollEnabled = false
+            ) {
+                items(recommendations) { item ->
+                    Text(
+                        item,
+                        color = Color.LightGray,
+                        fontSize = 14.sp,
+                        modifier = Modifier.clickable { onHistoryClick(item) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun FlowRow(
+    modifier: Modifier = Modifier,
+    mainAxisSpacing: androidx.compose.ui.unit.Dp = 0.dp,
+    crossAxisSpacing: androidx.compose.ui.unit.Dp = 0.dp,
+    content: @Composable () -> Unit
+) {
+    androidx.compose.foundation.layout.FlowRow(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(mainAxisSpacing),
+        verticalArrangement = Arrangement.spacedBy(crossAxisSpacing),
+        content = { content() }
+    )
+}
+
+@Composable
+fun SearchResultContent(
+    selectedTab: SearchResultType,
+    onTabSelect: (SearchResultType) -> Unit,
+    videoResults: List<VideoModel>,
+    userResults: List<UserModel>,
+    isLoading: Boolean,
+    onLoadMore: () -> Unit,
+    onLikeClick: (Long) -> Unit,
+    onFollowClick: (Long) -> Unit
+) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        TabRow(
+            selectedTabIndex = if (selectedTab == SearchResultType.Video) 0 else 1,
+            containerColor = Color.Transparent,
+            contentColor = Color(0xFFFE2C55),
+            indicator = { tabPositions ->
+                TabRowDefaults.Indicator(
+                    modifier = Modifier.tabIndicatorOffset(tabPositions[if (selectedTab == SearchResultType.Video) 0 else 1]),
                     color = Color(0xFFFE2C55)
                 )
-            } else if (error != null && searchResults.isEmpty()) {
-                Text(
-                    text = error ?: "Unknown error",
-                    color = Color.White,
-                    modifier = Modifier.align(Alignment.Center)
-                )
-            } else if (searchResults.isNotEmpty()) {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    items(searchResults) { video ->
-                        SearchResultItem(video = video)
-                    }
+            },
+            divider = {}
+        ) {
+            Tab(
+                selected = selectedTab == SearchResultType.Video,
+                onClick = { onTabSelect(SearchResultType.Video) },
+                text = { Text("视频", fontSize = 15.sp) }
+            )
+            Tab(
+                selected = selectedTab == SearchResultType.User,
+                onClick = { onTabSelect(SearchResultType.User) },
+                text = { Text("用户", fontSize = 15.sp) }
+            )
+        }
 
-                    item {
-                        if (isLoading) {
-                            Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                                CircularProgressIndicator(color = Color(0xFFFE2C55), modifier = Modifier.size(24.dp))
-                            }
-                        } else {
-                            // Automatically load more when reaching the end
-                            LaunchedEffect(Unit) {
-                                viewModel.loadMore()
-                            }
-                        }
-                    }
-                }
-            } else if (!isLoading && searchQuery.isNotEmpty() && error == null) {
-                Text(
-                    text = "未找到相关结果",
-                    color = Color.Gray,
-                    modifier = Modifier.align(Alignment.Center)
+        Box(modifier = Modifier.weight(1f)) {
+            if (selectedTab == SearchResultType.Video) {
+                VideoResultList(
+                    videos = videoResults,
+                    isLoading = isLoading,
+                    onLoadMore = onLoadMore,
+                    onLikeClick = onLikeClick
+                )
+            } else {
+                UserResultList(
+                    users = userResults,
+                    isLoading = isLoading,
+                    onLoadMore = onLoadMore,
+                    onFollowClick = onFollowClick
                 )
             }
         }
@@ -181,43 +362,53 @@ fun SearchScreen(
 }
 
 @Composable
-fun SearchResultItem(video: VideoModel) {
+fun VideoResultList(
+    videos: List<VideoModel>,
+    isLoading: Boolean,
+    onLoadMore: () -> Unit,
+    onLikeClick: (Long) -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        items(videos) { video ->
+            VideoResultItem(video = video, onLikeClick = onLikeClick)
+        }
+        item {
+            if (isLoading) {
+                Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = Color(0xFFFE2C55), modifier = Modifier.size(24.dp))
+                }
+            } else if (videos.isNotEmpty()) {
+                LaunchedEffect(Unit) { onLoadMore() }
+            }
+        }
+    }
+}
+
+@Composable
+fun VideoResultItem(video: VideoModel, onLikeClick: (Long) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(120.dp)
-            .clip(RoundedCornerShape(8.dp))
+            .height(110.dp)
+            .clip(RoundedCornerShape(4.dp))
             .background(Color(0xFF252632))
     ) {
-        // Video Cover
-        Box(
+        AsyncImage(
+            model = video.coverUrl,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
             modifier = Modifier
-                .width(90.dp)
+                .width(82.dp)
                 .fillMaxHeight()
-        ) {
-            AsyncImage(
-                model = video.coverUrl,
-                contentDescription = video.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
-            // Play icon overlay
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.2f)),
-                contentAlignment = Alignment.Center
-            ) {
-                 // Place holder for play icon
-            }
-        }
-
-        // Video Details
+        )
         Column(
             modifier = Modifier
-                .fillMaxHeight()
-                .padding(12.dp)
-                .weight(1f),
+                .weight(1f)
+                .padding(12.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
@@ -227,41 +418,108 @@ fun SearchResultItem(video: VideoModel) {
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 AsyncImage(
                     model = video.author.avatar,
-                    contentDescription = video.author.name,
-                    contentScale = ContentScale.Crop,
+                    contentDescription = null,
                     modifier = Modifier
-                        .size(20.dp)
+                        .size(16.dp)
                         .clip(CircleShape)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = video.author.name,
-                    color = Color.Gray,
-                    fontSize = 12.sp,
-                    modifier = Modifier.weight(1f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-
+                Text(video.author.name, color = Color.Gray, fontSize = 12.sp, modifier = Modifier.weight(1f))
                 Icon(
-                    Icons.Filled.Favorite,
-                    contentDescription = "Likes",
-                    tint = Color.Gray,
-                    modifier = Modifier.size(12.dp)
+                    if (video.isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                    contentDescription = null,
+                    tint = if (video.isLiked) Color(0xFFFE2C55) else Color.Gray,
+                    modifier = Modifier.size(14.dp).clickable { onLikeClick(video.id) }
                 )
                 Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = com.app.douyin.pro.lib.media.util.CountFormatter.format(video.likeCount),
-                    color = Color.Gray,
-                    fontSize = 12.sp
-                )
+                Text(CountFormatter.format(video.likeCount), color = Color.Gray, fontSize = 12.sp)
+            }
+        }
+    }
+}
+
+@Composable
+fun UserResultList(
+    users: List<UserModel>,
+    isLoading: Boolean,
+    onLoadMore: () -> Unit,
+    onFollowClick: (Long) -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(12.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        items(users) { user ->
+            UserResultItem(user = user, onFollowClick = onFollowClick)
+        }
+        item {
+            if (isLoading) {
+                Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = Color(0xFFFE2C55), modifier = Modifier.size(24.dp))
+                }
+            } else if (users.isNotEmpty()) {
+                LaunchedEffect(Unit) { onLoadMore() }
+            }
+        }
+    }
+}
+
+@Composable
+fun UserResultItem(user: UserModel, onFollowClick: (Long) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        AsyncImage(
+            model = user.avatar,
+            contentDescription = null,
+            modifier = Modifier
+                .size(56.dp)
+                .clip(CircleShape)
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(user.name, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+            Text(user.signature ?: "该用户很懒，什么都没有留下", color = Color.Gray, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text("粉丝: ${CountFormatter.format(user.followerCount)}", color = Color.Gray, fontSize = 12.sp)
+        }
+        Button(
+            onClick = { onFollowClick(user.id) },
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if (user.isFollowed) Color(0xFF2B2C33) else Color(0xFFFE2C55)
+            ),
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            modifier = Modifier.height(28.dp),
+            shape = RoundedCornerShape(4.dp)
+        ) {
+            Text(if (user.isFollowed) "已关注" else "关注", fontSize = 12.sp, color = Color.White)
+        }
+    }
+}
+
+@Composable
+fun EmptySearchView() {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(64.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("未找到相关结果", color = Color.Gray, fontSize = 14.sp)
+        }
+    }
+}
+
+@Composable
+fun ErrorSearchView(message: String, onRetry: () -> Unit) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(message, color = Color.White, fontSize = 14.sp, textAlign = TextAlign.Center)
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(onClick = onRetry, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFE2C55))) {
+                Text("重试")
             }
         }
     }

@@ -1,7 +1,8 @@
 package com.app.douyin.pro.feature.home.domain.usecase
 
 import com.app.douyin.pro.feature.home.data.HomeRepository
-import com.app.douyin.pro.feature.home.domain.model.VideoModel
+import com.app.douyin.pro.lib.media.model.VideoModel
+import com.app.douyin.pro.lib.media.model.UserModel
 import com.app.douyin.pro.feature.home.domain.model.VideoPage
 import com.app.douyin.pro.lib.media.model.Resource
 import kotlinx.coroutines.runBlocking
@@ -29,7 +30,7 @@ class LoadMoreVideosUseCaseTest {
     fun `invoke should return more videos from repository`() = runBlocking {
         val nextTime = 123L
         val mockVideos = listOf(
-            VideoModel(3L, "video3", "", "title3", 3L, "author3", null, 0L, 0L, 0L, false, false)
+            VideoModel(3L, UserModel(3L, "author3"), "video3", "", "title3")
         )
         val mockPage = VideoPage(mockVideos, 456L)
         `when`(mockRepository.loadMoreVideos(nextTime)).thenReturn(Resource.Success(mockPage))
