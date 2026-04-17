@@ -3,14 +3,16 @@ package com.app.douyin.pro.feature.inbox.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -32,18 +34,12 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
-    userId: Long,
-    userName: String,
     onBack: () -> Unit,
     viewModel: ChatViewModel = hiltViewModel()
 ) {
     val messages by viewModel.messages.collectAsState()
     var inputText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
-
-    LaunchedEffect(userId) {
-        viewModel.initChat(userId)
-    }
 
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) {
@@ -54,7 +50,7 @@ fun ChatScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(userName, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp) },
+                title = { Text(viewModel.userName, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
@@ -73,8 +69,27 @@ fun ChatScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                items(messages) { msg ->
-                    ChatBubble(message = msg)
+                itemsIndexed(messages) { index, msg ->
+                    // Time Grouping: Show time if gap > 5 minutes
+                    val showTime = if (index == 0) {
+                        true
+                    } else {
+                        val prevMsg = messages[index - 1]
+                        msg.createTime - prevMsg.createTime > 5 * 60 * 1000
+                    }
+
+                    if (showTime) {
+                        val format = SimpleDateFormat("MM-dd HH:mm", Locale.getDefault())
+                        val timeStr = format.format(Date(msg.createTime))
+                        Box(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
+                            Text(timeStr, color = Color.Gray, fontSize = 12.sp)
+                        }
+                    }
+
+                    ChatBubble(
+                        message = msg,
+                        onRetry = { viewModel.retrySendMessage(msg.localId) }
+                    )
                 }
             }
 
@@ -129,14 +144,39 @@ fun ChatScreen(
 }
 
 @Composable
-fun ChatBubble(message: ChatMessage) {
+fun ChatBubble(
+    message: ChatMessage,
+    onRetry: () -> Unit
+) {
     val format = SimpleDateFormat("HH:mm", Locale.getDefault())
     val timeStr = format.format(Date(message.createTime))
 
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = if (message.isMine) Arrangement.End else Arrangement.Start
+        horizontalArrangement = if (message.isMine) Arrangement.End else Arrangement.Start,
+        verticalAlignment = Alignment.CenterVertically
     ) {
+        if (message.isMine) {
+            when (message.status) {
+                com.app.douyin.pro.feature.inbox.domain.model.MessageStatus.SENDING -> {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp).padding(end = 8.dp),
+                        strokeWidth = 2.dp,
+                        color = Color.Gray
+                    )
+                }
+                com.app.douyin.pro.feature.inbox.domain.model.MessageStatus.FAILED -> {
+                    Icon(
+                        Icons.Filled.Error,
+                        contentDescription = "Retry",
+                        tint = Color.Red,
+                        modifier = Modifier.size(20.dp).padding(end = 8.dp).clickable { onRetry() }
+                    )
+                }
+                else -> {}
+            }
+        }
+
         Column(horizontalAlignment = if (message.isMine) Alignment.End else Alignment.Start) {
             Box(
                 modifier = Modifier
