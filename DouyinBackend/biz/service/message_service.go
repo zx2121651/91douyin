@@ -34,21 +34,26 @@ func (s *MessageService) SendMessage(fromUserID uint, toUserID uint, content str
 func (s *MessageService) GetChatHistory(userID uint, toUserID uint, preMsgTime int64) ([]model.Message, error) {
 	var messages []model.Message
 
-	query := db.DB.Where(
+	baseQuery := db.DB.Where(
 		"(from_user_id = ? AND to_user_id = ?) OR (from_user_id = ? AND to_user_id = ?)",
 		userID, toUserID, toUserID, userID,
-	).Order("created_at asc") // Clients typically append newer messages to the bottom of the feed
+	)
 
 	if preMsgTime > 0 {
-		// Proper cursor pagination avoiding duplication and ensuring exactly-once delivery
+		// Fetch new messages since preMsgTime in chronological order
 		cursorTime := time.UnixMilli(preMsgTime)
-		query = query.Where("created_at > ?", cursorTime)
-	}
-
-	// Protect against overwhelming the server with massive chat history dumps
-	// Hard limit sets a safe boundary for a single page request
-	if err := query.Limit(100).Find(&messages).Error; err != nil {
-		return nil, err
+		if err := baseQuery.Where("created_at > ?", cursorTime).Order("created_at asc").Limit(100).Find(&messages).Error; err != nil {
+			return nil, err
+		}
+	} else {
+		// Initial fetch: get latest 100 messages in reverse chronological order
+		if err := baseQuery.Order("created_at desc").Limit(100).Find(&messages).Error; err != nil {
+			return nil, err
+		}
+		// Reverse to chronological order (Ascending) for client display
+		for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
+			messages[i], messages[j] = messages[j], messages[i]
+		}
 	}
 
 	return messages, nil

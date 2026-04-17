@@ -86,11 +86,7 @@ fun AppNavHost(
                 navArgument("userName") { type = NavType.StringType }
             )
         ) { backStackEntry ->
-            val userId = backStackEntry.arguments?.getLong("userId") ?: 0L
-            val userName = backStackEntry.arguments?.getString("userName") ?: "User"
             ChatScreen(
-                userId = userId,
-                userName = userName,
                 onBack = { navController.popBackStack() }
             )
         }
