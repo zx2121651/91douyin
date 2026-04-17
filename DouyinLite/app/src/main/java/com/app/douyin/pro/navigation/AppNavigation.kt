@@ -103,7 +103,35 @@ fun AppNavHost(
             MallScreen(onBack = { navController.popBackStack() })
         }
         composable(NavRoutes.SEARCH) {
-            SearchScreen(onBack = { navController.popBackStack() })
+            SearchScreen(
+                onBack = { navController.popBackStack() },
+                onVideoClick = { keyword, index ->
+                    navController.navigate(NavRoutes.buildSearchPlayerRoute(keyword, index))
+                }
+            )
+        }
+        composable(
+            route = NavRoutes.SEARCH_PLAYER,
+            arguments = listOf(
+                navArgument("keyword") { type = NavType.StringType },
+                navArgument("index") { type = NavType.IntType }
+            )
+        ) { backStackEntry ->
+            val keyword = backStackEntry.arguments?.getString("keyword") ?: ""
+            val index = backStackEntry.arguments?.getInt("index") ?: 0
+
+            // Get the ViewModel from the Search Screen's backstack entry to share it
+            val searchBackStackEntry = remember(backStackEntry) {
+                navController.getBackStackEntry(NavRoutes.SEARCH)
+            }
+            val searchViewModel: com.app.douyin.pro.feature.home.viewmodel.SearchViewModel = hiltViewModel(searchBackStackEntry)
+
+            SearchPlayerScreen(
+                keyword = keyword,
+                initialIndex = index,
+                onBack = { navController.popBackStack() },
+                viewModel = searchViewModel
+            )
         }
         composable(NavRoutes.LOGIN) {
             LoginScreen(

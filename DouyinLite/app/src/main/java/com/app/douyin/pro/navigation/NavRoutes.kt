@@ -25,6 +25,10 @@ object NavRoutes {
     }
 
     const val SEARCH = "search"
+    const val SEARCH_PLAYER = "search_player?keyword={keyword}&index={index}"
+    fun buildSearchPlayerRoute(keyword: String, index: Int): String {
+        return "search_player?keyword=${android.net.Uri.encode(keyword)}&index=$index"
+    }
 
     const val LOGIN = "login"
     const val REGISTER = "register"

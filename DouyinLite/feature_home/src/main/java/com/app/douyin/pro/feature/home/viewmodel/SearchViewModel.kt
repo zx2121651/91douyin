@@ -61,6 +61,9 @@ class SearchViewModel @Inject constructor(
     private val _userResults = MutableStateFlow<List<UserModel>>(emptyList())
     val userResults: StateFlow<List<UserModel>> = _userResults
 
+    private val _pagingState = MutableStateFlow<PagingState>(PagingState.Idle)
+    val pagingState: StateFlow<PagingState> = _pagingState
+
     private val _searchHistory = MutableStateFlow<List<String>>(loadHistory())
     private val _hotWords = MutableStateFlow<List<String>>(emptyList())
     private val _suggestions = MutableStateFlow<List<String>>(emptyList())
@@ -259,58 +262,90 @@ class SearchViewModel @Inject constructor(
     }
 
     private fun loadMoreVideos() {
-        if (!hasMoreVideos || _isLoading.value) return
+        if (!hasMoreVideos || _isLoading.value || _pagingState.value is PagingState.Loading) return
 
-        _isLoading.value = true
+        val isInitial = _videoResults.value.isEmpty()
+        if (isInitial) {
+            _isLoading.value = true
+        } else {
+            _pagingState.value = PagingState.Loading
+        }
+
         viewModelScope.launch {
             when (val result = searchVideosUseCase(currentKeyword, videoCursor)) {
                 is Resource.Success -> {
                     val (newVideos, nextCursor) = result.data
-                    _videoResults.value = _videoResults.value + newVideos
-                    if (nextCursor == -1L) {
+                    val currentVideos = _videoResults.value.toMutableList()
+                    val existingIds = currentVideos.map { it.id }.toSet()
+                    val uniqueNewVideos = newVideos.filter { it.id !in existingIds }
+
+                    _videoResults.value = currentVideos + uniqueNewVideos
+
+                    if (nextCursor == -1L || nextCursor == videoCursor) {
                         hasMoreVideos = false
                     } else {
                         videoCursor = nextCursor
+                        hasMoreVideos = true
                     }
+
                     if (_videoResults.value.isEmpty()) {
                         _uiState.value = SearchUiState.Empty
+                    } else {
+                        _uiState.value = SearchUiState.Results
                     }
+                    _pagingState.value = PagingState.Idle
                 }
                 is Resource.Error -> {
-                    if (_videoResults.value.isEmpty()) {
+                    if (isInitial) {
                         _uiState.value = SearchUiState.Error(result.message)
+                    } else {
+                        _pagingState.value = PagingState.Error(result.message)
                     }
                 }
-                else -> {}
+                else -> {
+                    _pagingState.value = PagingState.Idle
+                }
             }
             _isLoading.value = false
         }
     }
 
     private fun loadMoreUsers() {
-        if (!hasMoreUsers || _isLoading.value) return
+        if (!hasMoreUsers || _isLoading.value || _pagingState.value is PagingState.Loading) return
 
-        _isLoading.value = true
+        val isInitial = _userResults.value.isEmpty()
+        if (isInitial) {
+            _isLoading.value = true
+        } else {
+            _pagingState.value = PagingState.Loading
+        }
+
         viewModelScope.launch {
             when (val result = searchUsersUseCase(currentKeyword, userCursor)) {
                 is Resource.Success -> {
                     val (newUsers, nextCursor) = result.data
-                    _userResults.value = _userResults.value + newUsers
-                    if (nextCursor == -1L) {
+                    val currentUsers = _userResults.value.toMutableList()
+                    val existingIds = currentUsers.map { it.id }.toSet()
+                    val uniqueNewUsers = newUsers.filter { it.id !in existingIds }
+
+                    _userResults.value = currentUsers + uniqueNewUsers
+
+                    if (nextCursor == -1L || nextCursor == userCursor) {
                         hasMoreUsers = false
                     } else {
                         userCursor = nextCursor
+                        hasMoreUsers = true
                     }
-                    if (_userResults.value.isEmpty() && _videoResults.value.isEmpty()) {
-                         // Only set Empty if both are empty?
-                         // No, if the current tab is empty, we might want to show empty.
-                         // But usually we stay in Results state and show an empty list.
-                    }
+                    _pagingState.value = PagingState.Idle
                 }
                 is Resource.Error -> {
-                    // Handle error
+                    if (!isInitial) {
+                        _pagingState.value = PagingState.Error(result.message)
+                    }
                 }
-                else -> {}
+                else -> {
+                    _pagingState.value = PagingState.Idle
+                }
             }
             _isLoading.value = false
         }

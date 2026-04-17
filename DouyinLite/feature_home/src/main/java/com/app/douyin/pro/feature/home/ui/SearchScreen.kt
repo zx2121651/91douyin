@@ -44,6 +44,7 @@ import com.app.douyin.pro.lib.media.util.CountFormatter
 @Composable
 fun SearchScreen(
     onBack: () -> Unit,
+    onVideoClick: (String, Int) -> Unit = { _, _ -> },
     viewModel: SearchViewModel = hiltViewModel()
 ) {
     var searchQuery by remember { mutableStateOf("") }
@@ -53,6 +54,7 @@ fun SearchScreen(
     val userResults by viewModel.userResults.collectAsState()
     val combinedSuggestions by viewModel.combinedSuggestions.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val pagingState by viewModel.pagingState.collectAsState()
 
     Column(
         modifier = Modifier
@@ -90,16 +92,18 @@ fun SearchScreen(
                         videoResults = videoResults,
                         userResults = userResults,
                         isLoading = isLoading,
+                        pagingState = pagingState,
                         onLoadMore = { viewModel.loadMore() },
                         onLikeClick = { viewModel.toggleLike(it) },
-                        onFollowClick = { viewModel.toggleFollow(it) }
+                        onFollowClick = { viewModel.toggleFollow(it) },
+                        onVideoClick = { index -> onVideoClick(searchQuery, index) }
                     )
                 }
                 is SearchUiState.Empty -> {
-                    EmptySearchView()
+                    EmptySearchView(onRetry = { if (searchQuery.isNotEmpty()) viewModel.search(searchQuery) })
                 }
                 is SearchUiState.Error -> {
-                    ErrorSearchView(message = state.message, onRetry = { viewModel.search(searchQuery) })
+                    ErrorSearchView(message = state.message, onRetry = { if (searchQuery.isNotEmpty()) viewModel.search(searchQuery) })
                 }
             }
         }
@@ -356,9 +360,11 @@ fun SearchResultContent(
     videoResults: List<VideoModel>,
     userResults: List<UserModel>,
     isLoading: Boolean,
+    pagingState: com.app.douyin.pro.feature.home.viewmodel.PagingState,
     onLoadMore: () -> Unit,
     onLikeClick: (Long) -> Unit,
-    onFollowClick: (Long) -> Unit
+    onFollowClick: (Long) -> Unit,
+    onVideoClick: (Int) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         TabRow(
@@ -390,13 +396,16 @@ fun SearchResultContent(
                 VideoResultList(
                     videos = videoResults,
                     isLoading = isLoading,
+                    pagingState = pagingState,
                     onLoadMore = onLoadMore,
-                    onLikeClick = onLikeClick
+                    onLikeClick = onLikeClick,
+                    onVideoClick = onVideoClick
                 )
             } else {
                 UserResultList(
                     users = userResults,
                     isLoading = isLoading,
+                    pagingState = pagingState,
                     onLoadMore = onLoadMore,
                     onFollowClick = onFollowClick
                 )
@@ -409,21 +418,36 @@ fun SearchResultContent(
 fun VideoResultList(
     videos: List<VideoModel>,
     isLoading: Boolean,
+    pagingState: com.app.douyin.pro.feature.home.viewmodel.PagingState,
     onLoadMore: () -> Unit,
-    onLikeClick: (Long) -> Unit
+    onLikeClick: (Long) -> Unit,
+    onVideoClick: (Int) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        items(videos) { video ->
-            VideoResultItem(video = video, onLikeClick = onLikeClick)
+        items(videos.size) { index ->
+            VideoResultItem(
+                video = videos[index],
+                onLikeClick = onLikeClick,
+                onClick = { onVideoClick(index) }
+            )
         }
         item {
-            if (isLoading) {
+            if (isLoading || pagingState is com.app.douyin.pro.feature.home.viewmodel.PagingState.Loading) {
                 Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = Color(0xFFFE2C55), modifier = Modifier.size(24.dp))
+                }
+            } else if (pagingState is com.app.douyin.pro.feature.home.viewmodel.PagingState.Error) {
+                Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = "加载失败，点击重试",
+                        color = Color.Gray,
+                        fontSize = 13.sp,
+                        modifier = Modifier.clickable { onLoadMore() }
+                    )
                 }
             } else if (videos.isNotEmpty()) {
                 LaunchedEffect(Unit) { onLoadMore() }
@@ -433,13 +457,14 @@ fun VideoResultList(
 }
 
 @Composable
-fun VideoResultItem(video: VideoModel, onLikeClick: (Long) -> Unit) {
+fun VideoResultItem(video: VideoModel, onLikeClick: (Long) -> Unit, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .height(110.dp)
             .clip(RoundedCornerShape(4.dp))
             .background(Color(0xFF252632))
+            .clickable { onClick() }
     ) {
         AsyncImage(
             model = video.coverUrl,
@@ -489,6 +514,7 @@ fun VideoResultItem(video: VideoModel, onLikeClick: (Long) -> Unit) {
 fun UserResultList(
     users: List<UserModel>,
     isLoading: Boolean,
+    pagingState: com.app.douyin.pro.feature.home.viewmodel.PagingState,
     onLoadMore: () -> Unit,
     onFollowClick: (Long) -> Unit
 ) {
@@ -501,9 +527,18 @@ fun UserResultList(
             UserResultItem(user = user, onFollowClick = onFollowClick)
         }
         item {
-            if (isLoading) {
+            if (isLoading || pagingState is com.app.douyin.pro.feature.home.viewmodel.PagingState.Loading) {
                 Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = Color(0xFFFE2C55), modifier = Modifier.size(24.dp))
+                }
+            } else if (pagingState is com.app.douyin.pro.feature.home.viewmodel.PagingState.Error) {
+                Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = "加载失败，点击重试",
+                        color = Color.Gray,
+                        fontSize = 13.sp,
+                        modifier = Modifier.clickable { onLoadMore() }
+                    )
                 }
             } else if (users.isNotEmpty()) {
                 LaunchedEffect(Unit) { onLoadMore() }
@@ -546,12 +581,16 @@ fun UserResultItem(user: UserModel, onFollowClick: (Long) -> Unit) {
 }
 
 @Composable
-fun EmptySearchView() {
+fun EmptySearchView(onRetry: () -> Unit) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(64.dp))
             Spacer(modifier = Modifier.height(16.dp))
             Text("未找到相关结果", color = Color.Gray, fontSize = 14.sp)
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(onClick = onRetry, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFE2C55))) {
+                Text("重试")
+            }
         }
     }
 }

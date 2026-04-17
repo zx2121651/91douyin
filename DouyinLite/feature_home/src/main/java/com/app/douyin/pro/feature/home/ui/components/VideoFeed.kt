@@ -34,9 +34,10 @@ fun VideoFeed(
     isVisible: Boolean,
     onNavigateToProfile: () -> Unit,
     pagingState: PagingState = PagingState.Idle,
+    initialPage: Int = 0,
     onLoadMore: () -> Unit = {}
 ) {
-    val pagerState = rememberPagerState(pageCount = { videos.size })
+    val pagerState = rememberPagerState(initialPage = initialPage, pageCount = { videos.size })
     val context = LocalContext.current
     val playerManager = remember { VideoPlayerManager.getInstance(context) }
 
