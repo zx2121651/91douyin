@@ -25,12 +25,6 @@ sealed class LoadState {
     data class Error(val message: String, val error: AppError? = null) : LoadState()
 }
 
-sealed class PagingState {
-    object Idle : PagingState()
-    object Loading : PagingState()
-    data class Error(val message: String) : PagingState()
-}
-
 data class HomeUiState(
     val videos: List<VideoModel> = emptyList(),
     val loadState: LoadState = LoadState.Idle,
