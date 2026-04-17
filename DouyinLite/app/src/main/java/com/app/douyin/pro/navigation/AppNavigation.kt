@@ -12,6 +12,7 @@ import com.app.douyin.pro.feature.auth.ui.RegisterScreen
 import com.app.douyin.pro.feature.edit.ui.EditScreen
 import com.app.douyin.pro.feature.home.ui.FriendsScreen
 import com.app.douyin.pro.feature.home.ui.HomeScreen
+import com.app.douyin.pro.feature.home.ui.SearchScreen
 import com.app.douyin.pro.feature.inbox.ui.ChatScreen
 import com.app.douyin.pro.feature.inbox.ui.InboxScreen
 import com.app.douyin.pro.feature.mall.ui.MallScreen
@@ -33,7 +34,8 @@ fun AppNavHost(
         composable(NavRoutes.HOME) {
             HomeScreen(
                 onNavigateToMall = { navController.navigate(NavRoutes.MALL) },
-                onNavigateToProfile = { navController.navigate(NavRoutes.ME) }
+                onNavigateToProfile = { navController.navigate(NavRoutes.ME) },
+                onNavigateToSearch = { navController.navigate(NavRoutes.SEARCH) }
             )
         }
         composable(NavRoutes.FRIENDS) {
@@ -99,6 +101,9 @@ fun AppNavHost(
         }
         composable(NavRoutes.MALL) {
             MallScreen(onBack = { navController.popBackStack() })
+        }
+        composable(NavRoutes.SEARCH) {
+            SearchScreen(onBack = { navController.popBackStack() })
         }
         composable(NavRoutes.LOGIN) {
             LoginScreen(

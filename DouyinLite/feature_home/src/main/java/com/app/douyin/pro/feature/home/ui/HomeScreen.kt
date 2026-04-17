@@ -43,19 +43,13 @@ import java.util.*
 fun HomeScreen(
     onNavigateToMall: () -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
+    onNavigateToSearch: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val coroutineScope = rememberCoroutineScope()
     val horizontalPagerState = rememberPagerState(initialPage = 3, pageCount = { 4 })
     val selectedTopTabIndex = horizontalPagerState.currentPage + 1
-
-    var showSearchScreen by remember { mutableStateOf(false) }
-
-    if (showSearchScreen) {
-        SearchScreen(onCancel = { showSearchScreen = false })
-        return
-    }
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         when (val loadState = uiState.loadState) {
@@ -81,7 +75,7 @@ fun HomeScreen(
                         coroutineScope = coroutineScope,
                         onNavigateToMall = onNavigateToMall,
                         onNavigateToProfile = onNavigateToProfile,
-                        onSearchClick = { showSearchScreen = true },
+                    onSearchClick = onNavigateToSearch,
                         onLoadMore = { viewModel.loadMore() }
                     )
                 }

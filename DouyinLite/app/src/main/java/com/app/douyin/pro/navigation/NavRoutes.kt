@@ -24,6 +24,8 @@ object NavRoutes {
         return "publish?videoUri=${android.net.Uri.encode(videoUri)}"
     }
 
+    const val SEARCH = "search"
+
     const val LOGIN = "login"
     const val REGISTER = "register"
 }
