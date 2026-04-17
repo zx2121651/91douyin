@@ -1,6 +1,6 @@
 package com.app.douyin.pro.feature.inbox.data.source
 
-import com.app.douyin.pro.feature.inbox.domain.model.Message
+import com.app.douyin.pro.feature.inbox.domain.model.Conversation
 import com.app.douyin.pro.feature.inbox.domain.model.NotificationCategory
 import com.app.douyin.pro.lib.media.network.DouyinApiService
 import com.app.douyin.pro.lib.media.auth.AuthManager
@@ -10,7 +10,7 @@ import java.util.Date
 import java.util.Locale
 
 interface InboxDataSource {
-    suspend fun getMessages(): List<Message>
+    suspend fun getMessages(): List<Conversation>
     suspend fun getCategories(): List<NotificationCategory>
 }
 
@@ -19,7 +19,7 @@ class RemoteInboxDataSource @Inject constructor(
     private val authManager: AuthManager
 ) : InboxDataSource {
 
-    override suspend fun getMessages(): List<Message> {
+    override suspend fun getMessages(): List<Conversation> {
         try {
             if (!authManager.isLoggedIn()) return emptyList()
             val token = authManager.requireToken()
@@ -29,14 +29,15 @@ class RemoteInboxDataSource @Inject constructor(
                 val list = response.notificationList
                 if (list != null) {
                     return list.map { dto ->
-                        Message(
+                        Conversation(
                             id = dto.id.toString(),
                             avatarUrl = dto.fromUser?.avatar ?: "https://api.dicebear.com/7.x/avataaars/png?seed=${dto.id}",
                             name = dto.fromUser?.name ?: "系统通知",
-                            time = format.format(Date(dto.createTime)),
-                            content = dto.content,
+                            lastTime = format.format(Date(dto.createTime)),
+                            lastTimestamp = dto.createTime,
+                            lastMessage = dto.content,
                             isOfficial = dto.type == "system",
-                            hasUnreadDot = !dto.isRead,
+                            unreadCount = if (dto.isRead) 0 else 1,
                             isLive = false
                         )
                     }

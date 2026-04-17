@@ -1,13 +1,14 @@
 package com.app.douyin.pro.feature.inbox.domain.model
 
-data class Message(
+data class Conversation(
     val id: String,
     val avatarUrl: String,
     val name: String,
-    val time: String,
-    val content: String,
+    val lastTime: String,
+    val lastTimestamp: Long,
+    val lastMessage: String,
     val isOfficial: Boolean = false,
-    val hasUnreadDot: Boolean = false,
+    val unreadCount: Int = 0,
     val isLive: Boolean = false
 )
 
