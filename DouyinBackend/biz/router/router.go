@@ -58,6 +58,8 @@ func Register(h *server.Hertz) {
 	searchGroup := api.Group("/search")
 	searchGroup.GET("/video/", mw.SoftAuthMiddleware(), search.SearchVideo)
 	searchGroup.GET("/user/", mw.SoftAuthMiddleware(), search.SearchUser)
+	searchGroup.GET("/hot_words/", search.HotWords)
+	searchGroup.GET("/suggest/", search.Suggest)
 
 	// Effect
 	effectGroup := api.Group("/effect")

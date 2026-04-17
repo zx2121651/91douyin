@@ -8,22 +8,31 @@ import com.app.douyin.pro.feature.home.domain.usecase.SearchVideosUseCase
 import com.app.douyin.pro.lib.media.interaction.InteractionEvent
 import com.app.douyin.pro.lib.media.interaction.VideoInteractionManager
 import com.app.douyin.pro.lib.media.model.Resource
+import com.app.douyin.pro.feature.home.data.SearchRepository
 import com.app.douyin.pro.lib.media.model.UserModel
 import com.app.douyin.pro.lib.media.model.VideoModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 sealed class SearchUiState {
     object Idle : SearchUiState()
-    object Searching : SearchUiState()
+    object Suggesting : SearchUiState()
     object Results : SearchUiState()
     object Empty : SearchUiState()
     data class Error(val message: String) : SearchUiState()
 }
+
+enum class SuggestionType {
+    HISTORY, HOT, SUGGEST
+}
+
+data class SearchSuggestion(
+    val content: String,
+    val type: SuggestionType
+)
 
 enum class SearchResultType {
     Video, User
@@ -33,6 +42,7 @@ enum class SearchResultType {
 class SearchViewModel @Inject constructor(
     private val searchVideosUseCase: SearchVideosUseCase,
     private val searchUsersUseCase: SearchUsersUseCase,
+    private val searchRepository: SearchRepository,
     private val interactionManager: VideoInteractionManager,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
@@ -52,7 +62,11 @@ class SearchViewModel @Inject constructor(
     val userResults: StateFlow<List<UserModel>> = _userResults
 
     private val _searchHistory = MutableStateFlow<List<String>>(loadHistory())
-    val searchHistory: StateFlow<List<String>> = _searchHistory
+    private val _hotWords = MutableStateFlow<List<String>>(emptyList())
+    private val _suggestions = MutableStateFlow<List<String>>(emptyList())
+
+    private val _combinedSuggestions = MutableStateFlow<List<SearchSuggestion>>(emptyList())
+    val combinedSuggestions: StateFlow<List<SearchSuggestion>> = _combinedSuggestions
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
@@ -63,9 +77,77 @@ class SearchViewModel @Inject constructor(
     private var hasMoreUsers: Boolean = true
     private var currentKeyword: String = ""
 
+    private val _queryFlow = MutableStateFlow("")
+
     init {
         observeInteractions()
+        observeQuery()
+        loadHotWords()
     }
+
+    @OptIn(kotlinx.coroutines.FlowPreview::class, kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    private fun observeQuery() {
+        viewModelScope.launch {
+            _queryFlow
+                .debounce(300L)
+                .distinctUntilChanged()
+                .flatMapLatest { query ->
+                    flow {
+                        if (query.isBlank()) {
+                            emit(emptyList<String>())
+                        } else {
+                            val result = searchRepository.getSuggestions(query)
+                            if (result is Resource.Success) {
+                                emit(result.data)
+                            } else {
+                                emit(emptyList<String>())
+                            }
+                        }
+                    }
+                }
+                .collect { suggestions ->
+                    _suggestions.value = suggestions
+                }
+        }
+
+        // Also observe history and hot words to update combined suggestions
+        viewModelScope.launch {
+            combine(_searchHistory, _hotWords, _suggestions, _queryFlow) { history, hot, suggest, query ->
+                buildCombinedSuggestions(history, hot, suggest, query)
+            }.collect {
+                _combinedSuggestions.value = it
+            }
+        }
+    }
+
+    private fun buildCombinedSuggestions(
+        history: List<String>,
+        hot: List<String>,
+        suggest: List<String>,
+        query: String
+    ): List<SearchSuggestion> {
+        return if (query.isEmpty()) {
+            val result = mutableListOf<SearchSuggestion>()
+            history.forEach { result.add(SearchSuggestion(it, SuggestionType.HISTORY)) }
+            hot.forEach { result.add(SearchSuggestion(it, SuggestionType.HOT)) }
+            result
+        } else {
+            suggest.map { SearchSuggestion(it, SuggestionType.SUGGEST) }
+        }
+    }
+
+
+    private fun loadHotWords() {
+        viewModelScope.launch {
+            when (val result = searchRepository.getHotWords()) {
+                is Resource.Success -> {
+                    _hotWords.value = result.data
+                }
+                else -> {}
+            }
+        }
+    }
+
 
     private fun observeInteractions() {
         viewModelScope.launch {
@@ -120,10 +202,19 @@ class SearchViewModel @Inject constructor(
     }
 
     fun onQueryChanged(query: String) {
+        val oldQuery = _queryFlow.value
+        _queryFlow.value = query
+
+        // If we were in Results state and user starts editing, move back to Suggesting
+        if (query != oldQuery && _uiState.value is SearchUiState.Results) {
+            _uiState.value = SearchUiState.Suggesting
+        }
+
         if (query.isEmpty()) {
             _uiState.value = SearchUiState.Idle
+            _suggestions.value = emptyList()
         } else if (_uiState.value is SearchUiState.Idle) {
-            _uiState.value = SearchUiState.Searching
+            _uiState.value = SearchUiState.Suggesting
         }
     }
 
@@ -187,7 +278,7 @@ class SearchViewModel @Inject constructor(
                 }
                 is Resource.Error -> {
                     if (_videoResults.value.isEmpty()) {
-                        _uiState.value = SearchUiState.Error(result.message ?: "Search failed")
+                        _uiState.value = SearchUiState.Error(result.message)
                     }
                 }
                 else -> {}
@@ -226,8 +317,12 @@ class SearchViewModel @Inject constructor(
     }
 
     private fun loadHistory(): List<String> {
-        val historyString = prefs.getString("history_list", "") ?: ""
-        return if (historyString.isEmpty()) emptyList() else historyString.split("|")
+        val historyString = prefs.getString("history_list", "")
+        return if (historyString.isNullOrEmpty()) {
+            emptyList()
+        } else {
+            historyString.split("|").take(20)
+        }
     }
 
     private fun saveHistory(keyword: String) {

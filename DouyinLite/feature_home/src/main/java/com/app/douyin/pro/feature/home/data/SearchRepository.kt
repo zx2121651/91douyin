@@ -50,6 +50,36 @@ class SearchRepository @Inject constructor(
         }
     }
 
+    suspend fun getHotWords(): Resource<List<String>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = remoteDataSource.getHotWords()
+                if (response.statusCode == 0) {
+                    Resource.Success(response.words ?: emptyList())
+                } else {
+                    Resource.Error(response.statusMsg ?: "Failed to get hot words")
+                }
+            } catch (e: Exception) {
+                Resource.Error(e.message ?: "Unknown Error")
+            }
+        }
+    }
+
+    suspend fun getSuggestions(keyword: String): Resource<List<String>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = remoteDataSource.getSuggestions(keyword)
+                if (response.statusCode == 0) {
+                    Resource.Success(response.suggestions ?: emptyList())
+                } else {
+                    Resource.Error(response.statusMsg ?: "Failed to get suggestions")
+                }
+            } catch (e: Exception) {
+                Resource.Error(e.message ?: "Unknown Error")
+            }
+        }
+    }
+
     suspend fun searchUsers(keyword: String, cursor: Long): Resource<Pair<List<UserModel>, Long>> {
         return withContext(Dispatchers.IO) {
             try {

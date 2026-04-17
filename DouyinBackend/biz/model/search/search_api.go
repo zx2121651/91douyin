@@ -27,3 +27,17 @@ type SearchUserResponse struct {
 	NextCursor int64       `json:"next_cursor"`
 	HasMore    bool        `json:"has_more"`
 }
+
+type HotWordsResponse struct {
+	common.BaseResponse
+	Words []string `json:"words"`
+}
+
+type SuggestRequest struct {
+	Keyword string `query:"keyword" vd:"$!='';msg:'keyword is required'"`
+}
+
+type SuggestResponse struct {
+	common.BaseResponse
+	Suggestions []string `json:"suggestions"`
+}
