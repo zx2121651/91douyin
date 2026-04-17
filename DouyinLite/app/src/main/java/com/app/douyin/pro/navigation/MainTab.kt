@@ -9,9 +9,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 sealed class MainTab(
     val route: String,
     val title: String,
-    val icon: ImageVector?,
-    val badgeCount: Int = 0,
-    val showDot: Boolean = false
+    val icon: ImageVector?
 ) {
     data object Home : MainTab(NavRoutes.HOME, "首页", Icons.Filled.Home)
     data object Friends : MainTab(NavRoutes.FRIENDS, "朋友", Icons.Filled.Person)

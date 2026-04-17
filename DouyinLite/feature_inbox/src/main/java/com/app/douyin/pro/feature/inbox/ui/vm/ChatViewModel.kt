@@ -8,6 +8,7 @@ import com.app.douyin.pro.feature.inbox.domain.model.MessageStatus
 import com.app.douyin.pro.feature.inbox.domain.usecase.GetChatHistoryUseCase
 import com.app.douyin.pro.feature.inbox.domain.usecase.SendMessageUseCase
 import com.app.douyin.pro.lib.media.auth.AuthManager
+import com.app.douyin.pro.lib.media.interaction.MessageUnreadManager
 import com.app.douyin.pro.lib.media.model.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
@@ -25,6 +26,7 @@ class ChatViewModel @Inject constructor(
     private val getChatHistoryUseCase: GetChatHistoryUseCase,
     private val sendMessageUseCase: SendMessageUseCase,
     private val authManager: AuthManager,
+    private val unreadManager: MessageUnreadManager,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -57,6 +59,9 @@ class ChatViewModel @Inject constructor(
             when (val result = getChatHistoryUseCase(currentToUserId, lastSuccessfulMsgTime)) {
                 is Resource.Success -> {
                     mergeMessages(result.data)
+                    if (result.data.isNotEmpty()) {
+                        unreadManager.refreshUnreadCount()
+                    }
                 }
                 else -> {}
             }

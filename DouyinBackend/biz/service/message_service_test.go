@@ -56,4 +56,37 @@ func TestMessageService_GetChatHistory(t *testing.T) {
 		assert.Equal(t, messages[3].ID, newMessages[0].ID)
 		assert.Equal(t, messages[4].ID, newMessages[1].ID)
 	})
+
+	t.Run("Read recovery in GetChatHistory", func(t *testing.T) {
+		// user1 sent messages to user2. They should be unread for user2 initially.
+		var count int64
+		db.DB.Model(&model.Message{}).Where("to_user_id = ? AND is_read = ?", user2.ID, false).Count(&count)
+		assert.Equal(t, int64(5), count)
+
+		// user2 fetches chat history. Messages should be marked as read.
+		_, err := messageService.GetChatHistory(user2.ID, user1.ID, 0)
+		assert.NoError(t, err)
+
+		db.DB.Model(&model.Message{}).Where("to_user_id = ? AND is_read = ?", user2.ID, false).Count(&count)
+		assert.Equal(t, int64(0), count)
+	})
+
+	t.Run("GetTotalUnreadCount", func(t *testing.T) {
+		// Clear existing notifications/messages if any
+		db.DB.Exec("DELETE FROM messages")
+		db.DB.Exec("DELETE FROM system_notifications")
+
+		// 3 unread messages
+		for i := 0; i < 3; i++ {
+			db.DB.Create(&model.Message{ToUserID: user1.ID, FromUserID: user2.ID, Content: "unread", IsRead: false})
+		}
+		// 2 unread notifications
+		for i := 0; i < 2; i++ {
+			db.DB.Create(&model.SystemNotification{ToUserID: user1.ID, Type: "like", IsRead: false})
+		}
+
+		count, err := messageService.GetTotalUnreadCount(user1.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, int64(5), count)
+	})
 }

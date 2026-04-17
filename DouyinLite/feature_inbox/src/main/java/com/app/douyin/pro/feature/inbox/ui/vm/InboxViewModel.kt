@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.app.douyin.pro.lib.media.interaction.MessageUnreadManager
 
 sealed class InboxUiState {
     object Loading : InboxUiState()
@@ -29,7 +30,8 @@ sealed class InboxUiState {
 @HiltViewModel
 class InboxViewModel @Inject constructor(
     private val getMessagesUseCase: GetMessagesUseCase,
-    private val getCategoriesUseCase: GetCategoriesUseCase
+    private val getCategoriesUseCase: GetCategoriesUseCase,
+    val unreadManager: MessageUnreadManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<InboxUiState>(InboxUiState.Loading)
@@ -61,6 +63,7 @@ class InboxViewModel @Inject constructor(
     private suspend fun fetchInboxData() {
         val catResult = getCategoriesUseCase()
         val msgResult = getMessagesUseCase()
+        unreadManager.refreshUnreadCount()
 
         if (catResult is Resource.Success && msgResult is Resource.Success) {
             val categories = catResult.data

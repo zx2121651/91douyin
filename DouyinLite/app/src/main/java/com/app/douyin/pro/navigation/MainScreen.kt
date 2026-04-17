@@ -9,11 +9,14 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.app.douyin.pro.feature.inbox.ui.vm.InboxViewModel
 
 @androidx.compose.foundation.ExperimentalFoundationApi
 @Composable
 fun MainScreen() {
     val navController = rememberNavController()
+    val inboxViewModel: InboxViewModel = hiltViewModel()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
@@ -22,6 +25,7 @@ fun MainScreen() {
             if (!NavigationConfigs.shouldHideBottomBar(currentRoute)) {
                 MainBottomBar(
                     currentRoute = currentRoute,
+                    unreadManager = inboxViewModel.unreadManager,
                     onNavigate = { route ->
                         navController.navigate(route) {
                             popUpTo(navController.graph.findStartDestination().id) {

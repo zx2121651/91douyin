@@ -11,6 +11,7 @@ import com.app.douyin.pro.lib.media.network.model.UnreadCountResponse
 
 import com.app.douyin.pro.lib.media.network.model.CommentActionResponse
 import com.app.douyin.pro.lib.media.network.model.MessageChatResponse
+import com.app.douyin.pro.lib.media.network.model.ConversationListResponse
 import com.app.douyin.pro.lib.media.network.model.MessageActionResponse
 import com.app.douyin.pro.lib.media.network.model.SearchVideoResponse
 import com.app.douyin.pro.lib.media.network.model.SearchUserResponse
@@ -33,6 +34,11 @@ interface DouyinApiService {
         @Query("pre_msg_time") preMsgTime: Long? = null,
         @Query("token") token: String
     ): MessageChatResponse
+
+    @GET("douyin/message/action/list/")
+    suspend fun getConversationList(
+        @Query("token") token: String
+    ): ConversationListResponse
 
     @POST("douyin/message/action/")
     suspend fun sendMessage(
