@@ -14,6 +14,8 @@ import com.app.douyin.pro.lib.media.network.model.MessageChatResponse
 import com.app.douyin.pro.lib.media.network.model.MessageActionResponse
 import com.app.douyin.pro.lib.media.network.model.SearchVideoResponse
 import com.app.douyin.pro.lib.media.network.model.SearchUserResponse
+import com.app.douyin.pro.lib.media.network.model.HotWordsResponse
+import com.app.douyin.pro.lib.media.network.model.SuggestResponse
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Query
@@ -134,4 +136,12 @@ interface DouyinApiService {
         @Query("cursor") cursor: Long = 0L,
         @Query("token") token: String? = null
     ): SearchUserResponse
+
+    @GET("douyin/search/hot_words/")
+    suspend fun getHotWords(): HotWordsResponse
+
+    @GET("douyin/search/suggest/")
+    suspend fun getSuggestions(
+        @Query("keyword") keyword: String
+    ): SuggestResponse
 }

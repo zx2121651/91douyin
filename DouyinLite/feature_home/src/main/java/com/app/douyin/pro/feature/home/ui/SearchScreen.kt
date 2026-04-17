@@ -51,7 +51,7 @@ fun SearchScreen(
     val selectedTab by viewModel.selectedTab.collectAsState()
     val videoResults by viewModel.videoResults.collectAsState()
     val userResults by viewModel.userResults.collectAsState()
-    val history by viewModel.searchHistory.collectAsState()
+    val combinedSuggestions by viewModel.combinedSuggestions.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
 
     Column(
@@ -72,22 +72,10 @@ fun SearchScreen(
 
         Box(modifier = Modifier.weight(1f)) {
             when (val state = uiState) {
-                is SearchUiState.Idle -> {
-                    SearchIdleContent(
-                        history = history,
-                        onHistoryClick = {
-                            searchQuery = it
-                            viewModel.search(it)
-                        },
-                        onDeleteHistory = { viewModel.deleteHistory(it) },
-                        onClearHistory = { viewModel.clearHistory() }
-                    )
-                }
-                is SearchUiState.Searching -> {
-                    // Could show suggestions here, currently just empty or same as idle
-                    SearchIdleContent(
-                        history = history,
-                        onHistoryClick = {
+                is SearchUiState.Idle, is SearchUiState.Suggesting -> {
+                    UnifiedSearchSuggestions(
+                        suggestions = combinedSuggestions,
+                        onItemClick = {
                             searchQuery = it
                             viewModel.search(it)
                         },
@@ -201,88 +189,144 @@ fun SearchTopBar(
 }
 
 @Composable
-fun SearchIdleContent(
-    history: List<String>,
-    onHistoryClick: (String) -> Unit,
+fun UnifiedSearchSuggestions(
+    suggestions: List<com.app.douyin.pro.feature.home.viewmodel.SearchSuggestion>,
+    onItemClick: (String) -> Unit,
     onDeleteHistory: (String) -> Unit,
     onClearHistory: () -> Unit
 ) {
+    val history = suggestions.filter { it.type == com.app.douyin.pro.feature.home.viewmodel.SuggestionType.HISTORY }
+    val hot = suggestions.filter { it.type == com.app.douyin.pro.feature.home.viewmodel.SuggestionType.HOT }
+    val suggests = suggestions.filter { it.type == com.app.douyin.pro.feature.home.viewmodel.SuggestionType.SUGGEST }
+
     LazyColumn(modifier = Modifier.fillMaxSize()) {
-        if (history.isNotEmpty()) {
-            item {
+        if (suggests.isNotEmpty()) {
+            items(suggests) { suggest ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                        .clickable { onItemClick(suggest.content) }
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("搜索历史", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                     Icon(
-                        Icons.Default.Delete,
-                        contentDescription = "Clear All",
+                        Icons.Default.Search,
+                        contentDescription = null,
                         tint = Color.Gray,
-                        modifier = Modifier
-                            .size(16.dp)
-                            .clickable { onClearHistory() }
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = suggest.content,
+                        color = Color.White,
+                        fontSize = 15.sp
                     )
                 }
+                Divider(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    color = Color(0xFF2B2C33),
+                    thickness = 0.5.dp
+                )
             }
-            item {
-                FlowRow(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    mainAxisSpacing = 8.dp,
-                    crossAxisSpacing = 8.dp
-                ) {
-                    history.forEach { item ->
-                        Box(
+        } else {
+            if (history.isNotEmpty()) {
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("搜索历史", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "Clear All",
+                            tint = Color.Gray,
                             modifier = Modifier
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(Color(0xFF2B2C33))
-                                .clickable { onHistoryClick(item) }
-                                .padding(horizontal = 12.dp, vertical = 6.dp)
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(item, color = Color.LightGray, fontSize = 13.sp)
-                                // Optional: delete icon per item
+                                .size(16.dp)
+                                .clickable { onClearHistory() }
+                        )
+                    }
+                }
+                item {
+                    FlowRow(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        mainAxisSpacing = 8.dp,
+                        crossAxisSpacing = 8.dp
+                    ) {
+                        history.forEach { item ->
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(Color(0xFF2B2C33))
+                                    .clickable { onItemClick(item.content) }
+                                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(item.content, color = Color.LightGray, fontSize = 13.sp)
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Icon(
+                                        Icons.Default.Close,
+                                        contentDescription = "Delete",
+                                        tint = Color.Gray,
+                                        modifier = Modifier
+                                            .size(12.dp)
+                                            .clickable { onDeleteHistory(item.content) }
+                                    )
+                                }
                             }
                         }
                     }
                 }
             }
-        }
 
-        item {
-            Text(
-                "猜你想搜",
-                color = Color.White,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(16.dp)
-            )
-        }
-
-        val recommendations = listOf("热点新闻", "搞笑视频", "美食教程", "旅游攻略", "科技数码", "电影推荐")
-        item {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(120.dp)
-                    .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                userScrollEnabled = false
-            ) {
-                items(recommendations) { item ->
+            if (hot.isNotEmpty()) {
+                item {
                     Text(
-                        item,
-                        color = Color.LightGray,
+                        "猜你想搜",
+                        color = Color.White,
                         fontSize = 14.sp,
-                        modifier = Modifier.clickable { onHistoryClick(item) }
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(16.dp)
                     )
+                }
+
+                item {
+                    // Use a Box with custom layout or just a Column of Rows to avoid hardcoded height of LazyVerticalGrid
+                    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                        val chunks = hot.chunked(2)
+                        chunks.forEach { rowItems ->
+                            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+                                rowItems.forEach { item ->
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.weight(1f).clickable { onItemClick(item.content) }
+                                    ) {
+                                        Icon(
+                                            Icons.Default.TrendingUp,
+                                            contentDescription = null,
+                                            tint = Color(0xFFFE2C55),
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            item.content,
+                                            color = Color.LightGray,
+                                            fontSize = 14.sp,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                }
+                                if (rowItems.size == 1) {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

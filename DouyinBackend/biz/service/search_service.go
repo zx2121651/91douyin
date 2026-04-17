@@ -65,3 +65,52 @@ func (s *SearchService) SearchUsers(keyword string, offset int, limit int) ([]mo
 
 	return users, nil
 }
+
+// GetHotWords returns a list of trending search terms
+func (s *SearchService) GetHotWords() ([]string, error) {
+	// For now, we return a static list of hot words.
+	// In a real scenario, this would come from a cache or a separate analytics service.
+	return []string{
+		"杭州亚运会",
+		"国庆假期旅游攻略",
+		"iPhone 15 发布",
+		"程序员的一天",
+		"猫咪卖萌瞬间",
+		"硬核科技评测",
+		"抖音电影榜",
+		"秋天的第一杯奶茶",
+	}, nil
+}
+
+// GetSuggestions returns a list of search suggestions based on the keyword
+func (s *SearchService) GetSuggestions(keyword string) ([]string, error) {
+	var suggestions []string
+
+	// Suggestion logic: search for video titles starting with the keyword
+	// or containing the keyword, limited to 10 results.
+	query := `
+		SELECT DISTINCT title
+		FROM videos
+		WHERE videos.deleted_at IS NULL AND videos.title LIKE ?
+		LIMIT 10
+	`
+	if err := db.DB.Raw(query, keyword+"%").Scan(&suggestions).Error; err != nil {
+		return nil, err
+	}
+
+	// If not enough suggestions from titles, we could also add from usernames or other sources
+	if len(suggestions) < 10 {
+		var userNames []string
+		userQuery := `
+			SELECT DISTINCT name
+			FROM users
+			WHERE users.deleted_at IS NULL AND (users.name LIKE ? OR users.username LIKE ?)
+			LIMIT ?
+		`
+		if err := db.DB.Raw(userQuery, keyword+"%", keyword+"%", 10-len(suggestions)).Scan(&userNames).Error; err == nil {
+			suggestions = append(suggestions, userNames...)
+		}
+	}
+
+	return suggestions, nil
+}

@@ -10,6 +10,18 @@ data class SearchVideoResponse(
     @SerializedName("has_more") val hasMore: Boolean
 )
 
+data class HotWordsResponse(
+    @SerializedName("status_code") val statusCode: Int,
+    @SerializedName("status_msg") val statusMsg: String?,
+    @SerializedName("words") val words: List<String>?
+)
+
+data class SuggestResponse(
+    @SerializedName("status_code") val statusCode: Int,
+    @SerializedName("status_msg") val statusMsg: String?,
+    @SerializedName("suggestions") val suggestions: List<String>?
+)
+
 data class SearchUserResponse(
     @SerializedName("status_code") val statusCode: Int,
     @SerializedName("status_msg") val statusMsg: String?,

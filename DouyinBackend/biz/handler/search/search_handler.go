@@ -72,6 +72,36 @@ func SearchVideo(ctx context.Context, c *app.RequestContext) {
 	})
 }
 
+func HotWords(ctx context.Context, c *app.RequestContext) {
+	words, err := searchService.GetHotWords()
+	if err != nil {
+		utils.SendResponse(c, err, nil)
+		return
+	}
+
+	utils.SendResponse(c, errno.Success, map[string]interface{}{
+		"words": words,
+	})
+}
+
+func Suggest(ctx context.Context, c *app.RequestContext) {
+	var req search_model.SuggestRequest
+	if err := c.BindAndValidate(&req); err != nil {
+		utils.SendResponse(c, errno.ParamErr.WithMessage(err.Error()), nil)
+		return
+	}
+
+	suggestions, err := searchService.GetSuggestions(req.Keyword)
+	if err != nil {
+		utils.SendResponse(c, err, nil)
+		return
+	}
+
+	utils.SendResponse(c, errno.Success, map[string]interface{}{
+		"suggestions": suggestions,
+	})
+}
+
 func SearchUser(ctx context.Context, c *app.RequestContext) {
 	var currentUserID uint = 0
 	if rawID, exists := c.Get("user_id"); exists {
