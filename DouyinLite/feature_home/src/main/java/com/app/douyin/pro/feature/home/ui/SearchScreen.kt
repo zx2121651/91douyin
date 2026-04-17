@@ -45,6 +45,7 @@ import com.app.douyin.pro.lib.media.util.CountFormatter
 fun SearchScreen(
     onBack: () -> Unit,
     onVideoClick: (String, Int) -> Unit = { _, _ -> },
+    onUserClick: (Long) -> Unit = {},
     viewModel: SearchViewModel = hiltViewModel()
 ) {
     var searchQuery by remember { mutableStateOf("") }
@@ -96,7 +97,8 @@ fun SearchScreen(
                         onLoadMore = { viewModel.loadMore() },
                         onLikeClick = { viewModel.toggleLike(it) },
                         onFollowClick = { viewModel.toggleFollow(it) },
-                        onVideoClick = { index -> onVideoClick(searchQuery, index) }
+                        onVideoClick = { index -> onVideoClick(searchQuery, index) },
+                        onUserClick = onUserClick
                     )
                 }
                 is SearchUiState.Empty -> {
@@ -364,7 +366,8 @@ fun SearchResultContent(
     onLoadMore: () -> Unit,
     onLikeClick: (Long) -> Unit,
     onFollowClick: (Long) -> Unit,
-    onVideoClick: (Int) -> Unit
+    onVideoClick: (Int) -> Unit,
+    onUserClick: (Long) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         TabRow(
@@ -393,22 +396,31 @@ fun SearchResultContent(
 
         Box(modifier = Modifier.weight(1f)) {
             if (selectedTab == SearchResultType.Video) {
-                VideoResultList(
-                    videos = videoResults,
-                    isLoading = isLoading,
-                    pagingState = pagingState,
-                    onLoadMore = onLoadMore,
-                    onLikeClick = onLikeClick,
-                    onVideoClick = onVideoClick
-                )
+                if (!isLoading && videoResults.isEmpty()) {
+                    EmptySearchView(onRetry = onLoadMore)
+                } else {
+                    VideoResultList(
+                        videos = videoResults,
+                        isLoading = isLoading,
+                        pagingState = pagingState,
+                        onLoadMore = onLoadMore,
+                        onLikeClick = onLikeClick,
+                        onVideoClick = onVideoClick
+                    )
+                }
             } else {
-                UserResultList(
-                    users = userResults,
-                    isLoading = isLoading,
-                    pagingState = pagingState,
-                    onLoadMore = onLoadMore,
-                    onFollowClick = onFollowClick
-                )
+                if (!isLoading && userResults.isEmpty()) {
+                    EmptySearchView(onRetry = onLoadMore)
+                } else {
+                    UserResultList(
+                        users = userResults,
+                        isLoading = isLoading,
+                        pagingState = pagingState,
+                        onLoadMore = onLoadMore,
+                        onFollowClick = onFollowClick,
+                        onUserClick = onUserClick
+                    )
+                }
             }
         }
     }
@@ -516,7 +528,8 @@ fun UserResultList(
     isLoading: Boolean,
     pagingState: com.app.douyin.pro.feature.home.viewmodel.PagingState,
     onLoadMore: () -> Unit,
-    onFollowClick: (Long) -> Unit
+    onFollowClick: (Long) -> Unit,
+    onUserClick: (Long) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -524,7 +537,7 @@ fun UserResultList(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         items(users) { user ->
-            UserResultItem(user = user, onFollowClick = onFollowClick)
+            UserResultItem(user = user, onFollowClick = onFollowClick, onUserClick = onUserClick)
         }
         item {
             if (isLoading || pagingState is com.app.douyin.pro.feature.home.viewmodel.PagingState.Loading) {
@@ -548,9 +561,11 @@ fun UserResultList(
 }
 
 @Composable
-fun UserResultItem(user: UserModel, onFollowClick: (Long) -> Unit) {
+fun UserResultItem(user: UserModel, onFollowClick: (Long) -> Unit, onUserClick: (Long) -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onUserClick(user.id) },
         verticalAlignment = Alignment.CenterVertically
     ) {
         AsyncImage(

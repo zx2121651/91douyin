@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
@@ -45,6 +46,7 @@ import kotlin.math.roundToInt
 @Composable
 fun ProfileScreen(
     onNavigateToLogin: () -> Unit,
+    onBack: (() -> Unit)? = null,
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
     val sessionState by viewModel.sessionState.collectAsState()
@@ -213,23 +215,52 @@ fun ProfileScreen(
 
                 // Action Buttons
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(
-                        onClick = { viewModel.logout() },
-                        modifier = Modifier.weight(1f).height(40.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E2E2E)),
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(0.dp)
-                    ) {
-                        Text("退出登录", fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                    }
-                    Button(
-                        onClick = {},
-                        modifier = Modifier.weight(1f).height(40.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E2E2E)),
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(0.dp)
-                    ) {
-                        Text("编辑资料", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    if (viewModel.isSelf()) {
+                        Button(
+                            onClick = { viewModel.logout() },
+                            modifier = Modifier.weight(1f).height(40.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E2E2E)),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(0.dp)
+                        ) {
+                            Text("退出登录", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        }
+                        Button(
+                            onClick = {},
+                            modifier = Modifier.weight(1f).height(40.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E2E2E)),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(0.dp)
+                        ) {
+                            Text("编辑资料", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        }
+                    } else {
+                        val isFollowed = profileInfo?.isFollowed ?: false
+                        Button(
+                            onClick = { viewModel.toggleFollow() },
+                            modifier = Modifier.weight(1f).height(40.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isFollowed) Color(0xFF2E2E2E) else Color(0xFFFE2C55)
+                            ),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(0.dp)
+                        ) {
+                            Text(
+                                if (isFollowed) "已关注" else "关注",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+                        Button(
+                            onClick = {},
+                            modifier = Modifier.weight(1f).height(40.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E2E2E)),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(0.dp)
+                        ) {
+                            Text("私信", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        }
                     }
                     Box(
                         modifier = Modifier
@@ -355,7 +386,16 @@ fun ProfileScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Filled.Add, contentDescription = null, tint = Color.White)
+            if (viewModel.isSelf()) {
+                Icon(Icons.Filled.Add, contentDescription = null, tint = Color.White)
+            } else {
+                Icon(
+                    Icons.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = Color.White,
+                    modifier = Modifier.clickable { onBack?.invoke() }
+                )
+            }
 
             // Name fades in when toolbar collapses
             Text(

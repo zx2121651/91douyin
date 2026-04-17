@@ -1,5 +1,6 @@
 package com.app.douyin.pro.feature.profile.viewmodel
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.app.douyin.pro.feature.profile.data.source.ProfileInfo
@@ -7,9 +8,13 @@ import com.app.douyin.pro.feature.profile.domain.usecase.GetProfileInfoUseCase
 import com.app.douyin.pro.lib.media.model.Resource
 
 import com.app.douyin.pro.feature.profile.domain.usecase.GetPublishedVideosUseCase
+import com.app.douyin.pro.lib.media.auth.AuthManager
 import com.app.douyin.pro.lib.media.auth.AuthRepository
 import com.app.douyin.pro.lib.media.auth.SessionState
+import com.app.douyin.pro.lib.media.interaction.InteractionEvent
+import com.app.douyin.pro.lib.media.interaction.VideoInteractionManager
 import com.app.douyin.pro.lib.media.model.VideoModel
+import com.app.douyin.pro.lib.media.util.CountFormatter
 
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,8 +27,13 @@ import javax.inject.Inject
 class ProfileViewModel @Inject constructor(
     private val getProfileInfoUseCase: GetProfileInfoUseCase,
     private val getPublishedVideosUseCase: GetPublishedVideosUseCase,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val authManager: AuthManager,
+    private val interactionManager: VideoInteractionManager,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
+    val userId: Long? = savedStateHandle.get<Long>("userId")?.takeIf { it > 0 }
+
     val sessionState: StateFlow<SessionState> = authRepository.getSessionState()
 
     private val _profileInfo = MutableStateFlow<ProfileInfo?>(null)
@@ -40,9 +50,37 @@ class ProfileViewModel @Inject constructor(
             sessionState.collect { state ->
                 if (state is SessionState.LoggedIn) {
                     loadProfile()
+                } else if (userId != null) {
+                    // Even if not logged in, we might be able to see some profiles if backend allows
+                    // But usually, we follow the current session logic.
+                    // For now, if there's a specific userId, we try to load it.
+                    loadProfile()
                 } else {
                     _profileInfo.value = null
                     _publishedVideos.value = emptyList()
+                }
+            }
+        }
+        observeInteractions()
+    }
+
+    private fun observeInteractions() {
+        viewModelScope.launch {
+            interactionManager.interactionEvents.collect { event ->
+                if (event is InteractionEvent.FollowChanged) {
+                    val currentInfo = _profileInfo.value
+                    if (currentInfo != null && currentInfo.id == event.authorId) {
+                        val newFollowerCount = if (event.isFollowed) {
+                            currentInfo.followerCount + 1
+                        } else {
+                            (currentInfo.followerCount - 1).coerceAtLeast(0)
+                        }
+                        _profileInfo.value = currentInfo.copy(
+                            isFollowed = event.isFollowed,
+                            followerCount = newFollowerCount,
+                            followers = CountFormatter.format(newFollowerCount)
+                        )
+                    }
                 }
             }
         }
@@ -51,16 +89,25 @@ class ProfileViewModel @Inject constructor(
     fun loadProfile() {
         viewModelScope.launch {
             _isLoading.value = true
-            when (val result = getProfileInfoUseCase()) {
+            when (val result = getProfileInfoUseCase(userId)) {
                 is Resource.Success -> _profileInfo.value = result.data
                 else -> _profileInfo.value = null
             }
-            when (val result = getPublishedVideosUseCase()) {
+            when (val result = getPublishedVideosUseCase(userId)) {
                 is Resource.Success -> _publishedVideos.value = result.data
                 else -> _publishedVideos.value = emptyList()
             }
             _isLoading.value = false
         }
+    }
+
+    fun toggleFollow() {
+        val info = _profileInfo.value ?: return
+        interactionManager.toggleFollow(info.id, info.isFollowed)
+    }
+
+    fun isSelf(): Boolean {
+        return userId == null || userId == authManager.getUserId()
     }
 
     fun logout() {

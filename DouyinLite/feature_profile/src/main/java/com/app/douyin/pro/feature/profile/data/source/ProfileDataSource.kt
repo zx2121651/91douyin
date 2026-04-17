@@ -4,30 +4,34 @@ import com.app.douyin.pro.lib.media.network.DouyinApiService
 import com.app.douyin.pro.lib.media.model.VideoModel
 import com.app.douyin.pro.lib.media.model.UserModel
 import com.app.douyin.pro.lib.media.auth.AuthManager
+import com.app.douyin.pro.lib.media.util.CountFormatter
 import javax.inject.Inject
 
 interface ProfileDataSource {
-    suspend fun getUserInfo(): ProfileInfo
-    suspend fun getPublishedVideos(): List<VideoModel>
+    suspend fun getUserInfo(userId: Long?): ProfileInfo
+    suspend fun getPublishedVideos(userId: Long?): List<VideoModel>
 }
 
 class RemoteProfileDataSource @Inject constructor(
     private val apiService: DouyinApiService,
     private val authManager: AuthManager
 ) : ProfileDataSource {
-    override suspend fun getUserInfo(): ProfileInfo {
+    override suspend fun getUserInfo(userId: Long?): ProfileInfo {
         val token = authManager.requireToken()
-        val userId = authManager.getUserId()
+        val targetUserId = userId ?: authManager.getUserId()
 
-        val response = apiService.getUserInfo(userId, token)
+        val response = apiService.getUserInfo(targetUserId, token)
         val user = response.user
 
         if (response.statusCode == 0 && user != null) {
             return ProfileInfo(
-                username = user.name.takeIf { it.isNotEmpty() } ?: "User_$userId",
-                douyinId = "dy_$userId",
+                id = user.id,
+                username = user.name.takeIf { it.isNotEmpty() } ?: "User_$targetUserId",
+                douyinId = "dy_${user.id}",
                 following = user.followCount.toInt(),
-                followers = formatCount(user.followerCount),
+                followers = CountFormatter.format(user.followerCount),
+                followerCount = user.followerCount,
+                isFollowed = user.isFollow,
                 likes = "0", // Currently we don't return total likes received, default to 0
                 avatar = user.avatar,
                 backgroundImage = user.backgroundImage,
@@ -37,13 +41,13 @@ class RemoteProfileDataSource @Inject constructor(
         throw Exception(response.statusMsg ?: "Failed to load profile")
     }
 
-    override suspend fun getPublishedVideos(): List<VideoModel> {
+    override suspend fun getPublishedVideos(userId: Long?): List<VideoModel> {
         if (!authManager.isLoggedIn()) return emptyList()
-        val userId = authManager.getUserId()
+        val targetUserId = userId ?: authManager.getUserId()
         val token = authManager.requireToken()
 
         try {
-            val response = apiService.getPublishList(userId, token)
+            val response = apiService.getPublishList(targetUserId, token)
             if (response.statusCode == 0) {
                 return response.videoList?.map { dto ->
                     VideoModel(
@@ -75,20 +79,16 @@ class RemoteProfileDataSource @Inject constructor(
         return emptyList()
     }
 
-    private fun formatCount(count: Long): String {
-        return if (count >= 10000) {
-            String.format("%.1fw", count / 10000.0)
-        } else {
-            count.toString()
-        }
-    }
 }
 
 data class ProfileInfo(
+    val id: Long,
     val username: String,
     val douyinId: String,
     val following: Int,
     val followers: String,
+    val followerCount: Long,
+    val isFollowed: Boolean,
     val likes: String,
     val avatar: String? = null,
     val backgroundImage: String? = null,

@@ -12,14 +12,14 @@ import javax.inject.Singleton
 class ProfileRepository @Inject constructor(
     private val dataSource: ProfileDataSource
 ) {
-    suspend fun getProfileInfo(): Resource<ProfileInfo> = try {
-        Resource.Success(dataSource.getUserInfo())
+    suspend fun getProfileInfo(userId: Long? = null): Resource<ProfileInfo> = try {
+        Resource.Success(dataSource.getUserInfo(userId))
     } catch (e: Exception) {
         Resource.Error(e.message ?: "Unknown Error", AppError.NetworkError)
     }
 
-    suspend fun getPublishedVideos(): Resource<List<VideoModel>> = try {
-        Resource.Success(dataSource.getPublishedVideos())
+    suspend fun getPublishedVideos(userId: Long? = null): Resource<List<VideoModel>> = try {
+        Resource.Success(dataSource.getPublishedVideos(userId))
     } catch (e: Exception) {
         Resource.Error(e.message ?: "Unknown Error", AppError.NetworkError)
     }
