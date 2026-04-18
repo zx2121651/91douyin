@@ -175,6 +175,7 @@ func GetNotifications(ctx context.Context, c *app.RequestContext) {
 			FromUser:   fromUser,
 			Type:       string(n.Type),
 			Content:    n.Content,
+			TargetID:   int64(n.TargetID),
 			CreateTime: n.CreatedAt.UnixMilli(),
 			IsRead:     n.IsRead,
 		})

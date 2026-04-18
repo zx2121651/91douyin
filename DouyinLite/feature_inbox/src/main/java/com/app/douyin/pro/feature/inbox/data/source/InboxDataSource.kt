@@ -2,6 +2,9 @@ package com.app.douyin.pro.feature.inbox.data.source
 
 import com.app.douyin.pro.feature.inbox.domain.model.Conversation
 import com.app.douyin.pro.feature.inbox.domain.model.NotificationCategory
+import com.app.douyin.pro.feature.inbox.domain.model.NotificationItem
+import com.app.douyin.pro.feature.inbox.domain.model.NotificationType
+import com.app.douyin.pro.lib.media.model.UserModel
 import com.app.douyin.pro.lib.media.network.DouyinApiService
 import com.app.douyin.pro.lib.media.auth.AuthManager
 import javax.inject.Inject
@@ -12,6 +15,7 @@ import java.util.Locale
 interface InboxDataSource {
     suspend fun getMessages(): List<Conversation>
     suspend fun getCategories(): List<NotificationCategory>
+    suspend fun getNotifications(): List<NotificationItem>
 }
 
 class RemoteInboxDataSource @Inject constructor(
@@ -68,5 +72,35 @@ class RemoteInboxDataSource @Inject constructor(
             NotificationCategory("favorite", "互动消息", unreadCount > 0, if (unreadCount > 0) unreadCount.toString() else null),
             NotificationCategory("alternate_email", "系统通知", false, null)
         )
+    }
+
+    override suspend fun getNotifications(): List<NotificationItem> {
+        try {
+            if (!authManager.isLoggedIn()) return emptyList()
+            val token = authManager.requireToken()
+            val response = apiService.getNotifications(token)
+            if (response.statusCode == 0) {
+                return response.notificationList?.map { dto ->
+                    NotificationItem(
+                        id = dto.id,
+                        fromUser = dto.fromUser?.let {
+                            UserModel(
+                                id = it.id,
+                                name = it.name,
+                                avatar = it.avatar
+                            )
+                        },
+                        type = NotificationType.fromString(dto.type),
+                        content = dto.content,
+                        targetId = dto.targetId,
+                        createTime = dto.createTime,
+                        isRead = dto.isRead
+                    )
+                } ?: emptyList()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return emptyList()
     }
 }

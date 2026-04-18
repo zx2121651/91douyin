@@ -41,6 +41,7 @@ val ErrorColorDot = Color(0xFFFF0050)
 @Composable
 fun InboxScreen(
     onNavigateToChat: (Long, String) -> Unit = { _, _ -> },
+    onNavigateToNotifications: () -> Unit = {},
     viewModel: InboxViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -89,7 +90,7 @@ fun InboxScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = 80.dp)
                     ) {
-                        item { NotificationCategoriesRow(state.categories) }
+                        item { NotificationCategoriesRow(state.categories, onNavigateToNotifications) }
                         item { Spacer(modifier = Modifier.height(8.dp)) }
                         items(state.conversations, key = { it.id }) { conversation ->
                             ConversationItemRow(conversation, onNavigateToChat)
@@ -153,19 +154,25 @@ fun ErrorInboxView(message: String, onRetry: () -> Unit) {
 }
 
 @Composable
-fun NotificationCategoriesRow(categories: List<NotificationCategory>) {
+fun NotificationCategoriesRow(
+    categories: List<NotificationCategory>,
+    onNavigateToNotifications: () -> Unit
+) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         categories.forEach { category ->
-            CategoryItem(category)
+            CategoryItem(category, onNavigateToNotifications)
         }
     }
 }
 
 @Composable
-fun CategoryItem(category: NotificationCategory) {
+fun CategoryItem(
+    category: NotificationCategory,
+    onNavigateToNotifications: () -> Unit
+) {
     val iconColor = when(category.type) {
         "group" -> Color(0xFFE2E2E2)
         "favorite" -> Color(0xFFFFB3B6)
@@ -180,7 +187,14 @@ fun CategoryItem(category: NotificationCategory) {
         else -> Icons.Default.Email
     }
 
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { }) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.clickable {
+            if (category.type == "favorite" || category.type == "alternate_email") {
+                onNavigateToNotifications()
+            }
+        }
+    ) {
         Box(modifier = Modifier.size(56.dp).clip(RoundedCornerShape(16.dp)).background(DarkSurfaceContainer), contentAlignment = Alignment.Center) {
             Icon(icon, category.title, tint = iconColor, modifier = Modifier.size(28.dp))
             if (category.hasDot) {

@@ -3,12 +3,13 @@ package message
 import "github.com/douyin/backend/biz/model/common"
 
 type SystemNotification struct {
-	ID         int64       `json:"id"`
+	ID         int64        `json:"id"`
 	FromUser   *common.User `json:"from_user,omitempty"`
-	Type       string      `json:"type"`
-	Content    string      `json:"content"`
-	CreateTime int64       `json:"create_time"`
-	IsRead     bool        `json:"is_read"`
+	Type       string       `json:"type"`
+	Content    string       `json:"content"`
+	TargetID   int64        `json:"target_id"`
+	CreateTime int64        `json:"create_time"`
+	IsRead     bool         `json:"is_read"`
 }
 
 type NotificationListResponse struct {
