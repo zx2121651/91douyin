@@ -23,6 +23,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+enum class ProfileViewMode {
+    SELF, VISITOR
+}
+
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     private val getProfileInfoUseCase: GetProfileInfoUseCase,
@@ -33,6 +37,9 @@ class ProfileViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     val userId: Long? = savedStateHandle.get<Long>("userId")?.takeIf { it > 0 }
+
+    private val _viewMode = MutableStateFlow(if (isSelf()) ProfileViewMode.SELF else ProfileViewMode.VISITOR)
+    val viewMode: StateFlow<ProfileViewMode> = _viewMode.asStateFlow()
 
     val sessionState: StateFlow<SessionState> = authRepository.getSessionState()
 
@@ -89,13 +96,20 @@ class ProfileViewModel @Inject constructor(
     fun loadProfile() {
         viewModelScope.launch {
             _isLoading.value = true
+            _viewMode.value = if (isSelf()) ProfileViewMode.SELF else ProfileViewMode.VISITOR
+
+            val videosResult = getPublishedVideosUseCase(userId)
+            val videos = if (videosResult is Resource.Success) videosResult.data else emptyList()
+            _publishedVideos.value = videos
+
             when (val result = getProfileInfoUseCase(userId)) {
-                is Resource.Success -> _profileInfo.value = result.data
+                is Resource.Success -> {
+                    _profileInfo.value = result.data.copy(
+                        workCount = videos.size,
+                        favoritedCount = videos.sumOf { it.likeCount }
+                    )
+                }
                 else -> _profileInfo.value = null
-            }
-            when (val result = getPublishedVideosUseCase(userId)) {
-                is Resource.Success -> _publishedVideos.value = result.data
-                else -> _publishedVideos.value = emptyList()
             }
             _isLoading.value = false
         }

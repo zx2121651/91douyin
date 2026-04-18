@@ -35,7 +35,9 @@ class RemoteProfileDataSource @Inject constructor(
                 likes = "0", // Currently we don't return total likes received, default to 0
                 avatar = user.avatar,
                 backgroundImage = user.backgroundImage,
-                signature = user.signature
+                signature = user.signature,
+                workCount = 0, // Will be updated by ViewModel or separate call
+                favoritedCount = 0
             )
         }
         throw Exception(response.statusMsg ?: "Failed to load profile")
@@ -92,5 +94,7 @@ data class ProfileInfo(
     val likes: String,
     val avatar: String? = null,
     val backgroundImage: String? = null,
-    val signature: String? = null
+    val signature: String? = null,
+    val workCount: Int = 0,
+    val favoritedCount: Long = 0
 )
