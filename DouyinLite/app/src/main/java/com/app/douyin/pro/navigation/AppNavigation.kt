@@ -106,16 +106,24 @@ fun AppNavHost(
         }
         composable(NavRoutes.ME) {
             ProfileScreen(
-                onNavigateToLogin = { navController.navigate(NavRoutes.LOGIN) }
+                onNavigateToLogin = { navController.navigate(NavRoutes.LOGIN) },
+                onVideoClick = { index ->
+                    // For simplicity, we use a placeholder keyword for personal profile video consumption
+                    navController.navigate(NavRoutes.buildSearchPlayerRoute("__me__", index))
+                }
             )
         }
         composable(
             route = NavRoutes.USER_PROFILE,
             arguments = listOf(navArgument("userId") { type = NavType.LongType })
-        ) {
+        ) { backStackEntry ->
+            val userId = backStackEntry.arguments?.getLong("userId") ?: 0L
             ProfileScreen(
                 onNavigateToLogin = { navController.navigate(NavRoutes.LOGIN) },
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onVideoClick = { index ->
+                    navController.navigate(NavRoutes.buildSearchPlayerRoute("__user_${userId}__", index))
+                }
             )
         }
         composable(NavRoutes.MALL) {
