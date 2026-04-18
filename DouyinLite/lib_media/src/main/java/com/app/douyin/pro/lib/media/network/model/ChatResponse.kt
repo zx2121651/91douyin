@@ -20,3 +20,16 @@ data class ChatMessageDto(
     @SerializedName("content") val content: String,
     @SerializedName("create_time") val createTime: Long
 )
+
+data class ConversationListResponse(
+    @SerializedName("status_code") val statusCode: Int,
+    @SerializedName("status_msg") val statusMsg: String?,
+    @SerializedName("conversation_list") val conversationList: List<ConversationDto>?
+)
+
+data class ConversationDto(
+    @SerializedName("user") val user: UserDto,
+    @SerializedName("last_message") val lastMessage: String,
+    @SerializedName("create_time") val createTime: Long,
+    @SerializedName("unread_count") val unreadCount: Long
+)

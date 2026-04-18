@@ -1,7 +1,9 @@
 package com.app.douyin.pro.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -13,6 +15,7 @@ import com.app.douyin.pro.feature.edit.ui.EditScreen
 import com.app.douyin.pro.feature.home.ui.FriendsScreen
 import com.app.douyin.pro.feature.home.ui.HomeScreen
 import com.app.douyin.pro.feature.home.ui.SearchScreen
+import com.app.douyin.pro.feature.home.ui.SearchPlayerScreen
 import com.app.douyin.pro.feature.inbox.ui.ChatScreen
 import com.app.douyin.pro.feature.inbox.ui.InboxScreen
 import com.app.douyin.pro.feature.mall.ui.MallScreen

@@ -15,6 +15,8 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,12 +27,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+import com.app.douyin.pro.lib.media.interaction.MessageUnreadManager
+
 @Composable
 fun MainBottomBar(
     currentRoute: String?,
+    unreadManager: MessageUnreadManager,
     onNavigate: (String) -> Unit
 ) {
     val isDarkBgRoute = NavigationConfigs.isDarkBackgroundRoute(currentRoute)
+    val unreadCount by unreadManager.totalUnreadCount.collectAsState()
 
     NavigationBar(
         containerColor = if (isDarkBgRoute) Color.Transparent else Color.White,
@@ -46,12 +52,10 @@ fun MainBottomBar(
                     } else {
                         BadgedBox(
                             badge = {
-                                if (item.badgeCount > 0) {
+                                if (item == MainTab.Inbox && unreadCount > 0) {
                                     Badge {
-                                        Text(item.badgeCount.toString())
+                                        Text(if (unreadCount > 99) "99+" else unreadCount.toString())
                                     }
-                                } else if (item.showDot) {
-                                    Badge()
                                 }
                             }
                         ) {

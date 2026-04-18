@@ -23,21 +23,21 @@ class RemoteInboxDataSource @Inject constructor(
         try {
             if (!authManager.isLoggedIn()) return emptyList()
             val token = authManager.requireToken()
-            val response = apiService.getNotifications(token)
+            val response = apiService.getConversationList(token)
             if (response.statusCode == 0) {
                 val format = SimpleDateFormat("MM-dd", Locale.getDefault())
-                val list = response.notificationList
+                val list = response.conversationList
                 if (list != null) {
                     return list.map { dto ->
                         Conversation(
-                            id = dto.id.toString(),
-                            avatarUrl = dto.fromUser?.avatar ?: "https://api.dicebear.com/7.x/avataaars/png?seed=${dto.id}",
-                            name = dto.fromUser?.name ?: "系统通知",
+                            id = dto.user.id.toString(),
+                            avatarUrl = dto.user.avatar ?: "https://api.dicebear.com/7.x/avataaars/png?seed=${dto.user.id}",
+                            name = dto.user.name,
                             lastTime = format.format(Date(dto.createTime)),
                             lastTimestamp = dto.createTime,
-                            lastMessage = dto.content,
-                            isOfficial = dto.type == "system",
-                            unreadCount = if (dto.isRead) 0 else 1,
+                            lastMessage = dto.lastMessage,
+                            isOfficial = false,
+                            unreadCount = dto.unreadCount.toInt(),
                             isLive = false
                         )
                     }

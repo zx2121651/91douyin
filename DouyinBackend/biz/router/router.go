@@ -53,6 +53,9 @@ func Register(h *server.Hertz) {
 	messageGroup := api.Group("/message")
 	messageGroup.POST("/action/", mw.AuthMiddleware(), message.MessageAction)
 	messageGroup.GET("/chat/", mw.AuthMiddleware(), message.MessageChat)
+	messageGroup.GET("/action/list/", mw.AuthMiddleware(), message.MessageActionList)
+	messageGroup.GET("/unread/", mw.AuthMiddleware(), message.UnreadCount)
+	messageGroup.GET("/notifications/", mw.AuthMiddleware(), message.GetNotifications)
 
 	// Search
 	searchGroup := api.Group("/search")
