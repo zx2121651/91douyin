@@ -38,7 +38,9 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.app.douyin.pro.feature.profile.viewmodel.ProfileViewModel
+import com.app.douyin.pro.feature.profile.viewmodel.ProfileViewMode
 import com.app.douyin.pro.lib.media.auth.SessionState
+import com.app.douyin.pro.lib.media.util.CountFormatter
 import kotlin.random.Random
 import kotlin.math.roundToInt
 
@@ -53,14 +55,16 @@ fun ProfileScreen(
     val profileInfo by viewModel.profileInfo.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val publishedVideos by viewModel.publishedVideos.collectAsState()
+    val viewMode by viewModel.viewMode.collectAsState()
 
     val username = profileInfo?.username ?: "加载中..."
     val douyinId = profileInfo?.douyinId ?: ""
     val followers = profileInfo?.followers ?: "0"
     val following = profileInfo?.following?.toString() ?: "0"
-    val likes = profileInfo?.likes ?: "0"
+    val likes = profileInfo?.favoritedCount?.let { CountFormatter.format(it) } ?: "0"
     val signature = profileInfo?.signature?.takeIf { it.isNotEmpty() } ?: "专注 Android 性能优化与 Jetpack Compose 动效开发。\n不写 Bug，只写诗。✨"
     val avatar = profileInfo?.avatar?.takeIf { it.isNotEmpty() } ?: "https://lh3.googleusercontent.com/aida-public/AB6AXuAFRJnvPgLJTZNlp2beH3rKkgrIq79yAByHrNztp31d3S5Ql5HDcVsXOtOffLNhtuX4qaajnkwFgdAFL5OCuwdLzNBs9QDqqeiJejfbJPzXVeArU5eX10395R9he1IM-Eoy2kh6lmFA_v6n8auwbHfT6iBKAZdZODWoz0wWWJn57dDE7AybZhChYpQ6vVgt7ESF1A6VaNFSrjxMK6MuHftCkoxICASpEx6ooT2VDLv3mlsVbLQNXGa1uCeoOWCamXI699HkQHUvmOk"
+    val backgroundImage = profileInfo?.backgroundImage
 
     val darkBg = Color(0xFF161823)
     val grayText = Color(0xFF8E8E93)
@@ -125,6 +129,27 @@ fun ProfileScreen(
             .background(darkBg)
             .nestedScroll(nestedScrollConnection)
     ) {
+        // Background Image
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(160.dp)
+                .graphicsLayer {
+                    translationY = scrollOffset * 0.5f
+                }
+        ) {
+            if (backgroundImage != null) {
+                AsyncImage(
+                    model = backgroundImage,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                Box(modifier = Modifier.fillMaxSize().background(Color(0xFF2E2E2E)))
+            }
+        }
+
         // Sticky Header / Collapsing logic
         Column(
             modifier = Modifier
@@ -137,12 +162,13 @@ fun ProfileScreen(
                 }
         ) {
             // Invisible spacer for top bar placeholder within the scrolling header
-            Spacer(modifier = Modifier.height(topBarHeight).statusBarsPadding())
+            Spacer(modifier = Modifier.height(100.dp)) // Pull down content
 
             // Profile Header Content
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .background(darkBg, RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
                     .padding(horizontal = 16.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -214,65 +240,12 @@ fun ProfileScreen(
                 Spacer(modifier = Modifier.height(20.dp))
 
                 // Action Buttons
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (viewModel.isSelf()) {
-                        Button(
-                            onClick = { viewModel.logout() },
-                            modifier = Modifier.weight(1f).height(40.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E2E2E)),
-                            shape = RoundedCornerShape(8.dp),
-                            contentPadding = PaddingValues(0.dp)
-                        ) {
-                            Text("退出登录", fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                        }
-                        Button(
-                            onClick = {},
-                            modifier = Modifier.weight(1f).height(40.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E2E2E)),
-                            shape = RoundedCornerShape(8.dp),
-                            contentPadding = PaddingValues(0.dp)
-                        ) {
-                            Text("编辑资料", fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                        }
-                    } else {
-                        val isFollowed = profileInfo?.isFollowed ?: false
-                        Button(
-                            onClick = { viewModel.toggleFollow() },
-                            modifier = Modifier.weight(1f).height(40.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (isFollowed) Color(0xFF2E2E2E) else Color(0xFFFE2C55)
-                            ),
-                            shape = RoundedCornerShape(8.dp),
-                            contentPadding = PaddingValues(0.dp)
-                        ) {
-                            Text(
-                                if (isFollowed) "已关注" else "关注",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                        }
-                        Button(
-                            onClick = {},
-                            modifier = Modifier.weight(1f).height(40.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E2E2E)),
-                            shape = RoundedCornerShape(8.dp),
-                            contentPadding = PaddingValues(0.dp)
-                        ) {
-                            Text("私信", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                        }
-                    }
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color(0xFF2E2E2E))
-                            .clickable { },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Filled.Share, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
-                    }
-                }
+                ProfileActionButtons(
+                    viewMode = viewMode,
+                    isFollowed = profileInfo?.isFollowed ?: false,
+                    onToggleFollow = { viewModel.toggleFollow() },
+                    onLogout = { viewModel.logout() }
+                )
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -386,7 +359,7 @@ fun ProfileScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (viewModel.isSelf()) {
+            if (viewMode == ProfileViewMode.SELF) {
                 Icon(Icons.Filled.Add, contentDescription = null, tint = Color.White)
             } else {
                 Icon(
@@ -409,6 +382,73 @@ fun ProfileScreen(
                 Icon(Icons.Filled.Search, contentDescription = null, tint = Color.White)
                 Icon(Icons.Filled.Menu, contentDescription = null, tint = Color.White)
             }
+        }
+    }
+}
+
+@Composable
+fun ProfileActionButtons(
+    viewMode: ProfileViewMode,
+    isFollowed: Boolean,
+    onToggleFollow: () -> Unit,
+    onLogout: () -> Unit
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (viewMode == ProfileViewMode.SELF) {
+            Button(
+                onClick = onLogout,
+                modifier = Modifier.weight(1f).height(40.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E2E2E)),
+                shape = RoundedCornerShape(8.dp),
+                contentPadding = PaddingValues(0.dp)
+            ) {
+                Text("退出登录", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            }
+            Button(
+                onClick = {},
+                modifier = Modifier.weight(1f).height(40.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E2E2E)),
+                shape = RoundedCornerShape(8.dp),
+                contentPadding = PaddingValues(0.dp)
+            ) {
+                Text("编辑资料", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            }
+        } else {
+            Button(
+                onClick = onToggleFollow,
+                modifier = Modifier.weight(1f).height(40.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isFollowed) Color(0xFF2E2E2E) else Color(0xFFFE2C55)
+                ),
+                shape = RoundedCornerShape(8.dp),
+                contentPadding = PaddingValues(0.dp)
+            ) {
+                Text(
+                    if (isFollowed) "已关注" else "关注",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
+            Button(
+                onClick = {},
+                modifier = Modifier.weight(1f).height(40.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E2E2E)),
+                shape = RoundedCornerShape(8.dp),
+                contentPadding = PaddingValues(0.dp)
+            ) {
+                Text("私信", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            }
+        }
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color(0xFF2E2E2E))
+                .clickable { },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Filled.Share, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
         }
     }
 }

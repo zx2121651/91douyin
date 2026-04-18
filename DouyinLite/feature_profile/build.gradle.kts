@@ -54,4 +54,10 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.coil.compose)
+
+    // Test
+    testImplementation(libs.junit)
+    testImplementation("org.mockito:mockito-core:5.11.0")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.0")
+    testImplementation("androidx.arch.core:core-testing:2.2.0")
 }
