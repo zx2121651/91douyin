@@ -3,6 +3,7 @@ package com.app.douyin.pro.feature.home.viewmodel
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.app.douyin.pro.lib.media.model.PagingState
 import com.app.douyin.pro.feature.home.domain.usecase.SearchUsersUseCase
 import com.app.douyin.pro.feature.home.domain.usecase.SearchVideosUseCase
 import com.app.douyin.pro.lib.media.interaction.InteractionEvent

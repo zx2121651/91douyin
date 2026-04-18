@@ -100,7 +100,7 @@ class ProfileViewModelTest {
     }
 
     @Test
-    fun `loadProfile should update workCount and favoritedCount`() = runTest {
+    fun `refresh should update workCount and favoritedCount`() = runTest {
         val userId = 123L
         `when`(authManager.getUserId()).thenReturn(userId)
         val savedStateHandle = SavedStateHandle(mapOf("userId" to userId))
@@ -112,7 +112,7 @@ class ProfileViewModelTest {
         )
         val profileInfo = ProfileInfo(userId, "test", "dy_123", 0, "0", 0, false, "0")
 
-        `when`(getPublishedVideosUseCase(userId)).thenReturn(Resource.Success(videos))
+        `when`(getPublishedVideosUseCase(userId, 0L)).thenReturn(Resource.Success(videos to 0L))
         `when`(getProfileInfoUseCase(userId)).thenReturn(Resource.Success(profileInfo))
 
         val viewModel = ProfileViewModel(
@@ -124,7 +124,7 @@ class ProfileViewModelTest {
             savedStateHandle
         )
 
-        viewModel.loadProfile()
+        viewModel.refresh()
         testDispatcher.scheduler.advanceUntilIdle()
 
         val resultInfo = viewModel.profileInfo.value

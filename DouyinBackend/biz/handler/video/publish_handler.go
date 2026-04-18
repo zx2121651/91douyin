@@ -98,7 +98,10 @@ func PublishList(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	videos, err := videoService.GetPublishList(uint(req.UserID))
+	limit := 30
+	includeProcessing := currentUserID == uint(req.UserID)
+
+	videos, nextTime, err := videoService.GetPublishList(uint(req.UserID), req.LatestTime, limit, includeProcessing)
 	if err != nil {
 		utils.SendResponse(c, errno.ServiceErr.WithMessage("Failed to get publish list: "+err.Error()), nil)
 		return
@@ -127,6 +130,7 @@ func PublishList(ctx context.Context, c *app.RequestContext) {
 	}
 
 	utils.SendResponse(c, errno.Success, map[string]interface{}{
+		"next_time":  nextTime,
 		"video_list": commonVideos,
 	})
 }

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.app.douyin.pro.feature.record.domain.usecase.PublishVideoUseCase
 import com.app.douyin.pro.feature.record.ui.state.PublishUiState
+import com.app.douyin.pro.lib.media.interaction.VideoInteractionManager
 import com.app.douyin.pro.lib.media.model.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,7 +17,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class PublishViewModel @Inject constructor(
-    private val publishVideoUseCase: PublishVideoUseCase
+    private val publishVideoUseCase: PublishVideoUseCase,
+    private val interactionManager: VideoInteractionManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PublishUiState())
@@ -51,6 +53,7 @@ class PublishViewModel @Inject constructor(
             val result = publishVideoUseCase(videoFile, currentState.title)
             when (result) {
                 is Resource.Success -> {
+                    interactionManager.notifyVideoPublished()
                     _uiState.update { it.copy(isPublishing = false, isSuccess = true) }
                 }
                 is Resource.Error -> {

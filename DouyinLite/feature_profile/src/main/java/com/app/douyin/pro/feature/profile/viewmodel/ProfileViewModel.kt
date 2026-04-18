@@ -7,6 +7,7 @@ import com.app.douyin.pro.feature.profile.data.source.ProfileInfo
 import com.app.douyin.pro.feature.profile.domain.usecase.GetProfileInfoUseCase
 import com.app.douyin.pro.lib.media.model.Resource
 
+import com.app.douyin.pro.lib.media.model.PagingState
 import com.app.douyin.pro.feature.profile.domain.usecase.GetPublishedVideosUseCase
 import com.app.douyin.pro.lib.media.auth.AuthManager
 import com.app.douyin.pro.lib.media.auth.AuthRepository
@@ -49,19 +50,25 @@ class ProfileViewModel @Inject constructor(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+
+    private val _pagingState = MutableStateFlow<PagingState>(PagingState.Idle)
+    val pagingState: StateFlow<PagingState> = _pagingState.asStateFlow()
+
     private val _publishedVideos = MutableStateFlow<List<VideoModel>>(emptyList())
     val publishedVideos: StateFlow<List<VideoModel>> = _publishedVideos.asStateFlow()
+
+    private var videoCursor: Long = 0L
+    private var hasMore: Boolean = true
 
     init {
         viewModelScope.launch {
             sessionState.collect { state ->
                 if (state is SessionState.LoggedIn) {
-                    loadProfile()
+                    refresh()
                 } else if (userId != null) {
-                    // Even if not logged in, we might be able to see some profiles if backend allows
-                    // But usually, we follow the current session logic.
-                    // For now, if there's a specific userId, we try to load it.
-                    loadProfile()
+                    refresh()
                 } else {
                     _profileInfo.value = null
                     _publishedVideos.value = emptyList()
@@ -74,44 +81,103 @@ class ProfileViewModel @Inject constructor(
     private fun observeInteractions() {
         viewModelScope.launch {
             interactionManager.interactionEvents.collect { event ->
-                if (event is InteractionEvent.FollowChanged) {
-                    val currentInfo = _profileInfo.value
-                    if (currentInfo != null && currentInfo.id == event.authorId) {
-                        val newFollowerCount = if (event.isFollowed) {
-                            currentInfo.followerCount + 1
-                        } else {
-                            (currentInfo.followerCount - 1).coerceAtLeast(0)
+                when (event) {
+                    is InteractionEvent.FollowChanged -> {
+                        val currentInfo = _profileInfo.value
+                        if (currentInfo != null && currentInfo.id == event.authorId) {
+                            val newFollowerCount = if (event.isFollowed) {
+                                currentInfo.followerCount + 1
+                            } else {
+                                (currentInfo.followerCount - 1).coerceAtLeast(0)
+                            }
+                            _profileInfo.value = currentInfo.copy(
+                                isFollowed = event.isFollowed,
+                                followerCount = newFollowerCount,
+                                followers = CountFormatter.format(newFollowerCount)
+                            )
                         }
-                        _profileInfo.value = currentInfo.copy(
-                            isFollowed = event.isFollowed,
-                            followerCount = newFollowerCount,
-                            followers = CountFormatter.format(newFollowerCount)
-                        )
+                    }
+                    is InteractionEvent.VideoPublished -> {
+                        if (isSelf()) {
+                            refresh()
+                        }
+                    }
+                    is InteractionEvent.LikeChanged -> {
+                        val currentVideos = _publishedVideos.value.toMutableList()
+                        val index = currentVideos.indexOfFirst { it.id == event.videoId }
+                        if (index != -1) {
+                            currentVideos[index] = currentVideos[index].copy(
+                                isLiked = event.isLiked,
+                                likeCount = event.newLikeCount
+                            )
+                            _publishedVideos.value = currentVideos
+                        }
+                    }
+                    is InteractionEvent.CommentAdded -> {
+                        val currentVideos = _publishedVideos.value.toMutableList()
+                        val index = currentVideos.indexOfFirst { it.id == event.videoId }
+                        if (index != -1) {
+                            currentVideos[index] = currentVideos[index].copy(
+                                commentCount = event.newCommentCount
+                            )
+                            _publishedVideos.value = currentVideos
+                        }
                     }
                 }
             }
         }
     }
 
-    fun loadProfile() {
+    fun refresh() {
         viewModelScope.launch {
-            _isLoading.value = true
+            _isRefreshing.value = true
             _viewMode.value = if (isSelf()) ProfileViewMode.SELF else ProfileViewMode.VISITOR
 
-            val videosResult = getPublishedVideosUseCase(userId)
-            val videos = if (videosResult is Resource.Success) videosResult.data else emptyList()
-            _publishedVideos.value = videos
+            videoCursor = 0L
+            hasMore = true
+
+            val videosResult = getPublishedVideosUseCase(userId, videoCursor)
+            if (videosResult is Resource.Success) {
+                val (videos, nextCursor) = videosResult.data
+                _publishedVideos.value = videos
+                videoCursor = nextCursor
+                hasMore = nextCursor > 0
+            }
 
             when (val result = getProfileInfoUseCase(userId)) {
                 is Resource.Success -> {
-                    _profileInfo.value = result.data.copy(
-                        workCount = videos.size,
-                        favoritedCount = videos.sumOf { it.likeCount }
+                    val info = result.data
+                    _profileInfo.value = info.copy(
+                        workCount = _publishedVideos.value.size,
+                        favoritedCount = _publishedVideos.value.sumOf { it.likeCount }
                     )
                 }
                 else -> _profileInfo.value = null
             }
+            _isRefreshing.value = false
             _isLoading.value = false
+        }
+    }
+
+    fun loadMoreVideos() {
+        if (!hasMore || _pagingState.value is PagingState.Loading) return
+
+        viewModelScope.launch {
+            _pagingState.value = PagingState.Loading
+            val result = getPublishedVideosUseCase(userId, videoCursor)
+            if (result is Resource.Success) {
+                val (newVideos, nextCursor) = result.data
+                val currentVideos = _publishedVideos.value.toMutableList()
+                val existingIds = currentVideos.map { it.id }.toSet()
+                val uniqueNewVideos = newVideos.filter { it.id !in existingIds }
+
+                _publishedVideos.value = currentVideos + uniqueNewVideos
+                videoCursor = nextCursor
+                hasMore = nextCursor > 0
+                _pagingState.value = PagingState.Idle
+            } else if (result is Resource.Error) {
+                _pagingState.value = PagingState.Error(result.message)
+            }
         }
     }
 

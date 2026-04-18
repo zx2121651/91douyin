@@ -133,14 +133,33 @@ func (s *VideoService) PublishVideo(authorID uint, title string, playURL string,
 	return &video, nil
 }
 
-func (s *VideoService) GetPublishList(userID uint) ([]model.Video, error) {
+func (s *VideoService) GetPublishList(userID uint, latestTime int64, limit int, includeProcessing bool) ([]model.Video, int64, error) {
 	var videos []model.Video
 
-	if err := db.DB.Preload("Author").Where("author_id = ? AND status = ?", userID, "published").Order("created_at desc").Find(&videos).Error; err != nil {
-		return nil, err
+	dbQuery := db.DB.Preload("Author").Where("author_id = ?", userID)
+
+	if includeProcessing {
+		dbQuery = dbQuery.Where("status IN ?", []string{"published", "processing"})
+	} else {
+		dbQuery = dbQuery.Where("status = ?", "published")
 	}
 
-	return videos, nil
+	if latestTime > 0 {
+		dbQuery = dbQuery.Where("created_at < ?", time.UnixMilli(latestTime))
+	}
+
+	if err := dbQuery.Order("created_at desc").Limit(limit).Find(&videos).Error; err != nil {
+		return nil, 0, err
+	}
+
+	var nextTime int64
+	if len(videos) > 0 {
+		nextTime = videos[len(videos)-1].CreatedAt.UnixMilli()
+	} else {
+		nextTime = 0
+	}
+
+	return videos, nextTime, nil
 }
 
 // RecordVideoView implicitly increments user affinity and global view counts,

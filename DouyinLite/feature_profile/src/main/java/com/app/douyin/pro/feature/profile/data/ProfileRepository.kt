@@ -18,8 +18,8 @@ class ProfileRepository @Inject constructor(
         Resource.Error(e.message ?: "Unknown Error", AppError.NetworkError)
     }
 
-    suspend fun getPublishedVideos(userId: Long? = null): Resource<List<VideoModel>> = try {
-        Resource.Success(dataSource.getPublishedVideos(userId))
+    suspend fun getPublishedVideos(userId: Long? = null, latestTime: Long? = null): Resource<Pair<List<VideoModel>, Long>> = try {
+        Resource.Success(dataSource.getPublishedVideos(userId, latestTime))
     } catch (e: Exception) {
         Resource.Error(e.message ?: "Unknown Error", AppError.NetworkError)
     }

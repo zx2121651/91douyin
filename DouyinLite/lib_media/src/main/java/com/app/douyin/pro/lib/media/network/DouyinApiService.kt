@@ -67,7 +67,8 @@ interface DouyinApiService {
     @GET("douyin/publish/list/")
     suspend fun getPublishList(
         @Query("user_id") userId: Long,
-        @Query("token") token: String
+        @Query("token") token: String,
+        @Query("latest_time") latestTime: Long? = null
     ): FeedResponse
 
 

@@ -14,6 +14,7 @@ sealed class InteractionEvent {
     data class LikeChanged(val videoId: Long, val isLiked: Boolean, val newLikeCount: Long) : InteractionEvent()
     data class FollowChanged(val authorId: Long, val isFollowed: Boolean) : InteractionEvent()
     data class CommentAdded(val videoId: Long, val newCommentCount: Long) : InteractionEvent()
+    object VideoPublished : InteractionEvent()
 }
 
 @Singleton
@@ -77,6 +78,12 @@ class VideoInteractionManager @Inject constructor(
     fun notifyCommentAdded(videoId: Long, currentCommentCount: Long) {
         scope.launch {
             _interactionEvents.emit(InteractionEvent.CommentAdded(videoId, currentCommentCount + 1))
+        }
+    }
+
+    fun notifyVideoPublished() {
+        scope.launch {
+            _interactionEvents.emit(InteractionEvent.VideoPublished)
         }
     }
 }
