@@ -18,6 +18,7 @@ import com.app.douyin.pro.feature.home.ui.SearchScreen
 import com.app.douyin.pro.feature.home.ui.SearchPlayerScreen
 import com.app.douyin.pro.feature.inbox.ui.ChatScreen
 import com.app.douyin.pro.feature.inbox.ui.InboxScreen
+import com.app.douyin.pro.feature.inbox.ui.NotificationCenterScreen
 import com.app.douyin.pro.feature.mall.ui.MallScreen
 import com.app.douyin.pro.feature.profile.ui.ProfileScreen
 import com.app.douyin.pro.feature.record.ui.PublishScreen
@@ -78,9 +79,19 @@ fun AppNavHost(
             )
         }
         composable(NavRoutes.INBOX) {
-            InboxScreen(onNavigateToChat = { userId, userName ->
-                navController.navigate(NavRoutes.buildChatRoute(userId, userName))
-            })
+            InboxScreen(
+                onNavigateToChat = { userId, userName ->
+                    navController.navigate(NavRoutes.buildChatRoute(userId, userName))
+                },
+                onNavigateToNotifications = {
+                    navController.navigate(NavRoutes.NOTIFICATIONS)
+                }
+            )
+        }
+        composable(NavRoutes.NOTIFICATIONS) {
+            NotificationCenterScreen(
+                onBack = { navController.popBackStack() }
+            )
         }
         composable(
             route = NavRoutes.CHAT,

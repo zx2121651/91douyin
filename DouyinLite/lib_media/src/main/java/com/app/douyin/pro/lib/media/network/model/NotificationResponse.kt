@@ -19,6 +19,7 @@ data class NotificationDto(
     @SerializedName("from_user") val fromUser: UserDto?,
     @SerializedName("type") val type: String,
     @SerializedName("content") val content: String,
+    @SerializedName("target_id") val targetId: Long,
     @SerializedName("create_time") val createTime: Long,
     @SerializedName("is_read") val isRead: Boolean
 )

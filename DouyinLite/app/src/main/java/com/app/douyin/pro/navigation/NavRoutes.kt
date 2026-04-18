@@ -5,6 +5,7 @@ object NavRoutes {
     const val FRIENDS = "friends"
     const val RECORD = "record"
     const val INBOX = "inbox"
+    const val NOTIFICATIONS = "notifications"
     const val ME = "me"
 
     const val EDIT = "edit?videoUri={videoUri}"
