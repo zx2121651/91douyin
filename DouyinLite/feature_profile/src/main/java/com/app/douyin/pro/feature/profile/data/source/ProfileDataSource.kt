@@ -5,12 +5,22 @@ import com.app.douyin.pro.lib.media.model.VideoModel
 import com.app.douyin.pro.lib.media.model.UserModel
 import com.app.douyin.pro.lib.media.auth.AuthManager
 import com.app.douyin.pro.lib.media.util.CountFormatter
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import javax.inject.Inject
 
 interface ProfileDataSource {
     suspend fun getUserInfo(userId: Long?): ProfileInfo
     suspend fun getPublishedVideos(userId: Long?, latestTime: Long?): Pair<List<VideoModel>, Long>
-    suspend fun getFavoriteVideos(userId: Long?): List<VideoModel>
+    suspend fun getFavoriteVideos(userId: Long?, latestTime: Long?): Pair<List<VideoModel>, Long>
+    suspend fun updateProfile(
+        name: String? = null,
+        signature: String? = null,
+        avatarBytes: ByteArray? = null,
+        backgroundBytes: ByteArray? = null,
+        favoritePublic: Boolean? = null
+    )
 }
 
 class RemoteProfileDataSource @Inject constructor(
@@ -45,14 +55,14 @@ class RemoteProfileDataSource @Inject constructor(
         throw Exception(response.statusMsg ?: "Failed to load profile")
     }
 
-    override suspend fun getFavoriteVideos(userId: Long?): List<VideoModel> {
+    override suspend fun getFavoriteVideos(userId: Long?, latestTime: Long?): Pair<List<VideoModel>, Long> {
         val targetUserId = userId ?: authManager.getUserId()
         val token = authManager.getToken()
 
         try {
             val response = apiService.getFavoriteList(targetUserId, token)
             if (response.statusCode == 0) {
-                return response.videoList?.map { dto ->
+                val videos = response.videoList?.map { dto ->
                     VideoModel(
                         id = dto.id,
                         playUrl = dto.playUrl,
@@ -75,11 +85,12 @@ class RemoteProfileDataSource @Inject constructor(
                         createdAt = dto.createdAt ?: System.currentTimeMillis()
                     )
                 } ?: emptyList()
+                return videos to (response.nextTime ?: 0L)
             }
         } catch (e: Exception) {
             e.printStackTrace()
         }
-        return emptyList()
+        return emptyList<VideoModel>() to 0L
     }
 
     override suspend fun getPublishedVideos(userId: Long?, latestTime: Long?): Pair<List<VideoModel>, Long> {
@@ -119,6 +130,43 @@ class RemoteProfileDataSource @Inject constructor(
             e.printStackTrace()
         }
         return emptyList<VideoModel>() to 0L
+    }
+
+    override suspend fun updateProfile(
+        name: String?,
+        signature: String?,
+        avatarBytes: ByteArray?,
+        backgroundBytes: ByteArray?,
+        favoritePublic: Boolean?
+    ) {
+        val token = authManager.requireToken()
+        val tokenBody = token.toRequestBody("text/plain".toMediaTypeOrNull())
+        val nameBody = name?.toRequestBody("text/plain".toMediaTypeOrNull())
+        val signatureBody = signature?.toRequestBody("text/plain".toMediaTypeOrNull())
+        val favoritePublicBody = favoritePublic?.toString()?.toRequestBody("text/plain".toMediaTypeOrNull())
+
+        val avatarPart = avatarBytes?.let {
+            val requestFile = it.toRequestBody("image/*".toMediaTypeOrNull())
+            MultipartBody.Part.createFormData("avatar", "avatar.jpg", requestFile)
+        }
+
+        val backgroundPart = backgroundBytes?.let {
+            val requestFile = it.toRequestBody("image/*".toMediaTypeOrNull())
+            MultipartBody.Part.createFormData("background", "background.jpg", requestFile)
+        }
+
+        val response = apiService.updateProfile(
+            token = tokenBody,
+            name = nameBody,
+            signature = signatureBody,
+            avatar = avatarPart,
+            background = backgroundPart,
+            favoritePublic = favoritePublicBody
+        )
+
+        if (response.statusCode != 0) {
+            throw Exception(response.statusMsg ?: "Failed to update profile")
+        }
     }
 
 }

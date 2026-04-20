@@ -115,6 +115,17 @@ interface DouyinApiService {
     ): UserInfoResponse
 
     @Multipart
+    @POST("douyin/user/update/")
+    suspend fun updateProfile(
+        @Part("token") token: RequestBody,
+        @Part("name") name: RequestBody? = null,
+        @Part("signature") signature: RequestBody? = null,
+        @Part avatar: MultipartBody.Part? = null,
+        @Part background: MultipartBody.Part? = null,
+        @Part("favorite_public") favoritePublic: RequestBody? = null
+    ): PublishResponse
+
+    @Multipart
     @POST("douyin/publish/action/")
     suspend fun publishVideo(
         @Part("token") token: RequestBody,

@@ -54,6 +54,7 @@ import kotlin.math.roundToInt
 @Composable
 fun ProfileScreen(
     onNavigateToLogin: () -> Unit,
+    onNavigateToEditProfile: (() -> Unit)? = null,
     onBack: (() -> Unit)? = null,
     onVideoClick: ((index: Int) -> Unit)? = null,
     viewModel: ProfileViewModel = hiltViewModel()
@@ -260,7 +261,8 @@ fun ProfileScreen(
                     viewMode = viewMode,
                     isFollowed = profileInfo?.isFollowed ?: false,
                     onToggleFollow = { viewModel.toggleFollow() },
-                    onLogout = { viewModel.logout() }
+                    onLogout = { viewModel.logout() },
+                    onNavigateToEditProfile = onNavigateToEditProfile
                 )
             }
 
@@ -536,7 +538,8 @@ fun ProfileActionButtons(
     viewMode: ProfileViewMode,
     isFollowed: Boolean,
     onToggleFollow: () -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onNavigateToEditProfile: (() -> Unit)? = null
 ) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         if (viewMode == ProfileViewMode.SELF) {
@@ -550,7 +553,7 @@ fun ProfileActionButtons(
                 Text("退出登录", fontSize = 14.sp, fontWeight = FontWeight.Bold)
             }
             Button(
-                onClick = {},
+                onClick = { onNavigateToEditProfile?.invoke() },
                 modifier = Modifier.weight(1f).height(40.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E2E2E)),
                 shape = RoundedCornerShape(8.dp),

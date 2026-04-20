@@ -118,7 +118,7 @@ class ProfileViewModelTest {
         val profileInfo = ProfileInfo(userId, "test", "dy_123", 0, "0", 0, false, "0")
 
         `when`(getPublishedVideosUseCase(userId, 0L)).thenReturn(Resource.Success(videos to 0L))
-        `when`(getFavoriteVideosUseCase(userId)).thenReturn(Resource.Success(emptyList()))
+        `when`(getFavoriteVideosUseCase(userId, 0L)).thenReturn(Resource.Success(emptyList<VideoModel>() to 0L))
         `when`(getProfileInfoUseCase(userId)).thenReturn(Resource.Success(profileInfo))
 
         val viewModel = ProfileViewModel(

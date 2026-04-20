@@ -110,6 +110,11 @@ class ProfileViewModel @Inject constructor(
                             refresh()
                         }
                     }
+                    is InteractionEvent.ProfileUpdated -> {
+                        if (isSelf()) {
+                            refresh()
+                        }
+                    }
                     is InteractionEvent.LikeChanged -> {
                         // Update published videos
                         val currentVideos = _publishedVideos.value.toMutableList()
