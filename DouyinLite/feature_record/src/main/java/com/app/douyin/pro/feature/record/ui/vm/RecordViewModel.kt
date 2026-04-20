@@ -4,8 +4,12 @@ import androidx.camera.core.CameraSelector
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.app.douyin.pro.feature.record.domain.usecase.CountdownUseCase
+import android.content.Context
 import com.app.douyin.pro.feature.record.domain.usecase.GetAvailableFiltersUseCase
+import com.app.douyin.pro.feature.record.ui.state.PermissionStatus
+import com.app.douyin.pro.feature.record.ui.state.RecordCapability
 import com.app.douyin.pro.feature.record.ui.state.RecordUiState
+import com.app.douyin.pro.feature.record.util.RecordGuard
 import com.app.douyin.pro.lib.media.model.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -26,6 +30,31 @@ class RecordViewModel @Inject constructor(
 
     init {
         loadFilters()
+    }
+
+    fun updatePermissionStatus(status: PermissionStatus) {
+        _uiState.update { it.copy(permissionStatus = status) }
+    }
+
+    fun checkDeviceCapabilities(context: Context) {
+        val hasCamera = RecordGuard.hasCameraHardware(context)
+        val hasMic = RecordGuard.hasMicrophoneHardware(context)
+        // Simplified storage check for now, can be expanded if needed
+        val hasStorage = true
+
+        _uiState.update {
+            it.copy(
+                capabilities = RecordCapability(
+                    hasCamera = hasCamera,
+                    hasMic = hasMic,
+                    hasStorage = hasStorage
+                )
+            )
+        }
+
+        if (RecordGuard.isAllPermissionsGranted(context)) {
+            updatePermissionStatus(PermissionStatus.GRANTED)
+        }
     }
 
     private fun loadFilters() {
