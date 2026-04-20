@@ -29,6 +29,7 @@ import androidx.compose.ui.platform.LocalContext
 @Composable
 fun EditScreen(
     videoUri: String,
+    segmentsJson: String = "",
     onClose: () -> Unit,
     onNext: (Uri) -> Unit,
     viewModel: EditViewModel = hiltViewModel()
@@ -36,8 +37,10 @@ fun EditScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     val context = LocalContext.current
-    LaunchedEffect(videoUri) {
-        if (videoUri.isNotEmpty()) {
+    LaunchedEffect(videoUri, segmentsJson) {
+        if (segmentsJson.isNotEmpty()) {
+            viewModel.initProjectWithSegments(segmentsJson)
+        } else if (videoUri.isNotEmpty()) {
             val uri = Uri.parse(videoUri)
             val duration = MediaMetadataUtils.getVideoDurationMs(context, uri)
             viewModel.initProject(uri, if (duration > 0) duration else 15000L)

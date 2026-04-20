@@ -8,11 +8,13 @@ import android.net.Uri
 @Composable
 fun EditScreen(
     videoUri: String = "",
+    segmentsJson: String = "",
     onClose: () -> Unit = {},
     onNext: (Uri) -> Unit = {}
 ) {
     RealEditScreen(
         videoUri = videoUri,
+        segmentsJson = segmentsJson,
         onClose = onClose,
         onNext = onNext
     )

@@ -83,4 +83,6 @@ dependencies {
     implementation(libs.guava)
     implementation(libs.mediapipe.tasks.vision)
     testImplementation(libs.junit)
+    testImplementation("org.mockito:mockito-inline:4.5.1")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
 }

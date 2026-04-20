@@ -14,6 +14,11 @@ object NavRoutes {
         return "edit?videoUri=${android.net.Uri.encode(videoUri)}"
     }
 
+    const val EDIT_MULTI = "edit_multi?segments={segments}"
+    fun buildEditMultiRoute(segmentsJson: String): String {
+        return "edit_multi?segments=${android.net.Uri.encode(segmentsJson)}"
+    }
+
     const val CHAT = "chat/{userId}/{userName}"
     fun buildChatRoute(userId: Long, userName: String): String {
         return "chat/$userId/${android.net.Uri.encode(userName)}"
