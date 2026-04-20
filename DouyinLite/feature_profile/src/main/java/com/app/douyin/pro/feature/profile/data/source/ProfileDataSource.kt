@@ -10,6 +10,7 @@ import javax.inject.Inject
 interface ProfileDataSource {
     suspend fun getUserInfo(userId: Long?): ProfileInfo
     suspend fun getPublishedVideos(userId: Long?, latestTime: Long?): Pair<List<VideoModel>, Long>
+    suspend fun getFavoriteVideos(userId: Long?): List<VideoModel>
 }
 
 class RemoteProfileDataSource @Inject constructor(
@@ -36,11 +37,49 @@ class RemoteProfileDataSource @Inject constructor(
                 avatar = user.avatar,
                 backgroundImage = user.backgroundImage,
                 signature = user.signature,
+                favoritePublic = user.favoritePublic ?: false,
                 workCount = 0, // Will be updated by ViewModel or separate call
                 favoritedCount = 0
             )
         }
         throw Exception(response.statusMsg ?: "Failed to load profile")
+    }
+
+    override suspend fun getFavoriteVideos(userId: Long?): List<VideoModel> {
+        val targetUserId = userId ?: authManager.getUserId()
+        val token = authManager.getToken()
+
+        try {
+            val response = apiService.getFavoriteList(targetUserId, token)
+            if (response.statusCode == 0) {
+                return response.videoList?.map { dto ->
+                    VideoModel(
+                        id = dto.id,
+                        playUrl = dto.playUrl,
+                        coverUrl = dto.coverUrl,
+                        title = dto.title,
+                        author = UserModel(
+                            id = dto.author.id,
+                            name = dto.author.name,
+                            avatar = dto.author.avatar,
+                            followCount = dto.author.followCount,
+                            followerCount = dto.author.followerCount,
+                            isFollowed = dto.author.isFollow,
+                            signature = dto.author.signature,
+                            backgroundImage = dto.author.backgroundImage
+                        ),
+                        likeCount = dto.favoriteCount,
+                        commentCount = dto.commentCount,
+                        isLiked = dto.isFavorite,
+                        status = dto.status ?: "published",
+                        createdAt = dto.createdAt ?: System.currentTimeMillis()
+                    )
+                } ?: emptyList()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return emptyList()
     }
 
     override suspend fun getPublishedVideos(userId: Long?, latestTime: Long?): Pair<List<VideoModel>, Long> {
@@ -96,6 +135,7 @@ data class ProfileInfo(
     val avatar: String? = null,
     val backgroundImage: String? = null,
     val signature: String? = null,
+    val favoritePublic: Boolean = false,
     val workCount: Int = 0,
     val favoritedCount: Long = 0
 )

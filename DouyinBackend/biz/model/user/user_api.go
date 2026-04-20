@@ -44,6 +44,7 @@ type UserProfileUpdateRequest struct {
 	Signature      string                `form:"signature"`
 	AvatarData     *multipart.FileHeader `form:"avatar"`
 	BackgroundData *multipart.FileHeader `form:"background"`
+	FavoritePublic *bool                 `form:"favorite_public"`
 }
 
 type UserProfileUpdateResponse struct {

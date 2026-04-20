@@ -95,6 +95,7 @@ func Info(ctx context.Context, c *app.RequestContext) {
 			Avatar:          user.Avatar,
 			BackgroundImage: user.BackgroundImage,
 			Signature:       user.Signature,
+			FavoritePublic:  user.FavoritePublic,
 		},
 	})
 }
@@ -120,6 +121,10 @@ func UpdateProfile(ctx context.Context, c *app.RequestContext) {
 	}
 	if req.Signature != "" {
 		updates["signature"] = req.Signature
+	}
+
+	if req.FavoritePublic != nil {
+		updates["favorite_public"] = *req.FavoritePublic
 	}
 
 	// Handle Avatar Upload

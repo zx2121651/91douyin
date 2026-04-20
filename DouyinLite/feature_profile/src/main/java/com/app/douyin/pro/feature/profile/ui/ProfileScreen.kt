@@ -64,6 +64,7 @@ fun ProfileScreen(
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val pagingState by viewModel.pagingState.collectAsState()
     val publishedVideos by viewModel.publishedVideos.collectAsState()
+    val likedVideos by viewModel.likedVideos.collectAsState()
     val viewMode by viewModel.viewMode.collectAsState()
 
     val username = profileInfo?.username ?: "加载中..."
@@ -276,7 +277,7 @@ fun ProfileScreen(
         ) {
             // Tab Row
             var selectedTab by remember { mutableIntStateOf(0) }
-            val tabs = listOf("作品 ${publishedVideos.size}", "私密", "推荐", "收藏")
+            val tabs = listOf("作品 ${publishedVideos.size}", "喜欢 ${likedVideos.size}")
 
             ScrollableTabRow(
                 selectedTabIndex = selectedTab,
@@ -316,7 +317,30 @@ fun ProfileScreen(
                 horizontalArrangement = Arrangement.spacedBy(1.dp),
                 modifier = Modifier.fillMaxSize()
             ) {
-                if (publishedVideos.isEmpty() && !isLoading && !isRefreshing) {
+                val currentList = if (selectedTab == 0) publishedVideos else likedVideos
+                val isSelf = viewMode == ProfileViewMode.SELF
+                val isFavoritePublic = profileInfo?.favoritePublic ?: false
+
+                if (selectedTab == 1 && !isSelf && !isFavoritePublic) {
+                    item(span = { GridItemSpan(3) }) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(300.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(Icons.Filled.Favorite, contentDescription = null, tint = Color.White.copy(alpha = 0.3f), modifier = Modifier.size(48.dp))
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    text = "喜欢列表已隐藏",
+                                    color = Color.White.copy(alpha = 0.5f),
+                                    fontSize = 14.sp
+                                )
+                            }
+                        }
+                    }
+                } else if (currentList.isEmpty() && !isLoading && !isRefreshing) {
                     item(span = { GridItemSpan(3) }) {
                         Box(
                             modifier = Modifier
@@ -326,7 +350,7 @@ fun ProfileScreen(
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
-                                    text = "还没有发布过作品",
+                                    text = if (selectedTab == 0) "还没有发布过作品" else "还没有喜欢的视频",
                                     color = Color.White.copy(alpha = 0.5f),
                                     fontSize = 14.sp
                                 )
@@ -335,13 +359,17 @@ fun ProfileScreen(
                     }
                 }
 
-                items(publishedVideos.size) { index ->
-                    val video = publishedVideos[index]
+                items(currentList.size) { index ->
+                    val video = currentList[index]
 
                     // Load more trigger
-                    if (index == publishedVideos.size - 1) {
+                    if (selectedTab == 0 && index == currentList.size - 1) {
                         LaunchedEffect(Unit) {
                             viewModel.loadMoreVideos()
+                        }
+                    } else if (selectedTab == 1 && index == currentList.size - 1) {
+                        LaunchedEffect(Unit) {
+                            viewModel.loadMoreLikedVideos()
                         }
                     }
 

@@ -6,6 +6,8 @@ import (
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/douyin/backend/biz/common/errno"
 	"github.com/douyin/backend/biz/common/utils"
+	"github.com/douyin/backend/biz/dal/db"
+	"github.com/douyin/backend/biz/dal/model"
 	"github.com/douyin/backend/biz/model/common"
 	favorite_model "github.com/douyin/backend/biz/model/favorite"
 	"github.com/douyin/backend/biz/service"
@@ -49,6 +51,22 @@ func FavoriteList(ctx context.Context, c *app.RequestContext) {
 	var currentUserID uint = 0
 	if rawID, exists := c.Get("user_id"); exists {
 		currentUserID = rawID.(uint)
+	}
+
+	// Check visibility rules
+	if targetUserID != currentUserID {
+		var targetUser model.User
+		if err := db.DB.First(&targetUser, targetUserID).Error; err == nil {
+			if !targetUser.FavoritePublic {
+				utils.SendResponse(c, errno.Success, map[string]interface{}{
+					"video_list": []common.Video{},
+				})
+				return
+			}
+		} else {
+			utils.SendResponse(c, errno.UserNotFoundErr, nil)
+			return
+		}
 	}
 
 	videos, err := favoriteService.GetFavoriteList(targetUserID)

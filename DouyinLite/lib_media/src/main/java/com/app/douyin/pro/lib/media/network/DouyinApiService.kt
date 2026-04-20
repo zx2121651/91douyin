@@ -71,6 +71,12 @@ interface DouyinApiService {
         @Query("latest_time") latestTime: Long? = null
     ): FeedResponse
 
+    @GET("douyin/favorite/list/")
+    suspend fun getFavoriteList(
+        @Query("user_id") userId: Long,
+        @Query("token") token: String? = null
+    ): FeedResponse
+
 
     @GET("douyin/effect/list/")
     suspend fun getEffectList(): EffectResponse
