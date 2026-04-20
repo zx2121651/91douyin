@@ -3,11 +3,10 @@ package com.app.douyin.pro.feature.record.ui
 import android.annotation.SuppressLint
 import android.graphics.SurfaceTexture
 import android.view.Surface
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.Preview
-import androidx.camera.core.SurfaceRequest
+import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.video.*
+import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -32,7 +31,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.app.douyin.pro.feature.record.gl.CameraGLSurfaceView
+import com.app.douyin.pro.feature.record.gl.CameraSurfaceProcessor
 import com.app.douyin.pro.feature.record.ui.vm.RecordViewModel
 import com.app.douyin.pro.feature.record.ui.state.PermissionStatus
 import com.app.douyin.pro.feature.record.ui.state.RecordState
@@ -110,7 +109,14 @@ fun RecordScreen(
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
     var videoCapture by remember { mutableStateOf<VideoCapture<Recorder>?>(null) }
     var activeRecording by remember { mutableStateOf<Recording?>(null) }
-    var previewTexture by remember { mutableStateOf<SurfaceTexture?>(null) }
+
+    val surfaceProcessor = remember { CameraSurfaceProcessor() }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            surfaceProcessor.release()
+        }
+    }
 
     // Initialize FaceTracker (it will fail silently if the model asset isn't bundled,
     // but provides the architecture for MediaPipe AI processing on camera frames)
@@ -118,20 +124,14 @@ fun RecordScreen(
     val analyzerExecutor = remember { Executors.newSingleThreadExecutor() }
     val nosePosition by faceTracker.nosePosition.collectAsState()
 
-    fun bindCamera(surfaceTexture: SurfaceTexture) {
+    fun bindCamera(previewView: PreviewView) {
         if (uiState.permissionStatus != PermissionStatus.GRANTED) return
 
         cameraProviderFuture.addListener({
             val cameraProvider = cameraProviderFuture.get()
+
             val preview = Preview.Builder().build()
-            preview.setSurfaceProvider { request: SurfaceRequest ->
-                val resolution = request.resolution
-                surfaceTexture.setDefaultBufferSize(resolution.width, resolution.height)
-                val surface = Surface(surfaceTexture)
-                request.provideSurface(surface, ContextCompat.getMainExecutor(context)) {
-                    surface.release()
-                }
-            }
+            preview.setSurfaceProvider(previewView.surfaceProvider)
 
             val recorder = Recorder.Builder()
                 .setQualitySelector(QualitySelector.from(Quality.HIGHEST))
@@ -146,45 +146,47 @@ fun RecordScreen(
                 }
 
             val cameraSelector = CameraSelector.Builder().requireLensFacing(uiState.lensFacing).build()
+
+            val effect = object : CameraEffect(
+                PREVIEW or VIDEO_CAPTURE,
+                ContextCompat.getMainExecutor(context),
+                surfaceProcessor,
+                { /* error handler */ }
+            ) {}
+
+            val useCaseGroup = UseCaseGroup.Builder()
+                .addUseCase(preview)
+                .addUseCase(videoCapture!!)
+                .addUseCase(imageAnalyzer)
+                .addEffect(effect)
+                .build()
+
             try {
                 cameraProvider.unbindAll()
-                cameraProvider.bindToLifecycle(lifecycleOwner, cameraSelector, preview, videoCapture, imageAnalyzer)
+                cameraProvider.bindToLifecycle(lifecycleOwner, cameraSelector, useCaseGroup)
             } catch (e: Exception) { e.printStackTrace() }
         }, ContextCompat.getMainExecutor(context))
     }
 
-    LaunchedEffect(uiState.lensFacing, previewTexture, uiState.permissionStatus) {
-        if (uiState.permissionStatus == PermissionStatus.GRANTED) {
-            previewTexture?.let { bindCamera(it) }
-        }
-    }
-
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         if (uiState.permissionStatus == PermissionStatus.GRANTED) {
-            var glSurfaceView by remember { mutableStateOf<CameraGLSurfaceView?>(null) }
-
             LaunchedEffect(uiState.selectedFilter) {
                 uiState.selectedFilter?.let { filter ->
-                    if (filter.isDynamic && filter.glslSource != null) {
-                        glSurfaceView?.setDynamicFilter(filter.glslSource)
-                    } else {
-                        glSurfaceView?.setFilter(filter.name)
-                    }
+                    surfaceProcessor.setFilter(filter.name)
                 } ?: run {
-                    glSurfaceView?.setFilter("原片")
+                    surfaceProcessor.setFilter("原片")
                 }
             }
 
             AndroidView(
                 factory = { ctx ->
-                    CameraGLSurfaceView(ctx).apply {
-                        onSurfaceTextureReady = { st ->
-                            previewTexture = st
-                            bindCamera(st)
-                        }
-                        initRenderer()
-                        glSurfaceView = this
+                    PreviewView(ctx).apply {
+                        implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+                        bindCamera(this)
                     }
+                },
+                update = {
+                   // Optional updates to PreviewView
                 },
                 modifier = Modifier.fillMaxSize()
             )
