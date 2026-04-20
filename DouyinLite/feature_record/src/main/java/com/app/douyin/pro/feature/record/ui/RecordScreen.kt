@@ -35,6 +35,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.app.douyin.pro.feature.record.gl.CameraGLSurfaceView
 import com.app.douyin.pro.feature.record.ui.vm.RecordViewModel
 import com.app.douyin.pro.feature.record.ui.state.PermissionStatus
+import com.app.douyin.pro.feature.record.ui.state.RecordState
 import com.app.douyin.pro.feature.record.util.RecordGuard
 import android.content.Intent
 import android.net.Uri
@@ -189,7 +190,16 @@ fun RecordScreen(
             )
 
             // UI Components
-            TopControls(onClose = { }, onToggleLens = viewModel::toggleLens)
+            Column(modifier = Modifier.fillMaxSize()) {
+                Spacer(modifier = Modifier.height(16.dp))
+                RecordProgressBar(
+                    segments = uiState.segments,
+                    totalDurationMs = uiState.totalDurationMs,
+                    maxDurationMs = 60000L, // 60s limit
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(4.dp)
+                )
+                TopControls(onClose = { }, onToggleLens = viewModel::toggleLens)
+            }
 
             SideControls(
                 onShowFilters = { viewModel.setShowFilters(true) },
@@ -223,28 +233,72 @@ fun RecordScreen(
                 )
             }
 
-            RecordButton(
-                isRecording = uiState.isRecording,
-                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 40.dp),
-                onClick = {
-                    if (uiState.isRecording) {
-                        activeRecording?.stop()
-                        viewModel.setRecording(false)
-                    } else {
-                        val videoFile = File(context.cacheDir, "recorded_${System.currentTimeMillis()}.mp4")
-                        activeRecording = videoCapture?.output
-                            ?.prepareRecording(context, FileOutputOptions.Builder(videoFile).build())
-                            ?.apply { if (uiState.capabilities.hasMic) withAudioEnabled() }
-                            ?.start(ContextCompat.getMainExecutor(context)) { event ->
-                                if (event is VideoRecordEvent.Start) viewModel.setRecording(true)
-                                if (event is VideoRecordEvent.Finalize) {
-                                    viewModel.setRecording(false)
-                                    if (!event.hasError()) onNavigateToEdit(videoFile.absolutePath)
-                                }
-                            }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 40.dp)
+            ) {
+                // Delete button (only show when not recording and has segments)
+                if (!uiState.isRecording && uiState.segments.isNotEmpty()) {
+                    IconButton(
+                        onClick = viewModel::deleteLastSegment,
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .padding(start = 48.dp)
+                            .size(48.dp)
+                            .background(Color.White.copy(alpha = 0.2f), CircleShape)
+                    ) {
+                        Icon(Icons.Default.Backspace, contentDescription = "Delete Last", tint = Color.White)
                     }
                 }
-            )
+
+                RecordButton(
+                    isRecording = uiState.isRecording,
+                    modifier = Modifier.align(Alignment.Center),
+                    onClick = {
+                        if (uiState.isRecording) {
+                            activeRecording?.stop()
+                        } else {
+                            val videoFile = File(context.cacheDir, "recorded_${System.currentTimeMillis()}.mp4")
+                            activeRecording = videoCapture?.output
+                                ?.prepareRecording(context, FileOutputOptions.Builder(videoFile).build())
+                                ?.apply { if (uiState.capabilities.hasMic) withAudioEnabled() }
+                                ?.start(ContextCompat.getMainExecutor(context)) { event ->
+                                    if (event is VideoRecordEvent.Start) {
+                                        viewModel.startRecording()
+                                    }
+                                    if (event is VideoRecordEvent.Finalize) {
+                                        if (!event.hasError()) {
+                                            val duration = event.recordingStats.recordedDurationNanos / 1_000_000
+                                            viewModel.pauseRecording(videoFile.absolutePath, duration)
+                                        } else {
+                                            viewModel.setRecording(false)
+                                        }
+                                    }
+                                }
+                        }
+                    }
+                )
+
+                // Done button (show when has segments)
+                if (!uiState.isRecording && uiState.segments.isNotEmpty()) {
+                    IconButton(
+                        onClick = {
+                            viewModel.completeRecording()
+                            val segmentsJson = com.google.gson.Gson().toJson(uiState.segments)
+                            onNavigateToEdit(segmentsJson)
+                        },
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .padding(end = 48.dp)
+                            .size(48.dp)
+                            .background(Color(0xFFFF2C55), CircleShape)
+                    ) {
+                        Icon(Icons.Default.Check, contentDescription = "Done", tint = Color.White)
+                    }
+                }
+            }
         } else {
             PermissionGuardView(
                 status = uiState.permissionStatus,
@@ -367,6 +421,33 @@ fun FilterPanel(filters: List<com.app.douyin.pro.feature.record.domain.model.Fil
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun RecordProgressBar(
+    segments: List<com.app.douyin.pro.feature.record.domain.model.RecordSegment>,
+    totalDurationMs: Long,
+    maxDurationMs: Long,
+    modifier: Modifier = Modifier
+) {
+    Canvas(modifier = modifier) {
+        val width = size.width
+        val height = size.height
+
+        // Background
+        drawRect(color = Color.White.copy(alpha = 0.3f), size = size)
+
+        var currentX = 0f
+        segments.forEach { segment ->
+            val segmentWidth = (segment.durationMs.toFloat() / maxDurationMs) * width
+            drawRect(
+                color = Color(0xFFFF2C55),
+                topLeft = Offset(currentX, 0f),
+                size = androidx.compose.ui.geometry.Size(segmentWidth - 2.dp.toPx(), height)
+            )
+            currentX += segmentWidth
         }
     }
 }

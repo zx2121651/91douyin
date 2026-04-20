@@ -52,6 +52,29 @@ class EditViewModel @Inject constructor(
         clearHistory()
     }
 
+    fun initProjectWithSegments(segmentsJson: String) {
+        try {
+            val type = object : com.google.gson.reflect.TypeToken<List<com.app.douyin.pro.feature.record.domain.model.RecordSegment>>() {}.type
+            val segments: List<com.app.douyin.pro.feature.record.domain.model.RecordSegment> = Gson().fromJson(segmentsJson, type)
+
+            val clips = segments.map { segment ->
+                ClipItem(
+                    sourceUri = Uri.fromFile(File(segment.filePath)),
+                    sourceDurationMs = segment.durationMs,
+                    endInSourceMs = segment.durationMs
+                )
+            }.toMutableList()
+
+            val videoTrack = EditTrack(type = TrackType.VIDEO, clips = clips)
+            val totalDuration = clips.sumOf { it.getTimelineDurationMs() }
+
+            _uiState.update { it.copy(tracks = listOf(videoTrack), totalDurationMs = totalDuration) }
+            clearHistory()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
     private fun executeCommand(command: EditCommand) {
         val prevState = _uiState.value.tracks.map { it.copy(clips = it.clips.map { c -> c.copy() }.toMutableList()) }
         val nextTracks = command.execute(_uiState.value.tracks)

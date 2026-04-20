@@ -2,6 +2,7 @@ package com.app.douyin.pro.feature.record.ui.state
 
 import androidx.camera.core.CameraSelector
 import com.app.douyin.pro.feature.record.domain.model.FilterEffect
+import com.app.douyin.pro.feature.record.domain.model.RecordSegment
 
 enum class PermissionStatus {
     IDLE,
@@ -23,5 +24,8 @@ data class RecordUiState(
     val showFilters: Boolean = false,
     val selectedFilter: FilterEffect? = FilterEffect("原片", false, null),
     val permissionStatus: PermissionStatus = PermissionStatus.IDLE,
-    val capabilities: RecordCapability = RecordCapability()
+    val capabilities: RecordCapability = RecordCapability(),
+    val segments: List<RecordSegment> = emptyList(),
+    val totalDurationMs: Long = 0L,
+    val currentState: RecordState = RecordState.IDLE
 )

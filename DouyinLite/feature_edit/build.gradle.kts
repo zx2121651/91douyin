@@ -37,6 +37,7 @@ android {
 
 dependencies {
     implementation(project(":lib_media"))
+    implementation(project(":feature_record"))
     implementation(libs.androidx.work.runtime.ktx)
 
     // Hilt

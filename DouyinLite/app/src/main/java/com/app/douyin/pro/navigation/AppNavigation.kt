@@ -47,8 +47,8 @@ fun AppNavHost(
             FriendsScreen()
         }
         composable(NavRoutes.RECORD) {
-            RecordScreen(onNavigateToEdit = { videoUriStr ->
-                navController.navigate(NavRoutes.buildEditRoute(videoUriStr))
+            RecordScreen(onNavigateToEdit = { segmentsJson ->
+                navController.navigate(NavRoutes.buildEditMultiRoute(segmentsJson))
             })
         }
         composable(
@@ -58,6 +58,19 @@ fun AppNavHost(
             val videoUri = backStackEntry.arguments?.getString("videoUri") ?: ""
             EditScreen(
                 videoUri = videoUri,
+                onClose = { navController.popBackStack() },
+                onNext = { exportedUri ->
+                    navController.navigate(NavRoutes.buildPublishRoute(exportedUri.toString()))
+                }
+            )
+        }
+        composable(
+            route = NavRoutes.EDIT_MULTI,
+            arguments = listOf(navArgument("segments") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val segmentsJson = backStackEntry.arguments?.getString("segments") ?: "[]"
+            EditScreen(
+                segmentsJson = segmentsJson,
                 onClose = { navController.popBackStack() },
                 onNext = { exportedUri ->
                     navController.navigate(NavRoutes.buildPublishRoute(exportedUri.toString()))
