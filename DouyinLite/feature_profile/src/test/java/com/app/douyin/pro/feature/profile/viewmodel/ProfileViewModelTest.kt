@@ -2,6 +2,7 @@ package com.app.douyin.pro.feature.profile.viewmodel
 
 import androidx.lifecycle.SavedStateHandle
 import com.app.douyin.pro.feature.profile.data.source.ProfileInfo
+import com.app.douyin.pro.feature.profile.domain.usecase.GetFavoriteVideosUseCase
 import com.app.douyin.pro.feature.profile.domain.usecase.GetProfileInfoUseCase
 import com.app.douyin.pro.feature.profile.domain.usecase.GetPublishedVideosUseCase
 import com.app.douyin.pro.lib.media.auth.AuthManager
@@ -29,6 +30,7 @@ class ProfileViewModelTest {
 
     private val getProfileInfoUseCase: GetProfileInfoUseCase = mock(GetProfileInfoUseCase::class.java)
     private val getPublishedVideosUseCase: GetPublishedVideosUseCase = mock(GetPublishedVideosUseCase::class.java)
+    private val getFavoriteVideosUseCase: GetFavoriteVideosUseCase = mock(GetFavoriteVideosUseCase::class.java)
     private val authRepository: AuthRepository = mock(AuthRepository::class.java)
     private val authManager: AuthManager = mock(AuthManager::class.java)
     private val interactionManager: VideoInteractionManager = mock(VideoInteractionManager::class.java)
@@ -38,7 +40,7 @@ class ProfileViewModelTest {
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
-        val userDto = UserDto(123L, "test", 0, 0, false, null, null, null)
+        val userDto = UserDto(123L, "test", 0, 0, false, null, null, null, true)
         `when`(authRepository.getSessionState()).thenReturn(MutableStateFlow(SessionState.LoggedIn(userDto)))
         `when`(interactionManager.interactionEvents).thenReturn(MutableSharedFlow())
     }
@@ -56,6 +58,7 @@ class ProfileViewModelTest {
         val viewModel = ProfileViewModel(
             getProfileInfoUseCase,
             getPublishedVideosUseCase,
+            getFavoriteVideosUseCase,
             authRepository,
             authManager,
             interactionManager,
@@ -73,6 +76,7 @@ class ProfileViewModelTest {
         val viewModel = ProfileViewModel(
             getProfileInfoUseCase,
             getPublishedVideosUseCase,
+            getFavoriteVideosUseCase,
             authRepository,
             authManager,
             interactionManager,
@@ -90,6 +94,7 @@ class ProfileViewModelTest {
         val viewModel = ProfileViewModel(
             getProfileInfoUseCase,
             getPublishedVideosUseCase,
+            getFavoriteVideosUseCase,
             authRepository,
             authManager,
             interactionManager,
@@ -113,11 +118,13 @@ class ProfileViewModelTest {
         val profileInfo = ProfileInfo(userId, "test", "dy_123", 0, "0", 0, false, "0")
 
         `when`(getPublishedVideosUseCase(userId, 0L)).thenReturn(Resource.Success(videos to 0L))
+        `when`(getFavoriteVideosUseCase(userId)).thenReturn(Resource.Success(emptyList()))
         `when`(getProfileInfoUseCase(userId)).thenReturn(Resource.Success(profileInfo))
 
         val viewModel = ProfileViewModel(
             getProfileInfoUseCase,
             getPublishedVideosUseCase,
+            getFavoriteVideosUseCase,
             authRepository,
             authManager,
             interactionManager,

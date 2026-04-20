@@ -16,6 +16,7 @@ type User struct {
 	Avatar          string `json:"avatar,omitempty"`
 	BackgroundImage string `json:"background_image,omitempty"`
 	Signature       string `json:"signature,omitempty"`
+	FavoritePublic  bool   `json:"favorite_public"`
 }
 
 // Video represents a video metadata

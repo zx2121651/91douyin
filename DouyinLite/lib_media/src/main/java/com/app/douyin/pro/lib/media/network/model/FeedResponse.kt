@@ -30,5 +30,6 @@ data class UserDto(
     @SerializedName("is_follow") val isFollow: Boolean,
     @SerializedName("avatar") val avatar: String?,
     @SerializedName("background_image") val backgroundImage: String?,
-    @SerializedName("signature") val signature: String?
+    @SerializedName("signature") val signature: String?,
+    @SerializedName("favorite_public") val favoritePublic: Boolean?
 )

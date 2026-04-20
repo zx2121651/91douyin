@@ -23,4 +23,10 @@ class ProfileRepository @Inject constructor(
     } catch (e: Exception) {
         Resource.Error(e.message ?: "Unknown Error", AppError.NetworkError)
     }
+
+    suspend fun getFavoriteVideos(userId: Long? = null): Resource<List<VideoModel>> = try {
+        Resource.Success(dataSource.getFavoriteVideos(userId))
+    } catch (e: Exception) {
+        Resource.Error(e.message ?: "Unknown Error", AppError.NetworkError)
+    }
 }
