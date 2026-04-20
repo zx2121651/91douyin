@@ -1,4 +1,4 @@
-package com.app.douyin.pro.feature.home.viewmodel
+package com.app.douyin.pro.lib.media.model
 
 sealed class PagingState {
     object Idle : PagingState()

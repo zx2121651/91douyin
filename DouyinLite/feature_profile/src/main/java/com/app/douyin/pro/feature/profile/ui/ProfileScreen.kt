@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -16,6 +17,10 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
@@ -39,21 +44,25 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.app.douyin.pro.feature.profile.viewmodel.ProfileViewModel
 import com.app.douyin.pro.feature.profile.viewmodel.ProfileViewMode
+import com.app.douyin.pro.lib.media.model.PagingState
 import com.app.douyin.pro.lib.media.auth.SessionState
 import com.app.douyin.pro.lib.media.util.CountFormatter
 import kotlin.random.Random
 import kotlin.math.roundToInt
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterialApi::class)
 @Composable
 fun ProfileScreen(
     onNavigateToLogin: () -> Unit,
     onBack: (() -> Unit)? = null,
+    onVideoClick: ((index: Int) -> Unit)? = null,
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
     val sessionState by viewModel.sessionState.collectAsState()
     val profileInfo by viewModel.profileInfo.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val isRefreshing by viewModel.isRefreshing.collectAsState()
+    val pagingState by viewModel.pagingState.collectAsState()
     val publishedVideos by viewModel.publishedVideos.collectAsState()
     val viewMode by viewModel.viewMode.collectAsState()
 
@@ -123,10 +132,16 @@ fun ProfileScreen(
         }
     }
 
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = isRefreshing,
+        onRefresh = { viewModel.refresh() }
+    )
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(darkBg)
+            .pullRefresh(pullRefreshState)
             .nestedScroll(nestedScrollConnection)
     ) {
         // Background Image
@@ -301,13 +316,41 @@ fun ProfileScreen(
                 horizontalArrangement = Arrangement.spacedBy(1.dp),
                 modifier = Modifier.fillMaxSize()
             ) {
+                if (publishedVideos.isEmpty() && !isLoading && !isRefreshing) {
+                    item(span = { GridItemSpan(3) }) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(300.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = "还没有发布过作品",
+                                    color = Color.White.copy(alpha = 0.5f),
+                                    fontSize = 14.sp
+                                )
+                            }
+                        }
+                    }
+                }
+
                 items(publishedVideos.size) { index ->
                     val video = publishedVideos[index]
+
+                    // Load more trigger
+                    if (index == publishedVideos.size - 1) {
+                        LaunchedEffect(Unit) {
+                            viewModel.loadMoreVideos()
+                        }
+                    }
+
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .aspectRatio(3f / 4f)
-                            .background(Color(0xFF2E2E2E)),
+                            .background(Color(0xFF2E2E2E))
+                            .clickable { onVideoClick?.invoke(index) },
                         contentAlignment = Alignment.BottomStart
                     ) {
                         AsyncImage(
@@ -316,6 +359,31 @@ fun ProfileScreen(
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize()
                         )
+
+                        // Status Badge for Processing
+                        if (video.status == "processing") {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color.Black.copy(alpha = 0.4f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(24.dp),
+                                        color = Color.White,
+                                        strokeWidth = 2.dp
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        "审核中",
+                                        color = Color.White,
+                                        fontSize = 10.sp
+                                    )
+                                }
+                            }
+                        }
+
                         Row(
                             modifier = Modifier.padding(8.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -337,6 +405,47 @@ fun ProfileScreen(
                         }
                     }
                 }
+
+                // Loading more indicator
+                if (pagingState is PagingState.Loading) {
+                    item(span = { GridItemSpan(3) }) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = Color(0xFFFFD444)
+                            )
+                        }
+                    }
+                }
+
+                // Paging Error State
+                if (pagingState is PagingState.Error) {
+                    item(span = { GridItemSpan(3) }) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                                .clickable { viewModel.loadMoreVideos() },
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = (pagingState as PagingState.Error).message,
+                                color = Color.Red,
+                                fontSize = 12.sp
+                            )
+                            Text(
+                                text = "点击重试",
+                                color = Color.White,
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
+                }
             }
         }
 
@@ -348,6 +457,14 @@ fun ProfileScreen(
         } else {
             0f
         }
+
+        PullRefreshIndicator(
+            refreshing = isRefreshing,
+            state = pullRefreshState,
+            modifier = Modifier.align(Alignment.TopCenter),
+            backgroundColor = Color.White,
+            contentColor = Color(0xFFFF2C55)
+        )
 
         Row(
             modifier = Modifier

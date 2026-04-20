@@ -9,7 +9,7 @@ import javax.inject.Inject
 
 interface ProfileDataSource {
     suspend fun getUserInfo(userId: Long?): ProfileInfo
-    suspend fun getPublishedVideos(userId: Long?): List<VideoModel>
+    suspend fun getPublishedVideos(userId: Long?, latestTime: Long?): Pair<List<VideoModel>, Long>
 }
 
 class RemoteProfileDataSource @Inject constructor(
@@ -43,15 +43,15 @@ class RemoteProfileDataSource @Inject constructor(
         throw Exception(response.statusMsg ?: "Failed to load profile")
     }
 
-    override suspend fun getPublishedVideos(userId: Long?): List<VideoModel> {
-        if (!authManager.isLoggedIn()) return emptyList()
+    override suspend fun getPublishedVideos(userId: Long?, latestTime: Long?): Pair<List<VideoModel>, Long> {
+        if (!authManager.isLoggedIn()) return emptyList<VideoModel>() to 0L
         val targetUserId = userId ?: authManager.getUserId()
         val token = authManager.requireToken()
 
         try {
-            val response = apiService.getPublishList(targetUserId, token)
+            val response = apiService.getPublishList(targetUserId, token, latestTime)
             if (response.statusCode == 0) {
-                return response.videoList?.map { dto ->
+                val videos = response.videoList?.map { dto ->
                     VideoModel(
                         id = dto.id,
                         playUrl = dto.playUrl,
@@ -74,11 +74,12 @@ class RemoteProfileDataSource @Inject constructor(
                         createdAt = dto.createdAt ?: System.currentTimeMillis()
                     )
                 } ?: emptyList()
+                return videos to (response.nextTime ?: 0L)
             }
         } catch (e: Exception) {
             e.printStackTrace()
         }
-        return emptyList()
+        return emptyList<VideoModel>() to 0L
     }
 
 }

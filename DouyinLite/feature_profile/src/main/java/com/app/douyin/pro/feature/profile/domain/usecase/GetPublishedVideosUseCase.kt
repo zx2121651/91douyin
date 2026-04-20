@@ -8,5 +8,6 @@ import javax.inject.Inject
 class GetPublishedVideosUseCase @Inject constructor(
     private val repository: ProfileRepository
 ) {
-    suspend operator fun invoke(userId: Long? = null): Resource<List<VideoModel>> = repository.getPublishedVideos(userId)
+    suspend operator fun invoke(userId: Long? = null, latestTime: Long? = null): Resource<Pair<List<VideoModel>, Long>> =
+        repository.getPublishedVideos(userId, latestTime)
 }

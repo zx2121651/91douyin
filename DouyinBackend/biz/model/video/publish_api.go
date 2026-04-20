@@ -17,11 +17,13 @@ type PublishActionResponse struct {
 }
 
 type PublishListRequest struct {
-	UserID int64  `query:"user_id" vd:"$>0;msg:'invalid user id'"`
-	Token  string `query:"token"`
+	UserID     int64  `query:"user_id" vd:"$>0;msg:'invalid user id'"`
+	Token      string `query:"token"`
+	LatestTime int64  `query:"latest_time"`
 }
 
 type PublishListResponse struct {
 	common.BaseResponse
+	NextTime  int64          `json:"next_time"`
 	VideoList []common.Video `json:"video_list"`
 }
