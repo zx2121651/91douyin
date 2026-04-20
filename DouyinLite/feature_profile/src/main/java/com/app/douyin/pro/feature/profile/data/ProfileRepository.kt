@@ -24,9 +24,22 @@ class ProfileRepository @Inject constructor(
         Resource.Error(e.message ?: "Unknown Error", AppError.NetworkError)
     }
 
-    suspend fun getFavoriteVideos(userId: Long? = null): Resource<List<VideoModel>> = try {
-        Resource.Success(dataSource.getFavoriteVideos(userId))
+    suspend fun getFavoriteVideos(userId: Long? = null, latestTime: Long? = null): Resource<Pair<List<VideoModel>, Long>> = try {
+        Resource.Success(dataSource.getFavoriteVideos(userId, latestTime))
     } catch (e: Exception) {
         Resource.Error(e.message ?: "Unknown Error", AppError.NetworkError)
+    }
+
+    suspend fun updateProfile(
+        name: String? = null,
+        signature: String? = null,
+        avatarBytes: ByteArray? = null,
+        backgroundBytes: ByteArray? = null,
+        favoritePublic: Boolean? = null
+    ): Resource<Unit> = try {
+        dataSource.updateProfile(name, signature, avatarBytes, backgroundBytes, favoritePublic)
+        Resource.Success(Unit)
+    } catch (e: Exception) {
+        Resource.Error(e.message ?: "Update Failed", AppError.NetworkError)
     }
 }

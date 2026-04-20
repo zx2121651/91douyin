@@ -7,6 +7,7 @@ object NavRoutes {
     const val INBOX = "inbox"
     const val NOTIFICATIONS = "notifications"
     const val ME = "me"
+    const val EDIT_PROFILE = "edit_profile"
 
     const val EDIT = "edit?videoUri={videoUri}"
     fun buildEditRoute(videoUri: String): String {
