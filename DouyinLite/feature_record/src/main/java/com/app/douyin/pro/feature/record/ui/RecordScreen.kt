@@ -34,6 +34,17 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.app.douyin.pro.feature.record.gl.CameraGLSurfaceView
 import com.app.douyin.pro.feature.record.ui.vm.RecordViewModel
+import com.app.douyin.pro.feature.record.ui.state.PermissionStatus
+import com.app.douyin.pro.feature.record.util.RecordGuard
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import android.app.Activity
+import androidx.core.app.ActivityCompat
 
 import androidx.camera.core.ImageAnalysis
 import androidx.compose.foundation.Canvas
@@ -55,6 +66,46 @@ fun RecordScreen(
     val uiState by viewModel.uiState.collectAsState()
     val availableFilters by viewModel.availableFilters.collectAsState()
 
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val allGranted = permissions.values.all { it }
+        if (allGranted) {
+            viewModel.updatePermissionStatus(PermissionStatus.GRANTED)
+        } else {
+            val activity = context as? Activity
+            val showRationale = activity?.let { act ->
+                RecordGuard.getRequiredPermissions().any { perm ->
+                    ActivityCompat.shouldShowRequestPermissionRationale(act, perm)
+                }
+            } ?: true
+
+            if (!showRationale) {
+                viewModel.updatePermissionStatus(PermissionStatus.PERMANENTLY_DENIED)
+            } else {
+                viewModel.updatePermissionStatus(PermissionStatus.DENIED)
+            }
+        }
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.checkDeviceCapabilities(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        if (!RecordGuard.isAllPermissionsGranted(context)) {
+            permissionLauncher.launch(RecordGuard.getRequiredPermissions())
+        }
+    }
+
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
     var videoCapture by remember { mutableStateOf<VideoCapture<Recorder>?>(null) }
     var activeRecording by remember { mutableStateOf<Recording?>(null) }
@@ -67,6 +118,7 @@ fun RecordScreen(
     val nosePosition by faceTracker.nosePosition.collectAsState()
 
     fun bindCamera(surfaceTexture: SurfaceTexture) {
+        if (uiState.permissionStatus != PermissionStatus.GRANTED) return
 
         cameraProviderFuture.addListener({
             val cameraProvider = cameraProviderFuture.get()
@@ -100,85 +152,154 @@ fun RecordScreen(
         }, ContextCompat.getMainExecutor(context))
     }
 
-    LaunchedEffect(uiState.lensFacing, previewTexture) {
-        previewTexture?.let { bindCamera(it) }
+    LaunchedEffect(uiState.lensFacing, previewTexture, uiState.permissionStatus) {
+        if (uiState.permissionStatus == PermissionStatus.GRANTED) {
+            previewTexture?.let { bindCamera(it) }
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+        if (uiState.permissionStatus == PermissionStatus.GRANTED) {
+            var glSurfaceView by remember { mutableStateOf<CameraGLSurfaceView?>(null) }
 
-        var glSurfaceView by remember { mutableStateOf<CameraGLSurfaceView?>(null) }
-
-        LaunchedEffect(uiState.selectedFilter) {
-            uiState.selectedFilter?.let { filter ->
-                if (filter.isDynamic && filter.glslSource != null) {
-                    glSurfaceView?.setDynamicFilter(filter.glslSource)
-                } else {
-                    glSurfaceView?.setFilter(filter.name)
-                }
-            } ?: run {
-                glSurfaceView?.setFilter("原片")
-            }
-        }
-
-        AndroidView(
-            factory = { ctx ->
-                CameraGLSurfaceView(ctx).apply {
-                    onSurfaceTextureReady = { st ->
-                        previewTexture = st
-                        bindCamera(st)
+            LaunchedEffect(uiState.selectedFilter) {
+                uiState.selectedFilter?.let { filter ->
+                    if (filter.isDynamic && filter.glslSource != null) {
+                        glSurfaceView?.setDynamicFilter(filter.glslSource)
+                    } else {
+                        glSurfaceView?.setFilter(filter.name)
                     }
-                    initRenderer()
-                    glSurfaceView = this
+                } ?: run {
+                    glSurfaceView?.setFilter("原片")
                 }
-            },
-
-            modifier = Modifier.fillMaxSize()
-        )
-
-        // UI Components
-        TopControls(onClose = { }, onToggleLens = viewModel::toggleLens)
-
-        SideControls(
-            onShowFilters = { viewModel.setShowFilters(true) },
-            onStartCountdown = { viewModel.startCountdown(3) }
-        )
-
-        if (uiState.countdownTime > 0) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(uiState.countdownTime.toString(), color = Color.White, fontSize = 120.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
             }
-        }
 
-        if (uiState.showFilters) {
-            FilterPanel(
-                filters = availableFilters,
-                selectedFilter = uiState.selectedFilter,
-                onSelectFilter = viewModel::selectFilter,
-                onDismiss = { viewModel.setShowFilters(false) }
+            AndroidView(
+                factory = { ctx ->
+                    CameraGLSurfaceView(ctx).apply {
+                        onSurfaceTextureReady = { st ->
+                            previewTexture = st
+                            bindCamera(st)
+                        }
+                        initRenderer()
+                        glSurfaceView = this
+                    }
+                },
+                modifier = Modifier.fillMaxSize()
+            )
+
+            // UI Components
+            TopControls(onClose = { }, onToggleLens = viewModel::toggleLens)
+
+            SideControls(
+                onShowFilters = { viewModel.setShowFilters(true) },
+                onStartCountdown = { viewModel.startCountdown(3) }
+            )
+
+            if (!uiState.capabilities.hasMic) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 80.dp)
+                        .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(8.dp))
+                        .padding(8.dp)
+                ) {
+                    Text("麦克风不可用，将录制无声视频", color = Color.Yellow, fontSize = 12.sp)
+                }
+            }
+
+            if (uiState.countdownTime > 0) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(uiState.countdownTime.toString(), color = Color.White, fontSize = 120.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                }
+            }
+
+            if (uiState.showFilters) {
+                FilterPanel(
+                    filters = availableFilters,
+                    selectedFilter = uiState.selectedFilter,
+                    onSelectFilter = viewModel::selectFilter,
+                    onDismiss = { viewModel.setShowFilters(false) }
+                )
+            }
+
+            RecordButton(
+                isRecording = uiState.isRecording,
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 40.dp),
+                onClick = {
+                    if (uiState.isRecording) {
+                        activeRecording?.stop()
+                        viewModel.setRecording(false)
+                    } else {
+                        val videoFile = File(context.cacheDir, "recorded_${System.currentTimeMillis()}.mp4")
+                        activeRecording = videoCapture?.output
+                            ?.prepareRecording(context, FileOutputOptions.Builder(videoFile).build())
+                            ?.apply { if (uiState.capabilities.hasMic) withAudioEnabled() }
+                            ?.start(ContextCompat.getMainExecutor(context)) { event ->
+                                if (event is VideoRecordEvent.Start) viewModel.setRecording(true)
+                                if (event is VideoRecordEvent.Finalize) {
+                                    viewModel.setRecording(false)
+                                    if (!event.hasError()) onNavigateToEdit(videoFile.absolutePath)
+                                }
+                            }
+                    }
+                }
+            )
+        } else {
+            PermissionGuardView(
+                status = uiState.permissionStatus,
+                onRequestPermissions = {
+                    permissionLauncher.launch(RecordGuard.getRequiredPermissions())
+                },
+                onOpenSettings = {
+                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                        data = Uri.fromParts("package", context.packageName, null)
+                    }
+                    context.startActivity(intent)
+                }
             )
         }
+    }
+}
 
-        RecordButton(
-            isRecording = uiState.isRecording,
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 40.dp),
-            onClick = {
-                if (uiState.isRecording) {
-                    activeRecording?.stop()
-                    viewModel.setRecording(false)
-                } else {
-                    val videoFile = File(context.cacheDir, "recorded_${System.currentTimeMillis()}.mp4")
-                    activeRecording = videoCapture?.output
-                        ?.prepareRecording(context, FileOutputOptions.Builder(videoFile).build())
-                        ?.start(ContextCompat.getMainExecutor(context)) { event ->
-                            if (event is VideoRecordEvent.Start) viewModel.setRecording(true)
-                            if (event is VideoRecordEvent.Finalize) {
-                                viewModel.setRecording(false)
-                                if (!event.hasError()) onNavigateToEdit(videoFile.absolutePath)
-                            }
-                        }
-                }
-            }
+@Composable
+fun PermissionGuardView(
+    status: PermissionStatus,
+    onRequestPermissions: () -> Unit,
+    onOpenSettings: () -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxSize().background(Color.Black).padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.Camera,
+            contentDescription = null,
+            tint = Color.White,
+            modifier = Modifier.size(64.dp)
         )
+        Spacer(modifier = Modifier.height(24.dp))
+        Text(
+            text = "需要权限才能开始拍摄",
+            color = Color.White,
+            fontSize = 18.sp,
+            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "请授予相机、麦克风和存储权限，以使用拍摄功能。",
+            color = Color.Gray,
+            fontSize = 14.sp,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(32.dp))
+        Button(
+            onClick = if (status == PermissionStatus.PERMANENTLY_DENIED) onOpenSettings else onRequestPermissions,
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF2C55))
+        ) {
+            Text(if (status == PermissionStatus.PERMANENTLY_DENIED) "去设置" else "去授权")
+        }
     }
 }
 
