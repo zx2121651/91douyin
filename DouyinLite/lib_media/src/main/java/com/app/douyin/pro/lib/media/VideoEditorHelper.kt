@@ -41,8 +41,8 @@ class VideoEditorHelper(private val context: Context) : IVideoEditor {
         val editedMediaItems = timeline.videoMainTrack.map { clip ->
             // Enforce precise frame-exact clipping by ensuring startsAtKeyFrame is false
             val clippingConfig = MediaItem.ClippingConfiguration.Builder()
-                .setStartPositionMs(clip.startMs)
-                .setEndPositionMs(clip.endMs)
+                .setStartPositionMs(clip.startInSourceMs)
+                .setEndPositionMs(clip.endInSourceMs)
                 .setStartsAtKeyFrame(false) // Force exact trimming, regardless of I-Frame
                 .build()
 
@@ -80,8 +80,8 @@ class VideoEditorHelper(private val context: Context) : IVideoEditor {
                 .setUri(track.uri)
                 .setClippingConfiguration(
                     MediaItem.ClippingConfiguration.Builder()
-                        .setStartPositionMs(track.clipStartMs)
-                        .setEndPositionMs(track.clipEndMs)
+                        .setStartPositionMs(track.startInSourceMs)
+                        .setEndPositionMs(track.endInSourceMs)
                         .setStartsAtKeyFrame(false)
                         .build()
                 )

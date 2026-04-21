@@ -118,14 +118,14 @@ fun TimelineArea(
 @Composable
 fun TrackRow(track: EditTrack, scale: Float, onSelectClip: (String) -> Unit) {
     val bgColor = when(track.type) {
-        TrackType.VIDEO -> Color(0xFF2E303C)
+        TrackType.VIDEO, TrackType.PIP -> Color(0xFF2E303C)
         TrackType.AUDIO -> Color(0xFF00B3FF).copy(alpha = 0.15f)
-        TrackType.TEXT -> Color(0xFFE2A500).copy(alpha = 0.15f)
+        TrackType.TEXT, TrackType.STICKER -> Color(0xFFE2A500).copy(alpha = 0.15f)
     }
 
     Row(
         modifier = Modifier
-            .height(if (track.type == TrackType.VIDEO) 64.dp else 36.dp)
+            .height(if (track.type == TrackType.VIDEO || track.type == TrackType.PIP) 64.dp else 36.dp)
             .clip(RoundedCornerShape(6.dp))
             .background(bgColor)
             .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(6.dp))
@@ -144,7 +144,7 @@ fun TrackRow(track: EditTrack, scale: Float, onSelectClip: (String) -> Unit) {
                     .clickable { onSelectClip(clip.id) },
                 contentAlignment = Alignment.Center
             ) {
-                if (track.type == TrackType.VIDEO && dpWidth > 40.dp) {
+                if ((track.type == TrackType.VIDEO || track.type == TrackType.PIP) && dpWidth > 40.dp) {
                     Text("Clip", color = Color.White.copy(alpha = 0.5f), fontSize = 10.sp)
                 }
             }

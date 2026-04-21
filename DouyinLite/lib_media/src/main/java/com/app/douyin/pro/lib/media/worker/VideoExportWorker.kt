@@ -9,6 +9,7 @@ import com.app.douyin.pro.lib.media.VideoEditorHelper
 import com.app.douyin.pro.lib.media.api.IVideoEditor
 import com.app.douyin.pro.lib.media.model.EditingTimeline
 import com.app.douyin.pro.lib.media.model.VideoClip
+import com.app.douyin.pro.lib.media.model.AudioTrack
 import com.app.douyin.pro.lib.media.util.MediaMetadataUtils
 import kotlinx.coroutines.CompletableDeferred
 import com.google.gson.Gson
@@ -30,13 +31,42 @@ class VideoExportWorker(
                 videoMainTrack.add(VideoClip(
                     id = clipDto.id,
                     uri = Uri.parse(clipDto.uriString),
-                    startMs = clipDto.startMs,
-                    endMs = clipDto.endMs,
-                    durationMs = clipDto.durationMs,
+                    startInSourceMs = clipDto.startInSourceMs,
+                    endInSourceMs = clipDto.endInSourceMs,
+                    sourceDurationMs = clipDto.sourceDurationMs,
                     speed = clipDto.speed,
                     volume = clipDto.volume
                 ))
             }
+
+            timelineDto.pipTracks.forEach { clipDto ->
+                pipTracks.add(VideoClip(
+                    id = clipDto.id,
+                    uri = Uri.parse(clipDto.uriString),
+                    startInSourceMs = clipDto.startInSourceMs,
+                    endInSourceMs = clipDto.endInSourceMs,
+                    sourceDurationMs = clipDto.sourceDurationMs,
+                    speed = clipDto.speed,
+                    volume = clipDto.volume
+                ))
+            }
+
+            timelineDto.audioTracks.forEach { trackDto ->
+                audioTracks.add(AudioTrack(
+                    id = trackDto.id,
+                    uri = Uri.parse(trackDto.uriString),
+                    timelineStartMs = trackDto.timelineStartMs,
+                    startInSourceMs = trackDto.startInSourceMs,
+                    endInSourceMs = trackDto.endInSourceMs,
+                    sourceDurationMs = trackDto.sourceDurationMs,
+                    volume = trackDto.volume,
+                    speed = trackDto.speed,
+                    isMainTrack = trackDto.isMainTrack
+                ))
+            }
+
+            // Note: Text and Sticker overlays need specialized handling in VideoEditorHelper
+            // for them to be actually rendered.
         }
 
         val deferred = CompletableDeferred<Result>()
