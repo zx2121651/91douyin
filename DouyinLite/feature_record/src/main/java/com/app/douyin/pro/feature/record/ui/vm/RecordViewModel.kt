@@ -12,6 +12,7 @@ import com.app.douyin.pro.feature.record.ui.state.RecordCapability
 import com.app.douyin.pro.feature.record.ui.state.RecordState
 import com.app.douyin.pro.feature.record.ui.state.RecordUiState
 import com.app.douyin.pro.feature.record.util.RecordGuard
+import com.app.douyin.pro.lib.media.MediaAssetManager
 import com.app.douyin.pro.lib.media.model.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -21,7 +22,8 @@ import javax.inject.Inject
 @HiltViewModel
 class RecordViewModel @Inject constructor(
     private val getAvailableFiltersUseCase: GetAvailableFiltersUseCase,
-    private val countdownUseCase: CountdownUseCase
+    private val countdownUseCase: CountdownUseCase,
+    private val mediaAssetManager: MediaAssetManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(RecordUiState())
@@ -36,6 +38,7 @@ class RecordViewModel @Inject constructor(
 
     init {
         loadFilters()
+        cleanupTempFiles()
     }
 
     fun updatePermissionStatus(status: PermissionStatus) {
@@ -108,6 +111,7 @@ class RecordViewModel @Inject constructor(
     }
 
     fun deleteLastSegment() {
+        val lastSegment = _uiState.value.segments.lastOrNull()
         _uiState.update { state ->
             if (state.segments.isNotEmpty()) {
                 val newSegments = state.segments.dropLast(1)
@@ -120,6 +124,11 @@ class RecordViewModel @Inject constructor(
                 state
             }
         }
+
+        lastSegment?.let {
+            mediaAssetManager.deleteFile(it.filePath)
+        }
+
         // Sync state machine state
         if (_uiState.value.segments.isEmpty()) {
             stateMachine.transitionTo(RecordState.IDLE)
@@ -142,5 +151,23 @@ class RecordViewModel @Inject constructor(
 
     fun selectFilter(filter: com.app.douyin.pro.feature.record.domain.model.FilterEffect) {
         _uiState.update { it.copy(selectedFilter = filter) }
+    }
+
+    fun discardRecording() {
+        _uiState.value.segments.forEach { segment ->
+            mediaAssetManager.deleteFile(segment.filePath)
+        }
+        _uiState.update { it.copy(segments = emptyList(), totalDurationMs = 0L) }
+        stateMachine.transitionTo(RecordState.IDLE)
+    }
+
+    fun getNewRecordingPath(): String {
+        return mediaAssetManager.getNewSegmentPath()
+    }
+
+    private fun cleanupTempFiles() {
+        viewModelScope.launch {
+            mediaAssetManager.cleanupAllTempFiles()
+        }
     }
 }

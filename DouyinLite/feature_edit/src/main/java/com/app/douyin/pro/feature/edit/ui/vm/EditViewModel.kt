@@ -16,6 +16,7 @@ import com.app.douyin.pro.feature.edit.domain.model.ClipItem
 import com.app.douyin.pro.feature.edit.domain.model.EditTrack
 import com.app.douyin.pro.feature.edit.domain.model.TrackType
 import com.app.douyin.pro.feature.edit.ui.state.EditUiState
+import com.app.douyin.pro.lib.media.MediaAssetManager
 import com.app.douyin.pro.lib.media.api.IVideoEditor
 import com.app.douyin.pro.lib.media.model.EditingTimeline
 import com.app.douyin.pro.lib.media.model.VideoClip
@@ -36,7 +37,8 @@ import com.app.douyin.pro.lib.media.model.VideoClipDto
 @HiltViewModel
 class EditViewModel @Inject constructor(
     private val exportVideoUseCase: com.app.douyin.pro.feature.edit.domain.usecase.ExportVideoUseCase,
-    @dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context
+    @dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context,
+    private val mediaAssetManager: MediaAssetManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(EditUiState())
@@ -155,7 +157,7 @@ class EditViewModel @Inject constructor(
         val timelineDto = EditingTimelineDto(videoMainTrack = clipDtos)
         val timelineJson = Gson().toJson(timelineDto)
 
-        val outPath = File(context.cacheDir, "exported_v24_${System.currentTimeMillis()}.mp4").absolutePath
+        val outPath = mediaAssetManager.getNewExportPath()
 
         val exportRequest = OneTimeWorkRequestBuilder<VideoExportWorker>()
             .setInputData(workDataOf(

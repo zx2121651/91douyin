@@ -3,6 +3,7 @@ package com.app.douyin.pro.lib.media.di
 import android.content.Context
 import com.app.douyin.pro.lib.media.VideoPlayerManager
 import com.app.douyin.pro.lib.media.VideoCacheManager
+import com.app.douyin.pro.lib.media.MediaAssetManager
 import com.app.douyin.pro.lib.media.VideoEditorHelper
 import com.app.douyin.pro.lib.media.api.IVideoEditor
 import dagger.Module
@@ -32,5 +33,11 @@ object MediaModule {
     @Singleton
     fun provideVideoEditor(@ApplicationContext context: Context): IVideoEditor {
         return VideoEditorHelper(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideMediaAssetManager(@ApplicationContext context: Context): MediaAssetManager {
+        return MediaAssetManager(context)
     }
 }

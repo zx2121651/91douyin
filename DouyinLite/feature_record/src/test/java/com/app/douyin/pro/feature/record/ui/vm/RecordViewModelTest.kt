@@ -3,6 +3,7 @@ package com.app.douyin.pro.feature.record.ui.vm
 import com.app.douyin.pro.feature.record.domain.usecase.CountdownUseCase
 import com.app.douyin.pro.feature.record.domain.usecase.GetAvailableFiltersUseCase
 import com.app.douyin.pro.feature.record.ui.state.RecordState
+import com.app.douyin.pro.lib.media.MediaAssetManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -13,7 +14,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import org.mockito.Mockito
+import java.io.File
 
 @ExperimentalCoroutinesApi
 class RecordViewModelTest {
@@ -22,9 +23,18 @@ class RecordViewModelTest {
 
     private lateinit var viewModel: RecordViewModel
 
+    private lateinit var mediaAssetManager: MediaAssetManager
+
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
+
+        // Using a "null" context-safe fake that doesn't actually hit the disk or use Context
+        mediaAssetManager = object : MediaAssetManager(FakeContext()) {
+            override fun getNewSegmentPath() = "mock/path.mp4"
+            override fun deleteFile(path: String) = true
+            override fun cleanupAllTempFiles() {}
+        }
 
         // Use real CountdownUseCase as it has no dependencies
         val countdownUseCase = CountdownUseCase()
@@ -32,7 +42,7 @@ class RecordViewModelTest {
         // Manual stub for GetAvailableFiltersUseCase
         val getAvailableFiltersUseCase = ManualGetAvailableFiltersUseCase()
 
-        viewModel = RecordViewModel(getAvailableFiltersUseCase, countdownUseCase)
+        viewModel = RecordViewModel(getAvailableFiltersUseCase, countdownUseCase, mediaAssetManager)
     }
 
     @After
@@ -78,6 +88,11 @@ class RecordViewModelTest {
         assertEquals(0, viewModel.uiState.value.segments.size)
         assertEquals(0L, viewModel.uiState.value.totalDurationMs)
         assertEquals(RecordState.IDLE, viewModel.uiState.value.currentState)
+    }
+
+    private class FakeContext : android.content.ContextWrapper(null) {
+        override fun getCacheDir(): File = File("/tmp")
+        override fun getApplicationContext(): android.content.Context = this
     }
 
     // Manual mock that doesn't use Mockito for the class itself

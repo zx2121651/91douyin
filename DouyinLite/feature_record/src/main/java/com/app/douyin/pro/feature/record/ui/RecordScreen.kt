@@ -200,7 +200,16 @@ fun RecordScreen(
                     maxDurationMs = 60000L, // 60s limit
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(4.dp)
                 )
-                TopControls(onClose = { }, onToggleLens = viewModel::toggleLens)
+                TopControls(
+                    onClose = {
+                        if (uiState.segments.isNotEmpty()) {
+                            // Should probably show a confirmation dialog here,
+                            // but for now just discard as per requirements of lifecycle management
+                            viewModel.discardRecording()
+                        }
+                    },
+                    onToggleLens = viewModel::toggleLens
+                )
             }
 
             SideControls(
@@ -262,7 +271,8 @@ fun RecordScreen(
                         if (uiState.isRecording) {
                             activeRecording?.stop()
                         } else {
-                            val videoFile = File(context.cacheDir, "recorded_${System.currentTimeMillis()}.mp4")
+                            val videoPath = viewModel.getNewRecordingPath()
+                            val videoFile = File(videoPath)
                             activeRecording = videoCapture?.output
                                 ?.prepareRecording(context, FileOutputOptions.Builder(videoFile).build())
                                 ?.apply { if (uiState.capabilities.hasMic) withAudioEnabled() }
