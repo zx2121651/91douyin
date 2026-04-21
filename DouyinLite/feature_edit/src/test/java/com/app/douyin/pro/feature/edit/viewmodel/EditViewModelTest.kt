@@ -4,6 +4,7 @@ import android.net.Uri
 import com.app.douyin.pro.feature.edit.domain.model.TrackType
 import com.app.douyin.pro.feature.edit.domain.usecase.ExportVideoUseCase
 import com.app.douyin.pro.feature.edit.ui.vm.EditViewModel
+import com.app.douyin.pro.lib.media.MediaAssetManager
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -23,12 +24,15 @@ class EditViewModelTest {
     @Mock
     lateinit var mockUri: Uri
 
+    @Mock
+    lateinit var mediaAssetManager: MediaAssetManager
+
     private lateinit var viewModel: EditViewModel
 
     @Before
     fun setup() {
         MockitoAnnotations.openMocks(this)
-        viewModel = EditViewModel(exportVideoUseCase, context)
+        viewModel = EditViewModel(exportVideoUseCase, context, mediaAssetManager)
     }
 
     @Test
