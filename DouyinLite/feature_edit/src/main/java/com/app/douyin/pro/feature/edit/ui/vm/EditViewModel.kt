@@ -14,13 +14,16 @@ import com.app.douyin.pro.feature.edit.domain.command.ChangeSpeedCommand
 import com.app.douyin.pro.feature.edit.domain.command.ChangeVolumeCommand
 import com.app.douyin.pro.feature.edit.domain.model.ClipItem
 import com.app.douyin.pro.feature.edit.domain.model.EditTrack
+import com.app.douyin.pro.feature.edit.domain.model.EditProject
 import com.app.douyin.pro.feature.edit.domain.model.TrackType
 import com.app.douyin.pro.feature.edit.ui.state.EditUiState
 import com.app.douyin.pro.lib.media.MediaAssetManager
-import com.app.douyin.pro.lib.media.api.IVideoEditor
-import com.app.douyin.pro.lib.media.model.EditingTimeline
-import com.app.douyin.pro.lib.media.model.VideoClip
 import com.app.douyin.pro.lib.media.worker.VideoExportWorker
+import com.app.douyin.pro.lib.media.model.EditingTimelineDto
+import com.app.douyin.pro.lib.media.model.VideoClipDto
+import com.app.douyin.pro.lib.media.model.AudioTrackDto
+import com.app.douyin.pro.lib.media.model.TextOverlayDto
+import com.app.douyin.pro.lib.media.model.StickerOverlayDto
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -31,8 +34,6 @@ import java.io.File
 import java.util.*
 import javax.inject.Inject
 import com.google.gson.Gson
-import com.app.douyin.pro.lib.media.model.EditingTimelineDto
-import com.app.douyin.pro.lib.media.model.VideoClipDto
 
 @HiltViewModel
 class EditViewModel @Inject constructor(
@@ -48,9 +49,14 @@ class EditViewModel @Inject constructor(
     private val redoStack = Stack<List<EditTrack>>()
 
     fun initProject(videoUri: Uri, duration: Long) {
-        val initialClip = ClipItem(sourceUri = videoUri, sourceDurationMs = duration, endInSourceMs = duration)
+        val initialClip = ClipItem(
+            sourceUri = videoUri,
+            sourceDurationMs = duration,
+            endInSourceMs = duration
+        )
         val videoTrack = EditTrack(type = TrackType.VIDEO, clips = mutableListOf(initialClip))
-        _uiState.update { it.copy(tracks = listOf(videoTrack), totalDurationMs = duration) }
+        val project = EditProject(tracks = mutableListOf(videoTrack))
+        _uiState.update { it.copy(project = project) }
         clearHistory()
     }
 
@@ -68,9 +74,9 @@ class EditViewModel @Inject constructor(
             }.toMutableList()
 
             val videoTrack = EditTrack(type = TrackType.VIDEO, clips = clips)
-            val totalDuration = clips.sumOf { it.getTimelineDurationMs() }
+            val project = EditProject(tracks = mutableListOf(videoTrack))
 
-            _uiState.update { it.copy(tracks = listOf(videoTrack), totalDurationMs = totalDuration) }
+            _uiState.update { it.copy(project = project) }
             clearHistory()
         } catch (e: Exception) {
             e.printStackTrace()
@@ -78,30 +84,41 @@ class EditViewModel @Inject constructor(
     }
 
     private fun executeCommand(command: EditCommand) {
-        val prevState = _uiState.value.tracks.map { it.copy(clips = it.clips.map { c -> c.copy() }.toMutableList()) }
-        val nextTracks = command.execute(_uiState.value.tracks)
+        val currentTracks = _uiState.value.project.tracks
+        val prevState = currentTracks.map { track ->
+            track.copy(clips = track.clips.map { it.copy() }.toMutableList())
+        }
+        val nextTracks = command.execute(currentTracks)
 
-        if (nextTracks != _uiState.value.tracks) {
+        if (nextTracks != currentTracks) {
             undoStack.push(prevState)
             redoStack.clear()
-            _uiState.update { it.copy(tracks = nextTracks) }
+            _uiState.update { it.copy(project = it.project.copy(tracks = nextTracks.toMutableList())) }
             updateHistoryState()
         }
     }
 
     fun undo() {
         if (undoStack.isEmpty()) return
-        val currentState = _uiState.value.tracks.map { it.copy(clips = it.clips.map { c -> c.copy() }.toMutableList()) }
+        val currentTracks = _uiState.value.project.tracks
+        val currentState = currentTracks.map { track ->
+            track.copy(clips = track.clips.map { it.copy() }.toMutableList())
+        }
         redoStack.push(currentState)
-        _uiState.update { it.copy(tracks = undoStack.pop()) }
+        val prevTracks = undoStack.pop()
+        _uiState.update { it.copy(project = it.project.copy(tracks = prevTracks.toMutableList())) }
         updateHistoryState()
     }
 
     fun redo() {
         if (redoStack.isEmpty()) return
-        val currentState = _uiState.value.tracks.map { it.copy(clips = it.clips.map { c -> c.copy() }.toMutableList()) }
+        val currentTracks = _uiState.value.project.tracks
+        val currentState = currentTracks.map { track ->
+            track.copy(clips = track.clips.map { it.copy() }.toMutableList())
+        }
         undoStack.push(currentState)
-        _uiState.update { it.copy(tracks = redoStack.pop()) }
+        val nextTracks = redoStack.pop()
+        _uiState.update { it.copy(project = it.project.copy(tracks = nextTracks.toMutableList())) }
         updateHistoryState()
     }
 
@@ -140,21 +157,43 @@ class EditViewModel @Inject constructor(
     fun togglePlay() { _uiState.update { it.copy(isPlaying = !it.isPlaying) } }
 
     fun exportProject(onSuccess: (Uri) -> Unit) {
-        val videoTrack = _uiState.value.tracks.find { it.type == TrackType.VIDEO }
+        val project = _uiState.value.project
+        val videoTrack = project.tracks.find { it.type == TrackType.VIDEO }
         if (videoTrack == null || videoTrack.clips.isEmpty()) return
 
+        // Mapping domain models to DTOs
         val clipDtos = videoTrack.clips.map { clip ->
             VideoClipDto(
                 id = clip.id,
                 uriString = clip.sourceUri.toString(),
-                startMs = clip.startInSourceMs,
-                endMs = clip.endInSourceMs,
-                durationMs = clip.endInSourceMs - clip.startInSourceMs,
+                startInSourceMs = clip.startInSourceMs,
+                endInSourceMs = clip.endInSourceMs,
+                sourceDurationMs = clip.sourceDurationMs,
                 speed = clip.speed,
                 volume = clip.volume
             )
         }
-        val timelineDto = EditingTimelineDto(videoMainTrack = clipDtos)
+
+        val pipTrack = project.tracks.find { it.type == TrackType.PIP }
+        val pipClipDtos = pipTrack?.clips?.map { clip ->
+            VideoClipDto(
+                id = clip.id,
+                uriString = clip.sourceUri.toString(),
+                startInSourceMs = clip.startInSourceMs,
+                endInSourceMs = clip.endInSourceMs,
+                sourceDurationMs = clip.sourceDurationMs,
+                speed = clip.speed,
+                volume = clip.volume
+            )
+        } ?: emptyList()
+
+        // Placeholder for other tracks (Audio, Text, Sticker)
+        // In a real scenario, we would map them here as well.
+
+        val timelineDto = EditingTimelineDto(
+            videoMainTrack = clipDtos,
+            pipTracks = pipClipDtos
+        )
         val timelineJson = Gson().toJson(timelineDto)
 
         val outPath = mediaAssetManager.getNewExportPath()
@@ -171,7 +210,6 @@ class EditViewModel @Inject constructor(
 
         _uiState.update { it.copy(isExporting = true, exportProgress = 0) }
 
-        // Observe WorkInfo via Flow (mapping LiveData to Flow for Clean Architecture consistency)
         viewModelScope.launch {
             workManager.getWorkInfoByIdFlow(exportRequest.id).collect { workInfo ->
                 if (workInfo == null) return@collect
