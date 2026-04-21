@@ -44,7 +44,8 @@ data class EditTrack(
  */
 data class EditProject(
     val id: String = UUID.randomUUID().toString(),
-    val tracks: MutableList<EditTrack> = mutableListOf()
+    val tracks: MutableList<EditTrack> = mutableListOf(),
+    val coverTimestampMs: Long = 0L
 ) {
     fun getMainVideoTrack(): EditTrack? = tracks.find { it.type == TrackType.VIDEO }
 

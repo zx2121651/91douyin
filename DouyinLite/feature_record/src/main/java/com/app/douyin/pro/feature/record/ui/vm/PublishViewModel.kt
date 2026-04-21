@@ -28,6 +28,10 @@ class PublishViewModel @Inject constructor(
         _uiState.update { it.copy(videoUri = uri) }
     }
 
+    fun setCoverTimestamp(timestamp: Long) {
+        _uiState.update { it.copy(coverTimestamp = timestamp) }
+    }
+
     fun onTitleChanged(title: String) {
         _uiState.update { it.copy(title = title) }
     }

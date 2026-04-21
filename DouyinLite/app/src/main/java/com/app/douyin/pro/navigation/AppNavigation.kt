@@ -59,8 +59,8 @@ fun AppNavHost(
             EditScreen(
                 videoUri = videoUri,
                 onClose = { navController.popBackStack() },
-                onNext = { exportedUri ->
-                    navController.navigate(NavRoutes.buildPublishRoute(exportedUri.toString()))
+                onNext = { exportedUri, coverMs ->
+                    navController.navigate(NavRoutes.buildPublishRoute(exportedUri.toString(), coverMs))
                 }
             )
         }
@@ -72,18 +72,23 @@ fun AppNavHost(
             EditScreen(
                 segmentsJson = segmentsJson,
                 onClose = { navController.popBackStack() },
-                onNext = { exportedUri ->
-                    navController.navigate(NavRoutes.buildPublishRoute(exportedUri.toString()))
+                onNext = { exportedUri, coverMs ->
+                    navController.navigate(NavRoutes.buildPublishRoute(exportedUri.toString(), coverMs))
                 }
             )
         }
         composable(
             route = NavRoutes.PUBLISH,
-            arguments = listOf(navArgument("videoUri") { type = NavType.StringType; defaultValue = "" })
+            arguments = listOf(
+                navArgument("videoUri") { type = NavType.StringType; defaultValue = "" },
+                navArgument("coverTimestamp") { type = NavType.LongType; defaultValue = 0L }
+            )
         ) { backStackEntry ->
             val videoUri = backStackEntry.arguments?.getString("videoUri") ?: ""
+            val coverMs = backStackEntry.arguments?.getLong("coverTimestamp") ?: 0L
             PublishScreen(
                 videoUri = videoUri,
+                coverTimestamp = coverMs,
                 onBack = { navController.popBackStack() },
                 onPublishSuccess = {
                     navController.navigate(NavRoutes.ME) {

@@ -27,8 +27,10 @@ fun TimelineArea(
     tracks: List<EditTrack>,
     currentTimeMs: Long,
     totalDurationMs: Long,
+    selectedClipId: String?,
     onSeek: (Long) -> Unit,
     onSelectClip: (String) -> Unit,
+    onUpdateClipBoundaries: (String, Long, Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
     // scale factor: pixels per millisecond
@@ -98,7 +100,7 @@ fun TimelineArea(
                     .padding(horizontal = if (viewWidth > 0) halfViewWidthDp else 0.dp)
             ) {
                 tracks.forEach { track ->
-                    TrackRow(track, scale, onSelectClip)
+                    TrackRow(track, scale, selectedClipId, onSelectClip, onUpdateClipBoundaries)
                     Spacer(modifier = Modifier.height(8.dp))
                 }
             }
@@ -116,8 +118,14 @@ fun TimelineArea(
 }
 
 @Composable
-fun TrackRow(track: EditTrack, scale: Float, onSelectClip: (String) -> Unit) {
-    val bgColor = when(track.type) {
+fun TrackRow(
+    track: EditTrack,
+    scale: Float,
+    selectedClipId: String?,
+    onSelectClip: (String) -> Unit,
+    onUpdateClipBoundaries: (String, Long, Long) -> Unit
+) {
+    val bgColor = when (track.type) {
         TrackType.VIDEO, TrackType.PIP -> Color(0xFF2E303C)
         TrackType.AUDIO -> Color(0xFF00B3FF).copy(alpha = 0.15f)
         TrackType.TEXT, TrackType.STICKER -> Color(0xFFE2A500).copy(alpha = 0.15f)
@@ -134,18 +142,61 @@ fun TrackRow(track: EditTrack, scale: Float, onSelectClip: (String) -> Unit) {
             val durationMs = clip.getTimelineDurationMs().coerceAtLeast(1L)
             val pixelWidth = durationMs * scale
             val dpWidth = with(LocalDensity.current) { pixelWidth.toDp() }
+            val isSelected = clip.id == selectedClipId
 
             Box(
                 modifier = Modifier
                     .fillMaxHeight()
                     .width(dpWidth)
-                    .background(Color.Gray.copy(alpha = 0.3f))
-                    .border(0.5.dp, Color.Black.copy(alpha = 0.3f))
-                    .clickable { onSelectClip(clip.id) },
-                contentAlignment = Alignment.Center
+                    .background(if (isSelected) Color(0xFFFF2C55).copy(alpha = 0.2f) else Color.Gray.copy(alpha = 0.3f))
+                    .border(
+                        if (isSelected) 2.dp else 0.5.dp,
+                        if (isSelected) Color(0xFFFF2C55) else Color.Black.copy(alpha = 0.3f)
+                    )
+                    .clickable { onSelectClip(clip.id) }
             ) {
+                if (isSelected && (track.type == TrackType.VIDEO || track.type == TrackType.PIP)) {
+                    // Left handle
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .width(12.dp)
+                            .fillMaxHeight()
+                            .background(Color(0xFFFF2C55))
+                            .pointerInput(clip.id) {
+                                detectTransformGestures { _, pan, _, _ ->
+                                    val deltaMs = (pan.x / scale).toLong()
+                                    if (deltaMs != 0L) {
+                                        onUpdateClipBoundaries(clip.id, clip.startInSourceMs + deltaMs, clip.endInSourceMs)
+                                    }
+                                }
+                            }
+                    )
+                    // Right handle
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .width(12.dp)
+                            .fillMaxHeight()
+                            .background(Color(0xFFFF2C55))
+                            .pointerInput(clip.id) {
+                                detectTransformGestures { _, pan, _, _ ->
+                                    val deltaMs = (pan.x / scale).toLong()
+                                    if (deltaMs != 0L) {
+                                        onUpdateClipBoundaries(clip.id, clip.startInSourceMs, clip.endInSourceMs + deltaMs)
+                                    }
+                                }
+                            }
+                    )
+                }
+
                 if ((track.type == TrackType.VIDEO || track.type == TrackType.PIP) && dpWidth > 40.dp) {
-                    Text("Clip", color = Color.White.copy(alpha = 0.5f), fontSize = 10.sp)
+                    Text(
+                        "Clip",
+                        color = Color.White.copy(alpha = 0.5f),
+                        fontSize = 10.sp,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
                 }
             }
         }
