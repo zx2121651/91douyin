@@ -26,9 +26,9 @@ object NavRoutes {
 
     const val MALL = "mall_standalone"
 
-    const val PUBLISH = "publish?videoUri={videoUri}"
-    fun buildPublishRoute(videoUri: String): String {
-        return "publish?videoUri=${android.net.Uri.encode(videoUri)}"
+    const val PUBLISH = "publish?videoUri={videoUri}&coverTimestamp={coverTimestamp}"
+    fun buildPublishRoute(videoUri: String, coverTimestamp: Long = 0L): String {
+        return "publish?videoUri=${android.net.Uri.encode(videoUri)}&coverTimestamp=$coverTimestamp"
     }
 
     const val SEARCH = "search"

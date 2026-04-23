@@ -8,5 +8,6 @@ data class EditingTimelineDto(
     val pipTracks: List<VideoClipDto> = emptyList(),
     val audioTracks: List<AudioTrackDto> = emptyList(),
     val textOverlays: List<TextOverlayDto> = emptyList(),
-    val stickerOverlays: List<StickerOverlayDto> = emptyList()
+    val stickerOverlays: List<StickerOverlayDto> = emptyList(),
+    val coverTimestampMs: Long = 0L
 )

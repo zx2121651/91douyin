@@ -11,6 +11,7 @@ import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCut
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
@@ -31,10 +32,11 @@ fun EditScreen(
     videoUri: String,
     segmentsJson: String = "",
     onClose: () -> Unit,
-    onNext: (Uri) -> Unit,
+    onNext: (Uri, Long) -> Unit,
     viewModel: EditViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var showCoverHint by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
     LaunchedEffect(videoUri, segmentsJson) {
@@ -56,13 +58,17 @@ fun EditScreen(
                 onUndo = viewModel::undo,
                 onRedo = viewModel::redo,
                 onClose = onClose,
-                onNext = { viewModel.exportProject { uri -> onNext(uri) } }
+                onNext = { viewModel.exportProject { uri, coverMs -> onNext(uri, coverMs) } }
             )
         },
         bottomBar = {
             BottomBar(
                 onSplit = viewModel::splitClip,
-                onDelete = viewModel::deleteSelectedClip
+                onDelete = viewModel::deleteSelectedClip,
+                onSetCover = {
+                    viewModel.setCoverTimestamp(uiState.currentTimeMs)
+                    showCoverHint = true
+                }
             )
         },
         containerColor = Color(0xFF161823)
@@ -79,9 +85,26 @@ fun EditScreen(
                     tracks = uiState.tracks,
                     currentTimeMs = uiState.currentTimeMs,
                     totalDurationMs = uiState.totalDurationMs,
+                    selectedClipId = uiState.selectedClipId,
                     onSeek = viewModel::updateCurrentTime,
-                    onSelectClip = viewModel::selectClip
+                    onSelectClip = viewModel::selectClip,
+                    onUpdateClipBoundaries = viewModel::updateClipBoundaries
                 )
+            }
+
+            if (showCoverHint) {
+                LaunchedEffect(Unit) {
+                    kotlinx.coroutines.delay(1500)
+                    showCoverHint = false
+                }
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(8.dp))
+                        .padding(16.dp)
+                ) {
+                    Text("封面已设置在 ${uiState.currentTimeMs / 1000f}s", color = Color.White)
+                }
             }
 
             if (uiState.isExporting) {
@@ -157,7 +180,7 @@ fun PreviewPanel(isPlaying: Boolean, onTogglePlay: () -> Unit, modifier: Modifie
 }
 
 @Composable
-fun BottomBar(onSplit: () -> Unit, onDelete: () -> Unit) {
+fun BottomBar(onSplit: () -> Unit, onDelete: () -> Unit, onSetCover: () -> Unit) {
     Column {
         Row(
             modifier = Modifier.fillMaxWidth().background(Color(0xFF161823)).padding(8.dp),
@@ -165,6 +188,7 @@ fun BottomBar(onSplit: () -> Unit, onDelete: () -> Unit) {
         ) {
             EditActionItem(Icons.Filled.ContentCut, "分割", onSplit)
             EditActionItem(Icons.Filled.Delete, "删除", onDelete)
+            EditActionItem(Icons.Filled.Image, "封面", onSetCover)
         }
         Box(modifier = Modifier.fillMaxWidth().height(80.dp).background(Color.Black))
     }

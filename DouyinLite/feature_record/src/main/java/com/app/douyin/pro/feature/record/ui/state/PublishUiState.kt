@@ -3,6 +3,7 @@ package com.app.douyin.pro.feature.record.ui.state
 data class PublishUiState(
     val videoUri: String = "",
     val title: String = "",
+    val coverTimestamp: Long = 0L,
     val isPublishing: Boolean = false,
     val error: String? = null,
     val isSuccess: Boolean = false

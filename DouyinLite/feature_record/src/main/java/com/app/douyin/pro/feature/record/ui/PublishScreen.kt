@@ -23,14 +23,16 @@ import com.app.douyin.pro.feature.record.ui.vm.PublishViewModel
 @Composable
 fun PublishScreen(
     videoUri: String,
+    coverTimestamp: Long = 0L,
     onBack: () -> Unit,
     onPublishSuccess: () -> Unit,
     viewModel: PublishViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    LaunchedEffect(videoUri) {
+    LaunchedEffect(videoUri, coverTimestamp) {
         viewModel.setVideoUri(videoUri)
+        viewModel.setCoverTimestamp(coverTimestamp)
     }
 
     LaunchedEffect(uiState.isSuccess) {

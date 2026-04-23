@@ -10,7 +10,7 @@ fun EditScreen(
     videoUri: String = "",
     segmentsJson: String = "",
     onClose: () -> Unit = {},
-    onNext: (Uri) -> Unit = {}
+    onNext: (Uri, Long) -> Unit = { _, _ -> }
 ) {
     RealEditScreen(
         videoUri = videoUri,

@@ -152,14 +152,36 @@ class EditViewModel @Inject constructor(
         executeCommand(ChangeVolumeCommand(sid, volume))
     }
 
+    fun updateClipBoundaries(clipId: String, startMs: Long, endMs: Long) {
+        val project = _uiState.value.project
+        val newTracks = project.tracks.map { track ->
+            val newClips = track.clips.map { clip ->
+                if (clip.id == clipId) {
+                    val validStart = startMs.coerceIn(0L, clip.sourceDurationMs - 100L)
+                    val validEnd = endMs.coerceIn(validStart + 100L, clip.sourceDurationMs)
+                    clip.copy(startInSourceMs = validStart, endInSourceMs = validEnd)
+                } else {
+                    clip
+                }
+            }.toMutableList()
+            track.copy(clips = newClips)
+        }
+        _uiState.update { it.copy(project = project.copy(tracks = newTracks.toMutableList())) }
+    }
+
+    fun setCoverTimestamp(timestampMs: Long) {
+        _uiState.update { it.copy(project = it.project.copy(coverTimestampMs = timestampMs)) }
+    }
+
     fun selectClip(id: String) { _uiState.update { it.copy(selectedClipId = id) } }
     fun updateCurrentTime(t: Long) { _uiState.update { it.copy(currentTimeMs = t) } }
     fun togglePlay() { _uiState.update { it.copy(isPlaying = !it.isPlaying) } }
 
-    fun exportProject(onSuccess: (Uri) -> Unit) {
+    fun exportProject(onSuccess: (Uri, Long) -> Unit) {
         val project = _uiState.value.project
         val videoTrack = project.tracks.find { it.type == TrackType.VIDEO }
         if (videoTrack == null || videoTrack.clips.isEmpty()) return
+        if (project.getTotalDurationMs() <= 0) return
 
         // Mapping domain models to DTOs
         val clipDtos = videoTrack.clips.map { clip ->
@@ -192,7 +214,8 @@ class EditViewModel @Inject constructor(
 
         val timelineDto = EditingTimelineDto(
             videoMainTrack = clipDtos,
-            pipTracks = pipClipDtos
+            pipTracks = pipClipDtos,
+            coverTimestampMs = project.coverTimestampMs
         )
         val timelineJson = Gson().toJson(timelineDto)
 
@@ -223,7 +246,7 @@ class EditViewModel @Inject constructor(
                         val uriStr = workInfo.outputData.getString("output_uri")
                         if (uriStr != null) {
                             _uiState.update { it.copy(isExporting = false, exportProgress = 100) }
-                            onSuccess(Uri.parse(uriStr))
+                            onSuccess(Uri.parse(uriStr), project.coverTimestampMs)
                         }
                     }
                     WorkInfo.State.FAILED, WorkInfo.State.CANCELLED -> {
