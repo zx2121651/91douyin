@@ -97,7 +97,7 @@ class SearchViewModelTest {
 
         assertEquals(2, viewModel.videoResults.value.size)
         assertEquals(listOf(video1, video2), viewModel.videoResults.value)
-        assertEquals(PagingState.Idle, viewModel.pagingState.value)
+        assertEquals(com.app.douyin.pro.lib.media.model.PagingState.Idle, viewModel.pagingState.value)
     }
 
     @Test
@@ -134,7 +134,7 @@ class SearchViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(1, viewModel.videoResults.value.size)
-        assertTrue(viewModel.pagingState.value is PagingState.Error)
-        assertEquals(errorMessage, (viewModel.pagingState.value as PagingState.Error).message)
+        assertTrue(viewModel.pagingState.value is com.app.douyin.pro.lib.media.model.PagingState.Error)
+        assertEquals(errorMessage, (viewModel.pagingState.value as com.app.douyin.pro.lib.media.model.PagingState.Error).message)
     }
 }

@@ -1,9 +1,9 @@
 #ifndef VIDEO_ENGINE_H
 #define VIDEO_ENGINE_H
 
-#include <GLES3/gl3.h>
-#include <GLES2/gl2ext.h>
+#include "rhi/RHIDevice.h"
 #include <vector>
+#include <memory>
 #include "filters/OesTo2DFilter.h"
 
 class VideoEngine {
@@ -11,14 +11,18 @@ public:
     VideoEngine(int width, int height);
     ~VideoEngine();
 
-    GLuint ProcessFrame(GLuint inputOesTexture, float* matrix);
+    // Returns a native handle (e.g. GLuint) for UI presentation if needed
+    int ProcessFrame(int inputOesTexture, float* matrix);
     void AddFilter(int filterId);
 
 private:
     int mWidth;
     int mHeight;
-    GLuint fbo;
-    GLuint texOut;
+
+    std::shared_ptr<rhi::RHIDevice> mDevice;
+    std::shared_ptr<rhi::RHIFramebuffer> mFbo;
+    std::shared_ptr<rhi::RHITexture> mTexOut;
+
     OesTo2DFilter* mOesConverter;
 
     void initFBO();

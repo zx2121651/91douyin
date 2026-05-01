@@ -3,53 +3,55 @@
 
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "VideoEngine", __VA_ARGS__)
 
-VideoEngine::VideoEngine(int width, int height) : mWidth(width), mHeight(height), fbo(0), texOut(0) {
-    mOesConverter = new OesTo2DFilter();
+VideoEngine::VideoEngine(int width, int height) : mWidth(width), mHeight(height) {
+    // Instantiate RHI Device. Currently defaulting to GLES.
+    // In a full implementation, this could be configured via JNI param.
+    mDevice = rhi::CreateRHIDevice(rhi::BackendType::GLES);
+
+    // We pass device to filters so they can allocate RHI resources natively
+    mOesConverter = new OesTo2DFilter(mDevice);
+
     initFBO();
 }
 
 VideoEngine::~VideoEngine() {
     delete mOesConverter;
-    if (fbo != 0) glDeleteFramebuffers(1, &fbo);
-    if (texOut != 0) glDeleteTextures(1, &texOut);
+    // RHI resources clean themselves up via shared_ptr and destructors
 }
 
 void VideoEngine::initFBO() {
-    glGenTextures(1, &texOut);
-    glBindTexture(GL_TEXTURE_2D, texOut);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, mWidth, mHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    // Create output texture via RHI
+    mTexOut = mDevice->CreateTexture(mWidth, mHeight, rhi::TextureFormat::RGBA8, rhi::TextureUsage::COLOR_ATTACHMENT);
 
-    glGenFramebuffers(1, &fbo);
-    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texOut, 0);
+    // Create FBO via RHI
+    mFbo = mDevice->CreateFramebuffer();
+    mFbo->AttachColor(0, mTexOut);
 
-    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-        LOGE("FBO initialization failed.");
+    if (!mFbo->IsValid()) {
+        LOGE("FBO initialization failed in RHI.");
     }
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-GLuint VideoEngine::ProcessFrame(GLuint inputOesTexture, float* matrix) {
-    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-    glViewport(0, 0, mWidth, mHeight);
+int VideoEngine::ProcessFrame(int inputOesTexture, float* matrix) {
+    mDevice->BindFramebuffer(mFbo);
 
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
+    rhi::Viewport vp = {0, 0, mWidth, mHeight};
+    mDevice->SetViewport(vp);
+
+    mDevice->ClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+
+    // Create a temporary RHI texture wrapper for the incoming GL OES texture
+    auto rhiInputTex = mDevice->CreateTextureFromNative((void*)(uintptr_t)inputOesTexture, mWidth, mHeight, rhi::TextureType::TEXTURE_OES);
 
     mOesConverter->SetMatrix(matrix);
-    mOesConverter->Draw(inputOesTexture);
+    mOesConverter->Draw(rhiInputTex);
 
-    // If ping-pong rendering were fully implemented, it would go here.
-    // We render output to FBO attached texture and return it, keeping default screen framebuffer clean.
+    mDevice->BindFramebuffer(nullptr); // Unbind
 
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    return texOut;
+    // Return the underlying native GLuint so Android's Java CameraRenderer can render to screen
+    return (int)(uintptr_t)mTexOut->GetNativeHandle();
 }
 
 void VideoEngine::AddFilter(int filterId) {
-    // Dynamically adding filters would be implemented here
+    // Dynamic filter management
 }

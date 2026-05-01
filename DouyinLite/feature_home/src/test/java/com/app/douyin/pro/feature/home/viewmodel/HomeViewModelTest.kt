@@ -88,7 +88,7 @@ class HomeViewModelTest {
         val state = viewModel.uiState.value
         assertEquals(2, state.videos.size)
         assertEquals(listOf(video1, video2), state.videos)
-        assertTrue(state.pagingState is PagingState.Idle)
+        assertTrue(state.pagingState is com.app.douyin.pro.lib.media.model.PagingState.Idle)
     }
 
     @Test
@@ -108,8 +108,8 @@ class HomeViewModelTest {
 
         val state = viewModel.uiState.value
         assertEquals(1, state.videos.size)
-        assertTrue(state.pagingState is PagingState.Error)
-        assertEquals(errorMessage, (state.pagingState as PagingState.Error).message)
+        assertTrue(state.pagingState is com.app.douyin.pro.lib.media.model.PagingState.Error)
+        assertEquals(errorMessage, (state.pagingState as com.app.douyin.pro.lib.media.model.PagingState.Error).message)
     }
 
     @Test
@@ -150,6 +150,6 @@ class HomeViewModelTest {
 
         val state = viewModel.uiState.value
         assertEquals(1, state.videos.size)
-        assertTrue(state.pagingState is PagingState.Idle)
+        assertTrue(state.pagingState is com.app.douyin.pro.lib.media.model.PagingState.Idle)
     }
 }

@@ -1,24 +1,27 @@
 #ifndef BASE_FILTER_H
 #define BASE_FILTER_H
 
-#include <GLES3/gl3.h>
+#include "../rhi/RHIDevice.h"
+#include <memory>
 
 class BaseFilter {
 protected:
-    GLuint mProgramId;
-    GLuint mPositionHandle;
-    GLuint mTextureCoordHandle;
-    GLuint mTextureSamplerHandle;
+    std::shared_ptr<rhi::RHIDevice> mDevice;
+    std::shared_ptr<rhi::RHIProgram> mProgram;
+    std::shared_ptr<rhi::RHIBuffer> mVertexBuffer;
+    std::shared_ptr<rhi::RHIBuffer> mTexCoordBuffer;
 
     static const float VERTICES[];
     static const float TEX_COORDS[];
 
-    GLuint createProgram(const char* vertexSource, const char* fragmentSource);
+    void initResources(const char* vertexSource, const char* fragmentSource);
 
 public:
-    BaseFilter();
+    BaseFilter(std::shared_ptr<rhi::RHIDevice> device);
     virtual ~BaseFilter();
-    virtual void Draw(GLuint inputTextureId);
+
+    // Draw using RHI Texture abstraction
+    virtual void Draw(std::shared_ptr<rhi::RHITexture> inputTexture);
 };
 
 #endif // BASE_FILTER_H
