@@ -18,6 +18,9 @@ add_library(
         VideoEngine.cpp
         filters/BaseFilter.cpp
         filters/OesTo2DFilter.cpp
+        filters/FilterGroup.cpp
+        filters/BrightnessFilter.cpp
+        filters/FilterFactory.cpp
         ${RHI_SRC}
 )
 
@@ -49,3 +52,6 @@ target_link_libraries(
         ${egl-lib}
         ${vulkan-lib}
 )
+
+# Add FilterGroup to CMake
+# (It's already covered by file(GLOB_RECURSE RHI_SRC "rhi/*.cpp") but we need to ensure filters are included)

@@ -1,57 +1,62 @@
 #include "VideoEngine.h"
+#include "filters/FilterFactory.h"
 #include <android/log.h>
 
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "VideoEngine", __VA_ARGS__)
 
 VideoEngine::VideoEngine(int width, int height) : mWidth(width), mHeight(height) {
-    // Instantiate RHI Device. Currently defaulting to GLES.
-    // In a full implementation, this could be configured via JNI param.
     mDevice = rhi::CreateRHIDevice(rhi::BackendType::GLES);
+    rhi::RHITexturePool::GetInstance().Init(mDevice);
 
-    // We pass device to filters so they can allocate RHI resources natively
-    mOesConverter = new OesTo2DFilter(mDevice);
+    mOesConverter = std::make_shared<OesTo2DFilter>(mDevice);
 
-    initFBO();
+    // Initialize an empty filter chain
+    mFilterChain = std::make_shared<FilterGroup>(mDevice);
 }
 
 VideoEngine::~VideoEngine() {
-    delete mOesConverter;
-    // RHI resources clean themselves up via shared_ptr and destructors
-}
-
-void VideoEngine::initFBO() {
-    // Create output texture via RHI
-    mTexOut = mDevice->CreateTexture(mWidth, mHeight, rhi::TextureFormat::RGBA8, rhi::TextureUsage::COLOR_ATTACHMENT);
-
-    // Create FBO via RHI
-    mFbo = mDevice->CreateFramebuffer();
-    mFbo->AttachColor(0, mTexOut);
-
-    if (!mFbo->IsValid()) {
-        LOGE("FBO initialization failed in RHI.");
-    }
+    // Release pool on destroy to clean up cached FBOs/Textures
+    rhi::RHITexturePool::GetInstance().Clear();
 }
 
 int VideoEngine::ProcessFrame(int inputOesTexture, float* matrix) {
-    mDevice->BindFramebuffer(mFbo);
+    // 1. Convert OES to 2D Texture
+    auto baseInputTex = mDevice->CreateTextureFromNative((void*)(uintptr_t)inputOesTexture, mWidth, mHeight, rhi::TextureType::TEXTURE_OES);
 
+    // We need an intermediate 2D texture to hold the result of OES conversion
+    auto oesResultWrapped = std::make_shared<rhi::PooledTexture>(rhi::RHITexturePool::GetInstance().RequestTexture(mWidth, mHeight));
+    auto oesResultTex = oesResultWrapped->Get();
+
+    // Use an FBO to render OES to 2D
+    auto fbo = mDevice->CreateFramebuffer();
+    fbo->AttachColor(0, oesResultTex);
+
+    mDevice->BindFramebuffer(fbo);
     rhi::Viewport vp = {0, 0, mWidth, mHeight};
     mDevice->SetViewport(vp);
-
     mDevice->ClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
-    // Create a temporary RHI texture wrapper for the incoming GL OES texture
-    auto rhiInputTex = mDevice->CreateTextureFromNative((void*)(uintptr_t)inputOesTexture, mWidth, mHeight, rhi::TextureType::TEXTURE_OES);
-
     mOesConverter->SetMatrix(matrix);
-    mOesConverter->Draw(rhiInputTex);
+    mOesConverter->Draw(baseInputTex);
 
-    mDevice->BindFramebuffer(nullptr); // Unbind
+    // 2. Pass the 2D texture through the ping-pong filter chain
+    // The filter chain handles FBO binding internally for intermediate steps.
+    // Notice: if filter chain is empty, it returns the input directly.
+    auto finalTex = mFilterChain->DrawPingPong(oesResultTex);
 
-    // Return the underlying native GLuint so Android's Java CameraRenderer can render to screen
-    return (int)(uintptr_t)mTexOut->GetNativeHandle();
+    // Unbind
+    mDevice->BindFramebuffer(nullptr);
+
+    // We return the raw GL uint.
+    // The texture will be kept alive because finalTex holds a shared_ptr to it,
+    // but in Android UI rendering loop, we typically do this synchronously.
+    return (int)(uintptr_t)finalTex->GetNativeHandle();
 }
 
 void VideoEngine::AddFilter(int filterId) {
-    // Dynamic filter management
+    // Legacy mapping or specific hardcoded filters
+}
+
+void VideoEngine::SetFilterWithRule(const std::string& ruleString) {
+    mFilterChain = FilterFactory::ParseRuleString(mDevice, ruleString);
 }

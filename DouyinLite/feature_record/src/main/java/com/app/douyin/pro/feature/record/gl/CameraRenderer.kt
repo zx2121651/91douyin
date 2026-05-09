@@ -47,7 +47,7 @@ class CameraRenderer(
 
     // Dummy methods to keep compatibility with UI caller
     fun setFilter(filterName: String) {
-        // Handle filter changes via nativeEngine.addFilter() in future
+        nativeEngine.setFilterWithRule(filterName)
     }
     fun setDynamicFilter(glsl: String) {}
 
