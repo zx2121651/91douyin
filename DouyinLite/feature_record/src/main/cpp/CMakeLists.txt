@@ -19,6 +19,8 @@ add_library(
         filters/BaseFilter.cpp
         filters/OesTo2DFilter.cpp
         filters/FilterGroup.cpp
+        filters/LUTFilter.cpp
+        filters/BeautyFilter.cpp
         filters/BrightnessFilter.cpp
         filters/FilterFactory.cpp
         ${RHI_SRC}
@@ -36,6 +38,12 @@ find_library(
 
 find_library(
         egl-lib
+        ${jnigraphics-lib}
+
+find_library(
+        jnigraphics-lib
+        jnigraphics
+)
         EGL
 )
 
@@ -50,6 +58,12 @@ target_link_libraries(
         ${log-lib}
         ${gles3-lib}
         ${egl-lib}
+        ${jnigraphics-lib}
+
+find_library(
+        jnigraphics-lib
+        jnigraphics
+)
         ${vulkan-lib}
 )
 

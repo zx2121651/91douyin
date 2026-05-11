@@ -1,5 +1,6 @@
 #include "VideoEngine.h"
 #include "filters/FilterFactory.h"
+#include "filters/LUTFilter.h"
 #include <android/log.h>
 
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "VideoEngine", __VA_ARGS__)
@@ -59,4 +60,18 @@ void VideoEngine::AddFilter(int filterId) {
 
 void VideoEngine::SetFilterWithRule(const std::string& ruleString) {
     mFilterChain = FilterFactory::ParseRuleString(mDevice, ruleString);
+}
+
+void VideoEngine::ApplyLUTFilter(int lutWidth, int lutHeight, const void* pixels, float intensity) {
+    if (!pixels || !mDevice) return;
+
+    auto lutTexture = mDevice->CreateTextureFromPixels(lutWidth, lutHeight, rhi::TextureFormat::RGBA8, pixels);
+
+    // For simplicity, we just add it to the end of the current chain.
+    // A robust system would replace existing LUT filters or allow inserting at specific nodes.
+    auto lutFilter = std::make_shared<LUTFilter>(mDevice);
+    lutFilter->SetLUTTexture(lutTexture);
+    lutFilter->SetIntensity(intensity);
+
+    mFilterChain->AddFilter(lutFilter);
 }

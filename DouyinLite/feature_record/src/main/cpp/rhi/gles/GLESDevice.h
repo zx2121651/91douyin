@@ -22,6 +22,12 @@ public:
         return std::make_shared<GLESTexture>(tex, width, height, type);
     }
 
+    std::shared_ptr<RHITexture> CreateTextureFromPixels(uint32_t width, uint32_t height, TextureFormat format, const void* pixels) override {
+        auto tex = std::make_shared<GLESTexture>(width, height, format, TextureType::TEXTURE_2D);
+        tex->UploadPixels(pixels);
+        return tex;
+    }
+
     std::shared_ptr<RHIBuffer> CreateBuffer(size_t size, BufferUsage usage, const void* initialData) override {
         return std::make_shared<GLESBuffer>(size, usage, initialData);
     }

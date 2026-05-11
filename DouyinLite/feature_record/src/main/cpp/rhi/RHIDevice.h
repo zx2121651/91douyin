@@ -18,6 +18,9 @@ public:
     // Specifically for wrapping an existing OES texture or Android HardwareBuffer
     virtual std::shared_ptr<RHITexture> CreateTextureFromNative(void* nativeHandle, uint32_t width, uint32_t height, TextureType type) = 0;
 
+    // Creates a texture and uploads pixel data directly
+    virtual std::shared_ptr<RHITexture> CreateTextureFromPixels(uint32_t width, uint32_t height, TextureFormat format, const void* pixels) = 0;
+
     virtual std::shared_ptr<RHIBuffer> CreateBuffer(size_t size, BufferUsage usage, const void* initialData = nullptr) = 0;
 
     virtual std::shared_ptr<RHIShader> CreateShader(ShaderStage stage, const std::string& sourceCode) = 0;

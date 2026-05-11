@@ -63,3 +63,28 @@ Java_com_app_douyin_pro_feature_record_gl_NativeVideoEngine_release(
         g_videoEngine = nullptr;
     }
 }
+
+#include <android/bitmap.h>
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_app_douyin_pro_feature_record_gl_NativeVideoEngine_applyLUTFilter(
+        JNIEnv* env,
+        jobject /* this */,
+        jobject bitmap,
+        jfloat intensity) {
+    if (!g_videoEngine || !bitmap) return;
+
+    AndroidBitmapInfo info;
+    if (AndroidBitmap_getInfo(env, bitmap, &info) < 0) return;
+
+    if (info.format != ANDROID_BITMAP_FORMAT_RGBA_8888) {
+        return; // Only support RGBA8888 LUTs for now
+    }
+
+    void* pixels = nullptr;
+    if (AndroidBitmap_lockPixels(env, bitmap, &pixels) < 0) return;
+
+    g_videoEngine->ApplyLUTFilter(info.width, info.height, pixels, intensity);
+
+    AndroidBitmap_unlockPixels(env, bitmap);
+}

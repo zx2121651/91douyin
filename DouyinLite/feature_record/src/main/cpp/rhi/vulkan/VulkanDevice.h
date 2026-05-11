@@ -30,6 +30,11 @@ public:
     }
 
     std::shared_ptr<RHITexture> CreateTextureFromNative(void* nativeHandle, uint32_t width, uint32_t height, TextureType type) override {
+
+    std::shared_ptr<RHITexture> CreateTextureFromPixels(uint32_t width, uint32_t height, TextureFormat format, const void* pixels) override {
+        // Stub
+        return nullptr;
+    }
         // Stub
         return nullptr;
     }

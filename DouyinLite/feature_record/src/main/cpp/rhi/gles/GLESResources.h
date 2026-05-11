@@ -48,6 +48,14 @@ public:
         return (void*)(uintptr_t)mTextureId;
     }
 
+    void UploadPixels(const void* pixels) {
+        GLenum target = MapTextureTypeToGLES(mType);
+        glBindTexture(target, mTextureId);
+        glTexSubImage2D(target, 0, 0, 0, mWidth, mHeight,
+                        MapTextureFormatToGLESFormat(mFormat), MapTextureFormatToGLESType(mFormat), pixels);
+        glBindTexture(target, 0);
+    }
+
     GLuint GetGLTextureId() const { return mTextureId; }
     GLenum GetGLTarget() const { return MapTextureTypeToGLES(mType); }
 

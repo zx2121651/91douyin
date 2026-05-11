@@ -1,5 +1,6 @@
 #include "FilterFactory.h"
 #include "BrightnessFilter.h"
+#include "BeautyFilter.h"
 #include <sstream>
 #include <vector>
 
@@ -31,6 +32,11 @@ std::shared_ptr<FilterGroup> FilterFactory::ParseRuleString(std::shared_ptr<rhi:
                 float value = std::stof(tokens[2]);
                 auto filter = std::make_shared<BrightnessFilter>(device);
                 filter->SetBrightness(value);
+                }
+            else if (tokens.size() >= 3 && tokens[1] == "beauty") {
+                float value = std::stof(tokens[2]);
+                auto filter = std::make_shared<BeautyFilter>(device);
+                filter->SetSmoothing(value);
                 group->AddFilter(filter);
             }
             // Add more adjusters here (contrast, saturation, etc.)

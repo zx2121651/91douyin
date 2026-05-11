@@ -15,5 +15,7 @@ class NativeVideoEngine {
 
     external fun setFilterWithRule(rule: String)
 
+    external fun applyLUTFilter(bitmap: android.graphics.Bitmap, intensity: Float)
+
     external fun release()
 }

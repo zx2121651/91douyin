@@ -21,6 +21,9 @@ public:
     // New rule-based dynamic filter
     void SetFilterWithRule(const std::string& ruleString);
 
+    // LUT Filter support
+    void ApplyLUTFilter(int lutWidth, int lutHeight, const void* pixels, float intensity);
+
 private:
     int mWidth;
     int mHeight;
