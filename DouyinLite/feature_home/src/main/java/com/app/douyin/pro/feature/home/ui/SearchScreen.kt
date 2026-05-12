@@ -362,7 +362,7 @@ fun SearchResultContent(
     videoResults: List<VideoModel>,
     userResults: List<UserModel>,
     isLoading: Boolean,
-    pagingState: com.app.douyin.pro.feature.home.viewmodel.PagingState,
+    pagingState: com.app.douyin.pro.lib.media.model.PagingState,
     onLoadMore: () -> Unit,
     onLikeClick: (Long) -> Unit,
     onFollowClick: (Long) -> Unit,
@@ -430,7 +430,7 @@ fun SearchResultContent(
 fun VideoResultList(
     videos: List<VideoModel>,
     isLoading: Boolean,
-    pagingState: com.app.douyin.pro.feature.home.viewmodel.PagingState,
+    pagingState: com.app.douyin.pro.lib.media.model.PagingState,
     onLoadMore: () -> Unit,
     onLikeClick: (Long) -> Unit,
     onVideoClick: (Int) -> Unit
@@ -448,11 +448,11 @@ fun VideoResultList(
             )
         }
         item {
-            if (isLoading || pagingState is com.app.douyin.pro.feature.home.viewmodel.PagingState.Loading) {
+            if (isLoading || pagingState is com.app.douyin.pro.lib.media.model.PagingState.Loading) {
                 Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = Color(0xFFFE2C55), modifier = Modifier.size(24.dp))
                 }
-            } else if (pagingState is com.app.douyin.pro.feature.home.viewmodel.PagingState.Error) {
+            } else if (pagingState is com.app.douyin.pro.lib.media.model.PagingState.Error) {
                 Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
                     Text(
                         text = "加载失败，点击重试",
@@ -526,7 +526,7 @@ fun VideoResultItem(video: VideoModel, onLikeClick: (Long) -> Unit, onClick: () 
 fun UserResultList(
     users: List<UserModel>,
     isLoading: Boolean,
-    pagingState: com.app.douyin.pro.feature.home.viewmodel.PagingState,
+    pagingState: com.app.douyin.pro.lib.media.model.PagingState,
     onLoadMore: () -> Unit,
     onFollowClick: (Long) -> Unit,
     onUserClick: (Long) -> Unit
@@ -540,11 +540,11 @@ fun UserResultList(
             UserResultItem(user = user, onFollowClick = onFollowClick, onUserClick = onUserClick)
         }
         item {
-            if (isLoading || pagingState is com.app.douyin.pro.feature.home.viewmodel.PagingState.Loading) {
+            if (isLoading || pagingState is com.app.douyin.pro.lib.media.model.PagingState.Loading) {
                 Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = Color(0xFFFE2C55), modifier = Modifier.size(24.dp))
                 }
-            } else if (pagingState is com.app.douyin.pro.feature.home.viewmodel.PagingState.Error) {
+            } else if (pagingState is com.app.douyin.pro.lib.media.model.PagingState.Error) {
                 Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
                     Text(
                         text = "加载失败，点击重试",

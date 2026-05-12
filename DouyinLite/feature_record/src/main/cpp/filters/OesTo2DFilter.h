@@ -5,15 +5,13 @@
 
 class OesTo2DFilter : public BaseFilter {
 private:
-    GLuint muMVPMatrixHandle;
-    GLuint muSTMatrixHandle;
     float mvpMatrix[16];
     float stMatrix[16];
 
 public:
-    OesTo2DFilter();
+    OesTo2DFilter(std::shared_ptr<rhi::RHIDevice> device);
     void SetMatrix(float* matrix);
-    void Draw(GLuint inputTextureId) override;
+    void Draw(std::shared_ptr<rhi::RHITexture> inputTexture) override;
 };
 
 #endif // OES_TO_2D_FILTER_H

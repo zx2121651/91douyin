@@ -1,50 +1,90 @@
 #include <jni.h>
+#include <string>
 #include "VideoEngine.h"
 
-extern "C" JNIEXPORT void JNICALL
-Java_com_app_douyin_pro_feature_record_gl_NativeVideoEngine_initEngine(JNIEnv *env, jobject thiz, jint width, jint height) {
-    VideoEngine* engine = new VideoEngine(width, height);
+// For simplicity in this structure, we hold a global instance.
+// A real app should pass pointer address (jlong) inside Java NativeVideoEngine class.
+static VideoEngine* g_videoEngine = nullptr;
 
-    jclass clazz = env->GetObjectClass(thiz);
-    jfieldID handleField = env->GetFieldID(clazz, "nativeHandle", "J");
-    env->SetLongField(thiz, handleField, reinterpret_cast<jlong>(engine));
+extern "C" JNIEXPORT void JNICALL
+Java_com_app_douyin_pro_feature_record_gl_NativeVideoEngine_initEngine(
+        JNIEnv* env,
+        jobject /* this */,
+        jint width, jint height) {
+    if (g_videoEngine) {
+        delete g_videoEngine;
+    }
+    g_videoEngine = new VideoEngine(width, height);
 }
 
 extern "C" JNIEXPORT jint JNICALL
-Java_com_app_douyin_pro_feature_record_gl_NativeVideoEngine_processFrame(JNIEnv *env, jobject thiz, jint oes_texture_id, jfloatArray matrix) {
-    jclass clazz = env->GetObjectClass(thiz);
-    jfieldID handleField = env->GetFieldID(clazz, "nativeHandle", "J");
-    VideoEngine* engine = reinterpret_cast<VideoEngine*>(env->GetLongField(thiz, handleField));
+Java_com_app_douyin_pro_feature_record_gl_NativeVideoEngine_processFrame(
+        JNIEnv* env,
+        jobject /* this */,
+        jint oesTextureId, jfloatArray matrix) {
+    if (!g_videoEngine) return 0;
 
-    if (!engine) return 0;
+    jfloat* matElements = env->GetFloatArrayElements(matrix, 0);
+    int result = g_videoEngine->ProcessFrame(oesTextureId, matElements);
+    env->ReleaseFloatArrayElements(matrix, matElements, 0);
 
-    jfloat* mat = env->GetFloatArrayElements(matrix, JNI_FALSE);
-
-    GLuint outTextureId = engine->ProcessFrame(oes_texture_id, mat);
-
-    env->ReleaseFloatArrayElements(matrix, mat, 0);
-    return outTextureId;
+    return result;
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_app_douyin_pro_feature_record_gl_NativeVideoEngine_addFilter(JNIEnv *env, jobject thiz, jint filter_id) {
-    jclass clazz = env->GetObjectClass(thiz);
-    jfieldID handleField = env->GetFieldID(clazz, "nativeHandle", "J");
-    VideoEngine* engine = reinterpret_cast<VideoEngine*>(env->GetLongField(thiz, handleField));
+Java_com_app_douyin_pro_feature_record_gl_NativeVideoEngine_addFilter(
+        JNIEnv* env,
+        jobject /* this */,
+        jint filterId) {
+    if (g_videoEngine) {
+        g_videoEngine->AddFilter(filterId);
+    }
+}
 
-    if (engine) {
-        engine->AddFilter(filter_id);
+// Support for dynamic rule string from Java
+extern "C" JNIEXPORT void JNICALL
+Java_com_app_douyin_pro_feature_record_gl_NativeVideoEngine_setFilterWithRule(
+        JNIEnv* env,
+        jobject /* this */,
+        jstring rule) {
+    if (g_videoEngine && rule) {
+        const char* ruleChars = env->GetStringUTFChars(rule, 0);
+        g_videoEngine->SetFilterWithRule(std::string(ruleChars));
+        env->ReleaseStringUTFChars(rule, ruleChars);
     }
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_app_douyin_pro_feature_record_gl_NativeVideoEngine_release(JNIEnv *env, jobject thiz) {
-    jclass clazz = env->GetObjectClass(thiz);
-    jfieldID handleField = env->GetFieldID(clazz, "nativeHandle", "J");
-    VideoEngine* engine = reinterpret_cast<VideoEngine*>(env->GetLongField(thiz, handleField));
-
-    if (engine) {
-        delete engine;
-        env->SetLongField(thiz, handleField, 0);
+Java_com_app_douyin_pro_feature_record_gl_NativeVideoEngine_release(
+        JNIEnv* env,
+        jobject /* this */) {
+    if (g_videoEngine) {
+        delete g_videoEngine;
+        g_videoEngine = nullptr;
     }
+}
+
+#include <android/bitmap.h>
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_app_douyin_pro_feature_record_gl_NativeVideoEngine_applyLUTFilter(
+        JNIEnv* env,
+        jobject /* this */,
+        jobject bitmap,
+        jfloat intensity) {
+    if (!g_videoEngine || !bitmap) return;
+
+    AndroidBitmapInfo info;
+    if (AndroidBitmap_getInfo(env, bitmap, &info) < 0) return;
+
+    if (info.format != ANDROID_BITMAP_FORMAT_RGBA_8888) {
+        return; // Only support RGBA8888 LUTs for now
+    }
+
+    void* pixels = nullptr;
+    if (AndroidBitmap_lockPixels(env, bitmap, &pixels) < 0) return;
+
+    g_videoEngine->ApplyLUTFilter(info.width, info.height, pixels, intensity);
+
+    AndroidBitmap_unlockPixels(env, bitmap);
 }

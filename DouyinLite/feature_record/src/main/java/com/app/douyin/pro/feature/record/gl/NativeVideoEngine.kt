@@ -7,13 +7,15 @@ class NativeVideoEngine {
         }
     }
 
-    private var nativeHandle: Long = 0
-
     external fun initEngine(width: Int, height: Int)
 
     external fun processFrame(oesTextureId: Int, matrix: FloatArray): Int
 
     external fun addFilter(filterId: Int)
+
+    external fun setFilterWithRule(rule: String)
+
+    external fun applyLUTFilter(bitmap: android.graphics.Bitmap, intensity: Float)
 
     external fun release()
 }

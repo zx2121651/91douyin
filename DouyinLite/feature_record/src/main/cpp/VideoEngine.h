@@ -1,9 +1,10 @@
 #ifndef VIDEO_ENGINE_H
 #define VIDEO_ENGINE_H
 
-#include <GLES3/gl3.h>
-#include <GLES2/gl2ext.h>
-#include <vector>
+#include "rhi/RHIDevice.h"
+#include "filters/FilterGroup.h"
+#include <memory>
+#include <string>
 #include "filters/OesTo2DFilter.h"
 
 class VideoEngine {
@@ -11,17 +12,29 @@ public:
     VideoEngine(int width, int height);
     ~VideoEngine();
 
-    GLuint ProcessFrame(GLuint inputOesTexture, float* matrix);
+    // Returns a native handle (e.g. GLuint) for UI presentation
+    int ProcessFrame(int inputOesTexture, float* matrix);
+
+    // Legacy generic id
     void AddFilter(int filterId);
+
+    // New rule-based dynamic filter
+    void SetFilterWithRule(const std::string& ruleString);
+
+    // LUT Filter support
+    void ApplyLUTFilter(int lutWidth, int lutHeight, const void* pixels, float intensity);
 
 private:
     int mWidth;
     int mHeight;
-    GLuint fbo;
-    GLuint texOut;
-    OesTo2DFilter* mOesConverter;
 
-    void initFBO();
+    std::shared_ptr<rhi::RHIDevice> mDevice;
+
+    // Main OES converter
+    std::shared_ptr<OesTo2DFilter> mOesConverter;
+
+    // The main filter chain that executes after OES conversion
+    std::shared_ptr<FilterGroup> mFilterChain;
 };
 
 #endif // VIDEO_ENGINE_H

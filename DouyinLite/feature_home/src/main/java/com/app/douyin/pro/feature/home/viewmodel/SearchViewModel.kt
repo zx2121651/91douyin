@@ -209,6 +209,7 @@ class SearchViewModel @Inject constructor(
                             _videoResults.value = currentVideos
                         }
                     }
+                    else -> {}
                 }
             }
         }

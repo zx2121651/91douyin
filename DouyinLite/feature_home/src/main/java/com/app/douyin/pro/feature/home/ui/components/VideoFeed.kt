@@ -23,7 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.app.douyin.pro.feature.home.viewmodel.PagingState
+import com.app.douyin.pro.lib.media.model.PagingState
 import com.app.douyin.pro.lib.media.VideoPlayerManager
 
 

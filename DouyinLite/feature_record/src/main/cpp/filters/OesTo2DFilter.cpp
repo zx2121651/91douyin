@@ -1,5 +1,5 @@
 #include "OesTo2DFilter.h"
-#include <GLES2/gl2ext.h>
+#include <cstring>
 
 static const char* OES_VERTEX_SHADER = R"(
     attribute vec4 aPosition;
@@ -23,45 +23,38 @@ static const char* OES_FRAGMENT_SHADER = R"(
     }
 )";
 
-OesTo2DFilter::OesTo2DFilter() {
-    mProgramId = createProgram(OES_VERTEX_SHADER, OES_FRAGMENT_SHADER);
-    mPositionHandle = glGetAttribLocation(mProgramId, "aPosition");
-    mTextureCoordHandle = glGetAttribLocation(mProgramId, "aTextureCoord");
-    muMVPMatrixHandle = glGetUniformLocation(mProgramId, "uMVPMatrix");
-    muSTMatrixHandle = glGetUniformLocation(mProgramId, "uSTMatrix");
-    mTextureSamplerHandle = glGetUniformLocation(mProgramId, "sTexture");
+OesTo2DFilter::OesTo2DFilter(std::shared_ptr<rhi::RHIDevice> device) : BaseFilter(device) {
+    initResources(OES_VERTEX_SHADER, OES_FRAGMENT_SHADER);
 
     // Initialize matrices to Identity
-    for(int i=0; i<16; i++) {
-        mvpMatrix[i] = (i % 5 == 0) ? 1.0f : 0.0f;
-    }
+    float identity[16] = {
+        1,0,0,0,
+        0,1,0,0,
+        0,0,1,0,
+        0,0,0,1
+    };
+    std::memcpy(mvpMatrix, identity, sizeof(identity));
+    std::memcpy(stMatrix, identity, sizeof(identity));
 }
 
 void OesTo2DFilter::SetMatrix(float* matrix) {
-    for (int i = 0; i < 16; i++) {
-        stMatrix[i] = matrix[i];
-    }
+    std::memcpy(stMatrix, matrix, 16 * sizeof(float));
 }
 
-void OesTo2DFilter::Draw(GLuint inputTextureId) {
-    glUseProgram(mProgramId);
+void OesTo2DFilter::Draw(std::shared_ptr<rhi::RHITexture> inputTexture) {
+    if (!mProgram) return;
 
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_EXTERNAL_OES, inputTextureId); // Bind OES!
-    glUniform1i(mTextureSamplerHandle, 0);
+    mDevice->BindProgram(mProgram);
 
-    glUniformMatrix4fv(muMVPMatrixHandle, 1, GL_FALSE, mvpMatrix);
-    glUniformMatrix4fv(muSTMatrixHandle, 1, GL_FALSE, stMatrix);
+    // Set Matrix Uniforms
+    mProgram->SetUniformMatrix4fv("uMVPMatrix", mvpMatrix);
+    mProgram->SetUniformMatrix4fv("uSTMatrix", stMatrix);
 
-    glVertexAttribPointer(mPositionHandle, 2, GL_FLOAT, GL_FALSE, 0, VERTICES);
-    glEnableVertexAttribArray(mPositionHandle);
+    mDevice->BindTexture(0, inputTexture);
+    mProgram->SetUniformInt("sTexture", 0);
 
-    glVertexAttribPointer(mTextureCoordHandle, 2, GL_FLOAT, GL_FALSE, 0, TEX_COORDS);
-    glEnableVertexAttribArray(mTextureCoordHandle);
+    mProgram->BindVertexAttribute("aPosition", mVertexBuffer, 2, 0, 0);
+    mProgram->BindVertexAttribute("aTextureCoord", mTexCoordBuffer, 2, 0, 0);
 
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-
-    glDisableVertexAttribArray(mPositionHandle);
-    glDisableVertexAttribArray(mTextureCoordHandle);
-    glBindTexture(GL_TEXTURE_EXTERNAL_OES, 0);
+    mDevice->DrawArrays(rhi::PrimitiveTopology::TRIANGLE_STRIP, 0, 4);
 }

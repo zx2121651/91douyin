@@ -34,7 +34,7 @@ import com.app.douyin.pro.feature.home.ui.components.*
 import com.app.douyin.pro.feature.home.ui.components.CommentsBottomSheet
 import com.app.douyin.pro.feature.home.viewmodel.HomeViewModel
 import com.app.douyin.pro.feature.home.viewmodel.LoadState
-import com.app.douyin.pro.feature.home.viewmodel.PagingState
+import com.app.douyin.pro.lib.media.model.PagingState
 import com.app.douyin.pro.lib.media.model.VideoModel
 import kotlinx.coroutines.launch
 import java.util.*
